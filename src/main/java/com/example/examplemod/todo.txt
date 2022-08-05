@@ -1,0 +1,28 @@
+Ranged attack (bow only)
+	Draw when first able
+	Release & fire when target visible & draw time passes minimum threshold
+Ranged attack (crossbow only)
+	Drawn when first able
+	Release after threshold
+	Fire when target visible
+Ranged attack general branch
+Try to take cover when using ranged combat
+	Single block barriers
+Equip more/better items when attack target is not visible
+	Any better than none
+	Better over worse
+Search for attack target on loss of visual from last known position
+	Mark last known position while target is visible
+	Move to position on vision loss
+	Expand search radius until total target loss
+	Interrupt when target sighted again
+Shield use in melee combat
+	If we have a shield off-cooldown and aren't currently attacking, use it to block damage
+Axe use to disable attack target shield
+	If we have an axe and enemy has a shield, try to disable it
+Mounted combat
+	If target is far away and mounted, prioritise getting a mount
+	If target is close and not mounted, prioritise dismounting (unless mount can be weaponised)
+Handling for activated abilities
+	Selector that collates child branches from abilities using an event
+Vibration listening (investigate sounds)
