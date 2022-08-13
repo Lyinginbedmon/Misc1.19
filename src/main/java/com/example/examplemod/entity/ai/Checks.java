@@ -1,91 +1,59 @@
 package com.example.examplemod.entity.ai;
 
-import com.example.examplemod.entity.ai.Node.Decorator;
+import com.example.examplemod.entity.ai.TreeNode.NodePredicate;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.google.common.base.Predicate;
-import com.mojang.datafixers.util.Pair;
 
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 public class Checks
 {
-	public static final Predicate<Pair<Mob,Whiteboard<?>>> HAS_TARGET = new Predicate<Pair<Mob,Whiteboard<?>>>()
+	public static final NodePredicate HAS_TARGET = (mob, storage) ->
 			{
-				public boolean apply(Pair<Mob,Whiteboard<?>> input)
-				{
-					Whiteboard<?> storage = input.getSecond();
-					return storage.hasValue(MobWhiteboard.MOB_TARGET) && storage.getEntity(MobWhiteboard.MOB_TARGET) != null;
-				}
+				return storage.hasValue(MobWhiteboard.MOB_TARGET) && storage.getEntity(MobWhiteboard.MOB_TARGET) != null && storage.getEntity(MobWhiteboard.MOB_TARGET).isAlive();
 			};
 	
-	public static class HasValue extends Decorator
-	{
-		public HasValue(String nameIn, String address, Node childIn)
-		{
-			super(nameIn, new Predicate<Pair<Mob,Whiteboard<?>>>()
+	public static final NodePredicate CAN_SEE_TARGET = (mob, storage) ->
 			{
-				public boolean apply(Pair<Mob, Whiteboard<?>> input){ return input.getSecond().hasValue(address); }
-			}, childIn);
-		}
-	}
-	
-	public static class CanPathTo extends Decorator
-	{
-		public CanPathTo(String nameIn, String addressIn, Node childIn)
-		{
-			super(nameIn, new Predicate<Pair<Mob,Whiteboard<?>>>()
-			{
-				public boolean apply(Pair<Mob, Whiteboard<?>> input)
+				if(HAS_TARGET.test(mob, storage))
 				{
-					Vec3 dest = Whiteboard.getDest(input.getSecond(), addressIn);
-					if(dest == null)
-						return false;
-					return input.getFirst().getNavigation().createPath(dest.x, dest.y, dest.z, 1) != null;
+					Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+					return !target.isRemoved() && mob.getSensing().hasLineOfSight(target);
 				}
-			}, childIn);
-		}
+				return false;
+			};
+	
+	public static NodePredicate hasValue(String address)
+	{
+		return (mob, storage) -> storage.hasValue(address);
 	}
 	
-	public static class IsSlotEmpty extends Decorator
+	public static NodePredicate canPathTo(String addressIn)
 	{
-		public IsSlotEmpty(String nameIn, EquipmentSlot slot, Node childIn)
+		return (mob, storage) ->
 		{
-			super(nameIn, new Predicate<Pair<Mob,Whiteboard<?>>>()
-			{
-				public boolean apply(Pair<Mob, Whiteboard<?>> input)
-				{
-					return MobWhiteboard.getItemInSlot(input.getSecond(), slot).isEmpty();
-				}
-			}, childIn);
-		}
+				Vec3 dest = Whiteboard.getDest(storage, addressIn);
+				if(dest == null)
+					return false;
+				return mob.getNavigation().createPath(dest.x, dest.y, dest.z, 1) != null;
+		};
 	}
 	
-	public static class HasItemInSlot extends Decorator
+	public static NodePredicate isSlotEmpty(EquipmentSlot slot)
 	{
-		public HasItemInSlot(String nameIn, EquipmentSlot slot, Node childIn)
-		{
-			super(nameIn, new Predicate<Pair<Mob,Whiteboard<?>>>()
-			{
-				public boolean apply(Pair<Mob, Whiteboard<?>> input){ return !MobWhiteboard.getItemInSlot(input.getSecond(), slot).isEmpty(); }
-			}, childIn);
-		}
+		return (mob, storage) -> MobWhiteboard.getItemInSlot(storage, slot).isEmpty();
 	}
 	
-	public static class IsItemValid extends Decorator
+	public static NodePredicate hasItemInSlot(EquipmentSlot slot)
 	{
-		public IsItemValid(String nameIn, Predicate<ItemStack> predicateIn, String addressIn, Node childIn)
-		{
-			super(nameIn, new Predicate<Pair<Mob,Whiteboard<?>>>()
-			{
-				public boolean apply(Pair<Mob, Whiteboard<?>> input)
-				{
-					Whiteboard<?> storage = input.getSecond();
-					return storage.hasValue(addressIn) && predicateIn.apply(storage.getItemStack(addressIn));
-				}
-			}, childIn);
-		}
+		return (mob, storage) -> !MobWhiteboard.getItemInSlot(storage, slot).isEmpty();
+	}
+	
+	public static NodePredicate isItemValid(Predicate<ItemStack> predicateIn, String addressIn)
+	{
+		return (mob, storage) -> storage.hasValue(addressIn) && predicateIn.apply(storage.getItemStack(addressIn));
 	}
 }

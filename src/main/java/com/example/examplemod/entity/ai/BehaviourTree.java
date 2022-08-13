@@ -6,14 +6,11 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.example.examplemod.ExampleMod;
-import com.example.examplemod.entity.TestEntity;
-import com.example.examplemod.entity.ai.Node.NodeMap;
-import com.example.examplemod.init.ExEntities;
+import com.example.examplemod.entity.ai.TreeNode.NodeMap;
 
-import net.minecraft.world.entity.Mob;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.world.entity.PathfinderMob;
 
 /**
  * AI by flowchart!<br>
@@ -25,28 +22,32 @@ import net.minecraftforge.event.entity.living.LivingEvent;
 public class BehaviourTree
 {
 	private final String treeName;
-	private final Whiteboard<Mob> whiteboard;
-	private final Node root;
+	private final Whiteboard<PathfinderMob> whiteboard;
+	
+	private final TreeNode root;
+	/** List of all nodes that reported either RUNNING or SUCCESS in the latest tick */
+	private final List<TreeNode> nodesOfLastRun = Lists.newArrayList();
 	
 	private final List<BehaviourTree> subTrees = Lists.newArrayList();
 	
-	public BehaviourTree(String nameIn, Node node)
+	public BehaviourTree(String nameIn, TreeNode node)
 	{
 		this(nameIn, null, node);
 	}
 	
-	public BehaviourTree(String nameIn, Whiteboard<Mob> board, Node node)
+	public BehaviourTree(String nameIn, Whiteboard<PathfinderMob> board, TreeNode node)
 	{
 		treeName = nameIn;
 		whiteboard = board;
 		root = node;
+		root.setParentTree(this);
 	}
 	
 	public void addSubTree(BehaviourTree treeIn) { this.subTrees.add(treeIn); }
 	
 	public final String name() { return this.treeName; }
 	
-	public void tick(Mob mobIn)
+	public void tick(PathfinderMob mobIn)
 	{
 		if(whiteboard == null)
 			return;
@@ -58,32 +59,66 @@ public class BehaviourTree
 			updateTree(child, mobIn, whiteboard);
 	}
 	
-	private static void updateTree(BehaviourTree tree, Mob mobIn, Whiteboard<Mob> storage)
+	private static void updateTree(BehaviourTree tree, PathfinderMob mobIn, Whiteboard<PathfinderMob> storage)
 	{
-		Node root = tree.getRoot();
-		if(root.isRunning())
+		tree.nodesOfLastRun.clear();
+		tree.getRoot().doTick(mobIn, storage);
+//		if(!tree.nodesOfLastRun.isEmpty())
+//		{
+//			ExampleMod.LOG.info("Behaviour tree "+tree.name()+" returned status "+tree.getRoot().previousResult().name());
+//			tree.mapTree().printToLog(ExampleMod.LOG);
+//		}
+	}
+	
+	public final TreeNode getRoot() { return this.root; }
+	
+	public void reportNodeActive(TreeNode nodeIn) { this.nodesOfLastRun.add(nodeIn); }
+	
+	public boolean nodeWasActiveLastTick(TreeNode nodeIn) { return this.nodesOfLastRun.contains(nodeIn); }
+	
+	/** Returns a list of all nodes in this behaviour tree */
+	public final List<TreeNode> nodeContents()
+	{
+		List<TreeNode> nodes = Lists.newArrayList();
+		
+		List<TreeNode> currentSet = Lists.newArrayList();
+		currentSet.add(getRoot());
+		while(!currentSet.isEmpty())
 		{
-			root.tick(mobIn, storage);
+			List<TreeNode> nextSet = Lists.newArrayList();
+			currentSet.forEach((node) -> nextSet.addAll(node.getChildren()));
 			
-			if(root.shouldInterrupt(mobIn, storage))
-				tree.interrupt(mobIn, storage);
+			nodes.addAll(currentSet);
+			currentSet.clear();
+			currentSet.addAll(nextSet);
 		}
-		else if(root.canRun(mobIn, storage))
-			root.setRunning(true);
+		
+		return nodes;
 	}
 	
-	public void interrupt(Mob mobIn, Whiteboard<Mob> storage) throws RuntimeException
+	public void load(CompoundTag compound)
 	{
-		root.interrupt(mobIn, storage);
-		if(root.isRunning())
+		ListTag dataSet = compound.getList("Nodes", 10);
+		List<TreeNode> nodes = nodeContents();
+		for(int i=0; i<dataSet.size(); i++)
 		{
-			Node node = getCurrentActiveNode();
-			Throwable cause = new Throwable("Node "+getAddress(node)+" "+node.name()+" not interrupted!");
-			throw new RuntimeException("Run stop failure!", cause);
+			TreeNode node = nodes.get(i);
+			CompoundTag data = dataSet.getCompound(i);
+			node.loadFromNBT(data);
 		}
 	}
 	
-	public final Node getRoot() { return this.root; }
+	public void save(CompoundTag compound)
+	{
+		ListTag nodeList = new ListTag();
+		nodeContents().forEach((node) -> 
+		{
+			CompoundTag data = new CompoundTag();
+			node.saveToNBT(data);
+			nodeList.add(data);
+		});
+		compound.put("Nodes", nodeList);
+	}
 	
 	public final NodeMap mapTree() { return root.map(0); }
 	
@@ -95,7 +130,7 @@ public class BehaviourTree
 	 * @return The designated node, or null if the address is invalid.
 	 */
 	@Nullable
-	public final Node getNode(String address)
+	public final TreeNode getNode(String address)
 	{
 		String[] ids = address.split("-");
 		if(ids.length == 1 && ids[0].charAt(0) == 'R')
@@ -121,7 +156,7 @@ public class BehaviourTree
 	 * @return String address from the root of this tree to the given node, or null if it does not exist.
 	 */
 	@Nullable
-	public final String getAddress(Node nodeIn)
+	public final String getAddress(TreeNode nodeIn)
 	{
 		if(nodeIn == this.root)
 			return "R";
@@ -132,33 +167,5 @@ public class BehaviourTree
 				return "R-" + recursiveAddress;
 		}
 		return null;
-	}
-	
-	/**
-	 * @return The lowest active node in this tree, if any.
-	 */
-	public final Node getCurrentActiveNode()
-	{
-		return root.getActiveNodeRecursive();
-	}
-	
-	static
-	{
-		MinecraftForge.EVENT_BUS.addListener(BehaviourTree::onStateChange);
-	}
-	
-	public static void onStateChange(StateChange event)
-	{
-		Mob mob = (Mob)event.getEntity();
-		if(mob.getType() == ExEntities.TEST.get())
-		{
-			ExampleMod.LOG.info(" = State change reported");
-			((TestEntity)mob).getTree().mapTree().printToLog(ExampleMod.LOG);
-		}
-	}
-	
-	public static class StateChange extends LivingEvent
-	{
-		public StateChange(Mob mobIn) { super(mobIn); }
 	}
 }

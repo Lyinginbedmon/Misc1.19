@@ -1,16 +1,5 @@
-Ranged attack (bow only)
-	Draw when first able
-	Release & fire when target visible & draw time passes minimum threshold
-Ranged attack (crossbow only)
-	Drawn when first able
-	Release after threshold
-	Fire when target visible
-Ranged attack general branch
 Try to take cover when using ranged combat
 	Single block barriers
-Equip more/better items when attack target is not visible
-	Any better than none
-	Better over worse
 Search for attack target on loss of visual from last known position
 	Mark last known position while target is visible
 	Move to position on vision loss

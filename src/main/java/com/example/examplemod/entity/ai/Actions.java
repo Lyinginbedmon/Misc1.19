@@ -1,7 +1,7 @@
 package com.example.examplemod.entity.ai;
 
-import com.example.examplemod.entity.ai.Node.Leaf;
-import com.example.examplemod.entity.ai.Node.LeafSingle;
+import com.example.examplemod.entity.ai.TreeNode.LeafRunning;
+import com.example.examplemod.entity.ai.TreeNode.LeafSingle;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 
 import net.minecraft.core.BlockPos;
@@ -11,6 +11,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -22,64 +24,84 @@ import net.minecraft.world.phys.Vec3;
 public class Actions
 {
 	/** Makes the mob do a little jump. */
-	public static Node jump()
+	public static TreeNode jump()
 	{
-		return new Leaf("jump")
+		return new LeafRunning()
 		{
-			private boolean hasJumped = false;
-			
-			public void run(Mob mobIn, Whiteboard<?> storage)
+			public boolean start(PathfinderMob mobIn, Whiteboard<?> storage)
 			{
-				if(hasJumped)
-				{
-					if(mobIn.isOnGround())
-						reset();
-				}
-				else
-				{
-					mobIn.getJumpControl().jump();
-					hasJumped = true;
-				}
+				mobIn.getJumpControl().jump();
+				return true;
 			}
 			
-			private void reset()
+			public Status run(PathfinderMob mobIn, Whiteboard<?> storage)
 			{
-				hasJumped = false;
-				resetNode();
+				if(mobIn.isOnGround())
+					return Status.SUCCESS;
+				return Status.RUNNING;
 			}
 		};
 	}
 	
 	/** Attempts to equip the item held in the mob's main hand */
-	public static Node equipHeldItem()
+	public static TreeNode equipHeldItem()
 	{
-		return new LeafSingle("equip_held_item")
+		return new LeafSingle()
 		{
-			protected void doAction(Mob mobIn, Whiteboard<?> storage)
+			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 			{
 				EquipmentSlot slot = Mob.getEquipmentSlotForItem(mobIn.getMainHandItem());
 				if(mobIn.equipItemIfPossible(mobIn.getMainHandItem()))
 				{
 					mobIn.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
 					mobIn.setDropChance(slot, 1F);
+					return true;
 				}
+				return false;
 			}
 		};
 	}
 	
-	/** Swaps the items held in the mob's hands */
-	public static Node swapItems()
+	public static TreeNode equipFromEntity(String targetAddress)
 	{
-		return new LeafSingle("swap_held_items")
+		return new LeafSingle()
 		{
-			protected void doAction(Mob mobIn, Whiteboard<?> storage)
+			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+			{
+				if(!storage.hasValue(targetAddress))
+					return false;
+				ItemEntity entity = (ItemEntity)storage.getEntity(targetAddress);
+				if(entity == null || entity.isRemoved() || !entity.getBoundingBox().intersects(mobIn.getBoundingBox().inflate(1,0,1)))
+					return false;
+				
+				ItemStack stack = entity.getItem();
+				if(mobIn.equipItemIfPossible(stack))
+				{
+					mobIn.onItemPickup(entity);
+					mobIn.take(entity, stack.getCount());
+					entity.discard();
+					return true;
+				}
+				
+				return false;
+			}
+		}.setCustomName("equip_entity_direct");
+	}
+	
+	/** Swaps the items held in the mob's hands */
+	public static TreeNode swapItems()
+	{
+		return new LeafSingle()
+		{
+			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 			{
 				ItemStack stackA = mobIn.getMainHandItem().copy();
 				ItemStack stackB = mobIn.getOffhandItem().copy();
 				mobIn.setItemInHand(InteractionHand.MAIN_HAND, stackB);
 				mobIn.setItemInHand(InteractionHand.OFF_HAND, stackA);
+				return true;
 			}
-		};
+		}.setCustomName("swap_items");
 	}
 	
 	/**
@@ -92,13 +114,13 @@ public class Actions
 		
 		public MakeSound(SoundEvent... soundsIn)
 		{
-			super("make_sound");
 			sounds = soundsIn;
 		}
 		
-		public void doAction(Mob mobIn, Whiteboard<?> storage)
+		public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			mobIn.playSound(sounds.length == 1 ? sounds[0] : sounds[mobIn.getRandom().nextInt(sounds.length)]);
+			return true;
 		}
 	}
 	
@@ -106,7 +128,7 @@ public class Actions
 	 * Looks at a given point.<br>
 	 * Warning: This leaf never terminates, so should be used in a Parallel node with another action to terminate it.
 	 */
-	public static class LookAtConstant extends Leaf
+	public static class LookAtConstant extends LeafRunning
 	{
 		private final String address;
 		private final float xSpeed, ySpeed;
@@ -117,22 +139,27 @@ public class Actions
 		
 		protected LookAtConstant(String addressIn, float xSpeedIn, float ySpeedIn)
 		{
-			super("look_at_constant");
 			address = addressIn;
 			xSpeed = xSpeedIn;
 			ySpeed = ySpeedIn;
+			setCustomName("look_at_constant");
 		}
 		
-		public boolean canRun(Mob mobIn, Whiteboard<?> storage) { return storage.hasValue(address); }
-		
-		public void run(Mob mobIn, Whiteboard<?> storage)
+		public Status run(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
+			if(!storage.hasValue(address))
+				return Status.FAILURE;
+			
 			Vec3 target = getLookAtVec(storage);
 			if(target != null)
+			{
 				if(xSpeed < 0F && ySpeed < 0F)
 					mobIn.getLookControl().setLookAt(target);
 				else
 					mobIn.getLookControl().setLookAt(target.x, target.y, target.z, xSpeed, ySpeed);
+				return Status.RUNNING;
+			}
+			return Status.FAILURE;
 		}
 		
 		private Vec3 getLookAtVec(Whiteboard<?> storage)
@@ -176,7 +203,7 @@ public class Actions
 	}
 	
 	/** Waits the given number of game ticks. */
-	public static class Wait extends Leaf
+	public static class Wait extends LeafRunning
 	{
 		private final int min, max;
 		private int ticks = 0;
@@ -184,35 +211,47 @@ public class Actions
 		public Wait(int durationIn)
 		{
 			this(durationIn, durationIn);
+			setCustomName("wait_"+durationIn);
 		}
 		
 		public Wait(int minTicks, int maxTicks)
 		{
-			super("wait");
 			min = Math.min(minTicks, maxTicks);
 			max = Math.max(minTicks, maxTicks);
+			setCustomName("wait_"+minTicks+"_to_"+maxTicks);
 		}
 		
-		public void start(Mob mobIn, Whiteboard<?> storage)
+		public boolean start(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			if(min != max)
 				ticks = min + mobIn.getRandom().nextInt(max - min);
 			else
 				ticks = min;
+			return true;
 		}
 		
-		public void run(Mob mobIn, Whiteboard<?> storage)
+		public Status run(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
-			if(--ticks <= 0)
-				reset();
+			return --ticks <= 0 ? Status.SUCCESS : Status.RUNNING;
 		}
 		
-		public void stop(Mob mobIn, Whiteboard<?> storage) { reset(); }
+		public void stop(PathfinderMob mobIn, Whiteboard<?> storage) { ticks = -1; }
+	}
+	
+	/** Waits in 1 second intervals until a condition is met */
+	public static class WaitUntil extends LeafRunning
+	{
+		private final NodePredicate predicate;
 		
-		private void reset()
+		public WaitUntil(NodePredicate predicateIn)
 		{
-			ticks = -1;
-			resetNode();
+			predicate = predicateIn;
+			setCustomName("wait_until_condition");
+		}
+		
+		public Status run(PathfinderMob mobIn, Whiteboard<?> storage)
+		{
+			return predicate.test(mobIn, storage) ? Status.SUCCESS : Status.RUNNING;
 		}
 	}
 	
@@ -220,41 +259,83 @@ public class Actions
 	 * Sets the mob's navigator to move to the given position, then terminates when the navigator is empty.<br>
 	 * Note that the navigator may be empty simply because no valid path exists.
 	 */
-	public static class MoveTo extends Leaf
+	public static class MoveTo extends LeafRunning
 	{
 		private final String address;
 		private final double speed;
 		// FIXME Not precise enough for item collection, increase precision
 		public MoveTo(String addressIn, double speedIn)
 		{
-			super("move_to");
 			address = addressIn;
 			speed = speedIn;
+			setCustomName("move_to");
 		}
 		
-		public boolean canRun(Mob mobIn, Whiteboard<?> storage) { return storage.hasValue(address); }
-		
-		public void start(Mob mobIn, Whiteboard<?> storage)
+		public boolean start(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
+			if(!storage.hasValue(address))
+				return false;
+			
 			Vec3 dest = Whiteboard.getDest(storage, address);
-			if(dest == null)
-			{
-				resetNode();
-				return;
-			}
-			mobIn.getNavigation().moveTo(dest.x, dest.y, dest.z, speed);
+			return mobIn.getNavigation().moveTo(dest.x, dest.y, dest.z, speed);
 		}
 		
-		public void run(Mob mobIn, Whiteboard<?> storage)
+		public Status run(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
-			if(mobIn.getNavigation().isDone())
-				resetNode();
+			return mobIn.getNavigation().isDone() ? Status.SUCCESS : Status.RUNNING;
 		}
 		
-		public void stop(Mob mobIn, Whiteboard<?> storage)
+		public void stop(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			mobIn.getNavigation().stop();
-			resetNode();
+		}
+	}
+	
+	public static class MoveAwayFrom extends LeafRunning
+	{
+		private final String address;
+		private final double speed;
+		private final double minDist;
+		
+		public MoveAwayFrom(String addressIn, double speedIn, double minDistIn)
+		{
+			address = addressIn;
+			speed = speedIn;
+			minDist = minDistIn;
+			setCustomName("move_away_from");
+		}
+		
+		public boolean start(PathfinderMob mobIn, Whiteboard<?> storage)
+		{
+			if(!storage.hasValue(address))
+				return false;
+			
+			Vec3 dest = Whiteboard.getDest(storage, address);
+			Vec3 point = null;
+			int attempts = 30;
+			while(point == null && attempts-- > 0)
+				point = DefaultRandomPos.getPosAway((PathfinderMob)mobIn, 16, 7, dest);
+			
+			if(point != null)
+				return mobIn.getNavigation().moveTo(point.x, point.y, point.z, speed);
+			return false;
+		}
+		
+		public Status run(PathfinderMob mobIn, Whiteboard<?> storage)
+		{
+			if(mobIn.getNavigation().isDone())
+				return Status.SUCCESS;
+			
+			Vec3 dest = Whiteboard.getDest(storage, address);
+			if(dest == null || mobIn.distanceToSqr(dest) >= (minDist * minDist))
+				return Status.SUCCESS;
+			
+			return Status.RUNNING;
+		}
+		
+		public void stop(PathfinderMob mobIn, Whiteboard<?> storage)
+		{
+			mobIn.getNavigation().stop();
 		}
 	}
 	
@@ -268,23 +349,22 @@ public class Actions
 		
 		public AttackMelee(String addressIn)
 		{
-			super("attack_melee");
 			address = addressIn;
+			setCustomName("attack_melee");
 		}
 		
-		public boolean canRun(Mob mobIn, Whiteboard<?> storage)
+		public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			Entity target = storage.getEntity(address);
-			return mobIn.distanceToSqr(target) <= getAttackReachSqr(target, mobIn);
-		}
-		
-		public void doAction(Mob mobIn, Whiteboard<?> storage)
-		{
+			if(target == null || !target.isAlive() || mobIn.distanceToSqr(target) > getAttackReachSqr(target, mobIn))
+				return false;
+			
 			if(storage.getEntity(address) == null)
-				return;
+				return false;
 			
 			mobIn.swing(InteractionHand.MAIN_HAND);
 			mobIn.doHurtTarget(storage.getEntity(address));
+			return true;
 		}
 		
 		public static double getAttackReachSqr(Entity targetIn, LivingEntity mobIn)
@@ -300,11 +380,10 @@ public class Actions
 		
 		public PickUpItem(String addressIn)
 		{
-			super("pick_up_item");
 			address = addressIn;
 		}
 		
-		public boolean canRun(Mob mobIn, Whiteboard<?> storage)
+		public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			ItemEntity target = (ItemEntity)storage.getEntity(address);
 			if(target == null)
@@ -312,16 +391,10 @@ public class Actions
 			
 			ItemStack heldItem = MobWhiteboard.getItemInSlot(storage, EquipmentSlot.MAINHAND); 
 			if(heldItem.isEmpty() || canMergeStacks(heldItem, target.getItem()))
-				return target.getBoundingBox().inflate(1).intersects(mobIn.getBoundingBox());
+				if(!target.getBoundingBox().inflate(1).intersects(mobIn.getBoundingBox()))
+					return false;
 			
-			return false;
-		}
-		
-		public void doAction(Mob mobIn, Whiteboard<?> storage)
-		{
-			ItemEntity target = (ItemEntity)storage.getEntity(address);
 			ItemStack stack = target.getItem();
-			ItemStack heldItem = MobWhiteboard.getItemInSlot(storage, EquipmentSlot.MAINHAND); 
 			if(heldItem.isEmpty())
 			{
 				mobIn.setItemInHand(InteractionHand.MAIN_HAND, stack);
@@ -337,6 +410,7 @@ public class Actions
 					target.discard();
 			}
 			mobIn.setDropChance(EquipmentSlot.MAINHAND, 1F);
+			return true;
 		}
 		
 		private static boolean canMergeStacks(ItemStack stackA, ItemStack stackB)
@@ -358,16 +432,17 @@ public class Actions
 		
 		public UnequipWornItem(EquipmentSlot slotIn)
 		{
-			super("unequip_"+slotIn.name().toLowerCase());
 			slot = slotIn;
 		}
 		
-		public boolean canRun(Mob mobIn, Whiteboard<?> storage) { return !mobIn.getItemBySlot(slot).isEmpty() && mobIn.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty(); }
-		
-		protected void doAction(Mob mobIn, Whiteboard<?> storage)
+		public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
+			if(mobIn.getItemBySlot(slot).isEmpty() || !mobIn.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty())
+				return false;
+			
 			mobIn.setItemInHand(InteractionHand.MAIN_HAND, mobIn.getItemBySlot(slot).copy());
 			mobIn.setItemSlot(slot, ItemStack.EMPTY);
+			return true;
 		}
 	}
 	
@@ -378,13 +453,13 @@ public class Actions
 		
 		public DropItem(int amountIn)
 		{
-			super("drop_held_item");
 			amount = amountIn;
+			setCustomName("drop_held_item");
 		}
 		
 		public DropItem() { this(-1); }
 		
-		protected void doAction(Mob mobIn, Whiteboard<?> storage)
+		public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			ItemStack dropped = mobIn.getMainHandItem();
 			if(amount > 0)
@@ -394,6 +469,19 @@ public class Actions
 				mobIn.spawnAtLocation(dropped);
 				mobIn.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
 			}
+			return true;
 		}
+	}
+	
+	public static TreeNode startUsingItem()
+	{
+		return new LeafSingle()
+		{
+			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+			{
+				mobIn.startUsingItem(InteractionHand.MAIN_HAND);
+				return true;
+			}
+		}.setCustomName("use_held_item");
 	}
 }

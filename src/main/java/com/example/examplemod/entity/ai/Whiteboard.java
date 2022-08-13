@@ -28,7 +28,7 @@ public abstract class Whiteboard<T>
 	
 	public final boolean hasValue(String input) { return values.containsKey(input); }
 	
-	protected final void setValue(String input, Object value)
+	public final void setValue(String input, Object value)
 	{
 		if(value != null)
 			values.put(input, value);
@@ -64,6 +64,8 @@ public abstract class Whiteboard<T>
 	public Entity getEntity(String input) { return (Entity)get(input); }
 	
 	public ItemStack getItemStack(String input) { return (ItemStack)get(input); }
+	
+	public int getInt(String input) { return (int)get(input); }
 	
 	public final void tick(T obj)
 	{

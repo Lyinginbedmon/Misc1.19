@@ -21,7 +21,7 @@ public class ExEntities
     
 //  public static final RegistryObject<EntityType<EntityGrizzlyBear>> GRIZZLY_BEAR = DEF_REG.register("grizzly_bear", () -> registerEntity(EntityType.Builder.of(EntityGrizzlyBear::new, MobCategory.CREATURE).sized(1.6F, 1.8F), "grizzly_bear"));
 	@SuppressWarnings("unchecked")
-	public static final RegistryObject<EntityType<TestEntity>> TEST	= ENTITIES.register("test", () -> registerEntity(EntityType.Builder.of(TestEntity::new, MobCategory.CREATURE).sized(0.6F, 1.5F), "test"));//, 1, 1);
+	public static final RegistryObject<EntityType<TestEntity>> TEST	= ENTITIES.register("test", () -> registerEntity(EntityType.Builder.of(TestEntity::new, MobCategory.CREATURE).sized(0.6F, 1.95F), "test"));//, 1, 1);
 	
 //	@SuppressWarnings("deprecation")
 //	private static <T extends Mob> EntityType<T> register(String name, EntityType.Builder<T> builder, int primaryColor, int secondaryColor)
