@@ -1,10 +1,5 @@
 Try to take cover when using ranged combat
 	Single block barriers
-Search for attack target on loss of visual from last known position
-	Mark last known position while target is visible
-	Move to position on vision loss
-	Expand search radius until total target loss
-	Interrupt when target sighted again
 Shield use in melee combat
 	If we have a shield off-cooldown and aren't currently attacking, use it to block damage
 Axe use to disable attack target shield

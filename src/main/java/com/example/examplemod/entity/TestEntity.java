@@ -3,8 +3,13 @@ package com.example.examplemod.entity;
 import com.example.examplemod.entity.ai.Actions;
 import com.example.examplemod.entity.ai.BehaviourTree;
 import com.example.examplemod.entity.ai.Branches;
-import com.example.examplemod.entity.ai.Checks;
-import com.example.examplemod.entity.ai.TreeNode.*;
+import com.example.examplemod.entity.ai.NodePredicates;
+import com.example.examplemod.entity.ai.SelectorSmartItem;
+import com.example.examplemod.entity.ai.TreeNode.Condition;
+import com.example.examplemod.entity.ai.TreeNode.Decorator;
+import com.example.examplemod.entity.ai.TreeNode.Parallel;
+import com.example.examplemod.entity.ai.TreeNode.Selector;
+import com.example.examplemod.entity.ai.TreeNode.Sequence;
 import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.example.examplemod.reference.Reference;
@@ -16,7 +21,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.animal.Chicken;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.level.Level;
 
 public class TestEntity extends PathfinderMob
@@ -39,23 +44,30 @@ public class TestEntity extends PathfinderMob
 		behaviourTree = new BehaviourTree("main_tree", whiteboard, 
 			Selector.root(
 				Sequence.reactive(
-					new Condition(Checks.HAS_TARGET).setCustomName("has_attack_target"), 
-					Actions.LookAtConstant.normal(MobWhiteboard.MOB_TARGET),
-					new Selector(
-						Branches.attackRanged(),
-						Branches.attackMelee())).setCustomName("combat_logic"),
+					new Condition(NodePredicates.HAS_LIVING_TARGET).setCustomName("has_attack_target"), 
+					Selector.sequential(
+						Sequence.reactive(
+							new Condition((mob, storage)-> { return storage.getCounter(MobWhiteboard.MOB_TARGET_NOT_VISIBLE) <= Reference.Values.TICKS_PER_SECOND * 3; }).setCustomName("no_target_loss"),
+							Sequence.reactive(
+								Actions.LookAtConstant.normal(MobWhiteboard.MOB_TARGET),
+								Branches.markTargetSighting()).setCustomName("target_vision_handling").setDiscrete(),
+							new SelectorSmartItem().setCustomName("populating_selector")
+							).setCustomName("combat_logic"),
+						Sequence.reactive(
+							Decorator.inverter(new Condition(NodePredicates.CAN_SEE_TARGET)).setCustomName("no_line_of_sight"),
+							Branches.searchAroundPosition(10)).setCustomName("search_and_destroy"))),
 				Sequence.reactive(
-					Decorator.inverter(new Condition(Checks.HAS_TARGET)).setCustomName("no_attack_target"),
-					new Selector(
-						Branches.equipBestGear(0.125D),
+					Decorator.inverter(new Condition(NodePredicates.HAS_LIVING_TARGET)).setCustomName("no_attack_target"),
+					Selector.sequential(
+						Branches.equipBestGear(0.125D).setDiscrete(),
 						Parallel.any(
 							Branches.lookRandom(Reference.Values.TICKS_PER_SECOND * 2, Reference.Values.TICKS_PER_SECOND * 10),
-							Branches.wander()).setCustomName("wander"))).setCustomName("idle")));
+							Branches.wander()))).setCustomName("idle")));
 	}
 	
 	protected void registerGoals()
 	{
-		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Chicken.class, true));
+		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Villager.class, false, true));
 	}
 	
 	public void customServerAiStep()

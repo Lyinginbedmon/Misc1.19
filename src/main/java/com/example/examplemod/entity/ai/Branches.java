@@ -3,7 +3,12 @@ package com.example.examplemod.entity.ai;
 import javax.annotation.Nullable;
 
 import com.example.examplemod.entity.ai.Actions.WaitUntil;
-import com.example.examplemod.entity.ai.TreeNode.*;
+import com.example.examplemod.entity.ai.TreeNode.Condition;
+import com.example.examplemod.entity.ai.TreeNode.Decorator;
+import com.example.examplemod.entity.ai.TreeNode.LeafSingle;
+import com.example.examplemod.entity.ai.TreeNode.NodePredicate;
+import com.example.examplemod.entity.ai.TreeNode.Selector;
+import com.example.examplemod.entity.ai.TreeNode.Sequence;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.example.examplemod.reference.Reference;
 import com.google.common.collect.Multimap;
@@ -14,6 +19,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -25,14 +31,19 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.entity.projectile.ThrownEnderpearl;
+import net.minecraft.world.entity.projectile.ThrownPotion;
+import net.minecraft.world.entity.projectile.ThrownTrident;
 import net.minecraft.world.item.ArrowItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.phys.Vec3;
 
@@ -42,7 +53,7 @@ public class Branches
 	public static final TreeNode wanderBasic()
 	{
 		return Sequence.sequence(
-					new Condition(Checks.hasValue(MobWhiteboard.MOB_POS_BLOCK)),
+					new Condition(NodePredicates.hasValue(MobWhiteboard.MOB_POS_BLOCK)),
 					new LeafSingle()
 					{
 						public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
@@ -70,29 +81,40 @@ public class Branches
 	
 	public static final TreeNode wander()
 	{
+		return wanderAround(MobWhiteboard.MOB_POS_BLOCK, Reference.Values.TICKS_PER_SECOND * 3, Reference.Values.TICKS_PER_SECOND * 15).setCustomName("wander").setDiscrete();
+	}
+	
+	public static final TreeNode wanderAround(String address, int minWait, int maxWait)
+	{
 		return Sequence.sequence(
-				new Condition(Checks.hasValue(MobWhiteboard.MOB_POS_BLOCK)),
+				new Condition(NodePredicates.hasValue(address)),
 				new LeafSingle()
 				{
 					public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 					{
-						BlockPos mobPos = storage.getBlockPos(MobWhiteboard.MOB_POS_BLOCK);
+						BlockPos mobPos = storage.getBlockPos(address);
 						RandomSource random = mobIn.getRandom();
 						
-						BlockPos target = addRandom(mobPos, random);
+						BlockPos target = addRandom(mobPos, random, 10);
 						PathNavigation navigation = mobIn.getNavigation();
 						int tries = 50;
 						while(navigation.createPath(target, 64) == null && --tries > 0)
-							target = addRandom(mobPos, random);
+							target = addRandom(mobPos, random, 10);
 						
 						storage.setValue("wander_target", target);
 						return true;
 					}
 					
-					private BlockPos addRandom(BlockPos origin, RandomSource random) { return origin.offset(random.nextInt(10) - 5, random.nextInt(4) - 2, random.nextInt(10) - 5); }
+					private BlockPos addRandom(BlockPos origin, RandomSource random, double range)
+					{
+						double offX = (random.nextDouble() - 0.5D) * range;
+						double offY = (random.nextDouble() - 0.5D) * range * 0.4D;
+						double offZ = (random.nextDouble() - 0.5D) * range;
+						return origin.offset(offX, offY, offZ);
+					}
 				}.setCustomName("set_destination"),
 				new Actions.MoveTo("wander_target", 0.35D),
-				new Actions.Wait(Reference.Values.TICKS_PER_SECOND * 3, Reference.Values.TICKS_PER_SECOND * 15)).setCustomName("basic_wander");
+				new Actions.Wait(minWait, maxWait));
 	}
 	
 	/** Moves towards attack target and periodically uses melee attack when close enough */
@@ -100,15 +122,16 @@ public class Branches
 	{
 		return Sequence.reactive(
 				Actions.LookAtConstant.instant(MobWhiteboard.MOB_TARGET),
-				new Selector(
+				Selector.sequential(
 					TreeNode.conditional((mob, storage) ->
 					{
 						Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
 						return target != null && mob.distanceToSqr(target) > Actions.AttackMelee.getAttackReachSqr(target, mob);
 					}, new Actions.MoveTo(MobWhiteboard.MOB_TARGET, 0.5D)).setCustomName("move_closer").setDiscrete(),
 					Sequence.sequence(
-						new Actions.Wait(Reference.Values.TICKS_PER_SECOND),
-						new Actions.AttackMelee(MobWhiteboard.MOB_TARGET)).setCustomName("basic_melee").setDiscrete())).setCustomName("melee_attacks");
+						new Actions.WaitUntil((mob,storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
+						new Actions.AttackMelee(MobWhiteboard.MOB_TARGET),
+						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND)).setCustomName("basic_melee").setDiscrete())).setCustomName("melee_attack").setDiscrete();
 	}
 	
 	public static final TreeNode equipBestGear(double speed)
@@ -123,7 +146,7 @@ public class Branches
 	
 	public static final TreeNode equipBestGear(String sword, String head, String chest, String legs, String feet, double speed)
 	{
-		return new Selector(
+		return Selector.sequential(
 				equipSwordIfBetter(sword, speed),
 				equipArmorIfBetter(chest, EquipmentSlot.CHEST, speed),
 				equipArmorIfBetter(legs, EquipmentSlot.LEGS, speed),
@@ -210,7 +233,7 @@ public class Branches
 	{
 		return Sequence.reactive(
 				Actions.LookAtConstant.instant(targetAddressIn),
-				new Selector(
+				Selector.sequential(
 					Branches.tryPickUp(targetAddressIn),
 					TreeNode.conditional((mob, storage) ->
 					{
@@ -222,12 +245,12 @@ public class Branches
 	/** Attempts to pick up the given item entity, manipulating hand inventory if necessary */
 	public static final TreeNode tryPickUp(String targetAddress)
 	{
-		return new Selector(
+		return Selector.sequential(
 				new Actions.PickUpItem(targetAddress),
 				Sequence.reactive(
-					new Condition(Checks.hasItemInSlot(EquipmentSlot.MAINHAND)), 
-					new Selector(
-						TreeNode.conditional(Checks.isSlotEmpty(EquipmentSlot.OFFHAND), Actions.swapItems()),
+					new Condition(NodePredicates.hasItemInSlot(EquipmentSlot.MAINHAND)), 
+					Selector.sequential(
+						TreeNode.conditional(NodePredicates.isSlotEmpty(EquipmentSlot.OFFHAND), Actions.swapItems()),
 						new Actions.DropItem()))).setCustomName("try_pick_up");
 	}
 	
@@ -255,7 +278,7 @@ public class Branches
 				}.setCustomName("set_target"),
 				Sequence.reactive(
 					Decorator.forceFailure(new Actions.Wait(min, max)),
-					Actions.LookAtConstant.normal("look_target"))).setCustomName("random_look");
+					Actions.LookAtConstant.normal("look_target"))).setCustomName("random_look").setDiscrete();
 	}
 	
 	public static final TreeNode rangeAttackMotion()
@@ -272,16 +295,19 @@ public class Branches
 			return target != null && target.distanceTo(mob) > Actions.AttackMelee.getAttackReachSqr(mob, target) + 5D;
 		};
 		
-		return new Selector(
-				TreeNode.conditional(targetFar, new Actions.MoveTo(MobWhiteboard.MOB_TARGET, 0.5D)).setCustomName("move_closer").setDiscrete(),
-				TreeNode.conditional(targetClose, new Actions.MoveAwayFrom(MobWhiteboard.MOB_TARGET, 0.5D, 8D)).setCustomName("move_farther").setDiscrete()).setCustomName("manage_distance");
+		return Selector.sequential(
+				TreeNode.conditional(targetClose, new Actions.MoveAwayFrom(MobWhiteboard.MOB_TARGET, 0.5D, 8D)).setCustomName("move_farther").setDiscrete(),
+				TreeNode.conditional(targetFar, new Actions.MoveTowards(MobWhiteboard.MOB_TARGET, 0.5D, 12D)).setCustomName("move_closer").setDiscrete(),
+				Condition.alwaysTrue().setCustomName("good_position")).setCustomName("manage_distance");
 	}
 	
 	public static final TreeNode attackRanged()
 	{
-		return Parallel.any(
-				rangeAttackMotion(),
-				new Selector(attackRangeBow(), attackRangeCrossbow())).setCustomName("ranged_attacks");
+		return Sequence.reactive(
+				Selector.sequential(
+					attackRangeBow(),
+					attackRangeCrossbow()),
+				rangeAttackMotion()).setCustomName("ranged_attacks");
 	}
 	
 	public static final TreeNode attackRangeBow()
@@ -302,10 +328,17 @@ public class Branches
 			}
 		};
 		
-		return TreeNode.conditional((mob, storage) ->
-		{
-			return mob.getItemInHand(InteractionHand.MAIN_HAND).getItem() instanceof net.minecraft.world.item.BowItem;
-		}, Sequence.sequence(
+		return Sequence.reactive(
+			new Condition((mob, storage) ->
+			{
+				return mob.getItemInHand(InteractionHand.MAIN_HAND).getItem() instanceof BowItem || mob.getItemInHand(InteractionHand.OFF_HAND).getItem() instanceof BowItem;
+			}).setCustomName("has_bow"),
+			Selector.sequential(
+				Sequence.reactive(
+					Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() instanceof BowItem; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
+					Actions.swapItems()
+					).setCustomName("swap_held_items").setDiscrete(),
+				Sequence.sequence(
 					Actions.startUsingItem(),
 					new WaitUntil(shouldShoot),
 					new LeafSingle()
@@ -333,13 +366,13 @@ public class Branches
 							mobIn.level.addFreshEntity(arrow);
 							return true;
 						}
-					}.setCustomName("shoot_bow"))).setCustomName("bow_attack");
+					}.setCustomName("shoot_bow")))).setCustomName("bow_attack").setDiscrete();
 	}
 	
 	public static final TreeNode attackRangeCrossbow()
 	{
 		return TreeNode.conditional((mob, storage) -> { return mob.getItemInHand(InteractionHand.MAIN_HAND).getItem() instanceof net.minecraft.world.item.CrossbowItem; },
-				new Selector(
+				Selector.sequential(
 					TreeNode.conditional((mob, storage) ->
 					{
 						return !CrossbowItem.isCharged(mob.getItemInHand(InteractionHand.MAIN_HAND));
@@ -405,6 +438,227 @@ public class Branches
 								vector3f1.transform(quaternion1);
 								return vector3f1;
 							}
-						}.setCustomName("shoot_crossbow")))).setCustomName("crossbow_attack");
+						}.setCustomName("shoot_crossbow")))).setCustomName("crossbow_attack").setDiscrete();
+	}
+	
+	public static TreeNode attackSplashPotion()
+	{
+		return Sequence.reactive(
+				new Condition((mob, storage) ->
+				{
+					if(mob.getItemInHand(InteractionHand.MAIN_HAND).getItem() == Items.SPLASH_POTION)
+					{
+						boolean noPositives = true;
+						for(MobEffectInstance effect : PotionUtils.getMobEffects(mob.getItemInHand(InteractionHand.MAIN_HAND)))
+							if(effect.getEffect().isBeneficial())
+							{
+								noPositives = false;
+								break;
+							};
+						if(noPositives)
+							return true;
+					}
+					if(mob.getItemInHand(InteractionHand.OFF_HAND).getItem() == Items.SPLASH_POTION)
+					{
+						boolean noPositives = true;
+						for(MobEffectInstance effect : PotionUtils.getMobEffects(mob.getItemInHand(InteractionHand.OFF_HAND)))
+							if(effect.getEffect().isBeneficial())
+							{
+								noPositives = false;
+								break;
+							};
+						if(noPositives)
+							return true;
+					}
+					
+					return false;
+				}).setCustomName("has_splash_potion"),
+				new Condition(NodePredicates.CAN_SEE_TARGET).setCustomName("can_see_target"),
+				Selector.sequential(
+					Sequence.reactive(
+						Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() == Items.SPLASH_POTION; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
+						Actions.swapItems()
+						).setCustomName("swap_held_items").setDiscrete(),
+					Sequence.sequence(
+						new Actions.WaitUntil((mob,storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
+						new LeafSingle()
+						{
+							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+							{
+								ItemStack stack = storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND));
+								ThrownPotion potion = new ThrownPotion(mob.level, mob);
+								potion.setItem(stack);
+								potion.setXRot(potion.getXRot() - -20.0F);
+								
+								Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+								Vec3 vec3 = target.getDeltaMovement();
+								double d0 = target.getX() + vec3.x - mob.getX();
+								double d1 = target.getEyeY() - (double)1.1F - mob.getY();
+								double d2 = target.getZ() + vec3.z - mob.getZ();
+								double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+								potion.shoot(d0, d1 + d3 * 0.2D, d2, 0.75F, 8.0F);
+								
+								if(!mob.isSilent())
+									mob.level.playSound((Player)null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.WITCH_THROW, mob.getSoundSource(), 1.0F, 0.8F + mob.getRandom().nextFloat() * 0.4F);
+								mob.level.addFreshEntity(potion);
+								return true;
+							}
+						}.setCustomName("throw_potion"),
+						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND * 3)))
+				);
+	}
+	
+	private static String LAST_SIGHTING = "target_last_sighting";
+	private static String SEARCH_RADIUS = "target_search_radius";
+	
+	/** Stores the target entity's block position in the whiteboard as long as it is visible */
+	public static TreeNode markTargetSighting()
+	{
+		return new LeafSingle()
+			{
+				public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+				{
+					Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+					if(!storage.hasValue(MobWhiteboard.MOB_TARGET) || target == null)
+					{
+						storage.clearValue(LAST_SIGHTING);
+						return false;
+					}
+					
+					if(mob.getSensing().hasLineOfSight(target))
+						storage.setValue(LAST_SIGHTING, target.blockPosition());
+					return true;
+				}
+			}.setCustomName("mark_last_sighting");
+	}
+	
+	/** Moves to the last known position of the target entity, then gradually spreads out from it */
+	public static TreeNode searchAroundPosition(int repeats) { return searchAroundPosition(LAST_SIGHTING, repeats); }
+	
+	public static TreeNode searchAroundPosition(String addressIn, int repeats)
+	{
+		return Sequence.sequence(
+				new Actions.MoveTo(addressIn, 0.5D),
+				new Actions.Wait(Reference.Values.TICKS_PER_SECOND, Reference.Values.TICKS_PER_SECOND*3),
+				Actions.setWhiteboardValue(SEARCH_RADIUS, 1),
+				Decorator.repeat(repeats, 
+					Sequence.sequence(
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									int radius = storage.getInt(SEARCH_RADIUS);
+									storage.setValue(SEARCH_RADIUS, radius + 1);
+									
+									BlockPos mobPos = storage.getBlockPos(addressIn);
+									RandomSource random = mob.getRandom();
+									
+									BlockPos target = addRandom(mobPos, radius, random);
+									PathNavigation navigation = mob.getNavigation();
+									int tries = 50;
+									while(navigation.createPath(target, radius) == null && --tries > 0)
+										target = addRandom(mobPos, radius, random);
+									
+									if(navigation.createPath(target, radius) != null)
+									{
+										storage.setValue("search_target", target);
+										return true;
+									}
+									return false;
+								}
+								
+								private BlockPos addRandom(BlockPos origin, int radius, RandomSource random)
+								{
+									double offX = random.nextDouble() - 0.5D;
+									double offY = random.nextDouble() - 0.5D;
+									double offZ = random.nextDouble() - 0.5D;
+									Vec3 offset = new Vec3(offX, offY, offZ).normalize().multiply(radius, radius / 2, radius);
+									return origin.offset(offset.x, offset.y, offset.z);
+								}
+							},
+							new Actions.MoveTo("search_target", 0.5D),
+							new Actions.Wait(Reference.Values.TICKS_PER_SECOND, Reference.Values.TICKS_PER_SECOND*3)
+						)).setCustomName("search_loop"),
+				new LeafSingle()
+				{
+					public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+					{
+						storage.clearValue(SEARCH_RADIUS);
+						mob.setTarget(null);
+						return true;
+					}
+				}.setCustomName("finish_search")).setCustomName("search_area").setDiscrete();
+	}
+	
+	public static TreeNode throwEnderPearl()
+	{
+		return Sequence.reactive(
+				new Condition((mob, storage) -> { return !storage.hasValue("thrown_ender_pearl") || storage.getEntity("thrown_ender_pearl").isRemoved(); }),
+				new Condition(NodePredicates.CAN_SEE_TARGET),
+				Selector.sequential(
+					Sequence.reactive(
+						Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() == Items.ENDER_PEARL; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
+						Actions.swapItems()
+						).setCustomName("swap_held_items").setDiscrete(),
+					Sequence.sequence(
+						new Actions.WaitUntil((mob, storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
+						new LeafSingle()
+						{
+							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+							{
+								ThrownEnderpearl pearl = new ThrownEnderpearl(mob.level, mob);
+								pearl.setItem(storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)));
+								
+								Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+								Vec3 vec3 = target.getDeltaMovement();
+								double d0 = target.getX() + vec3.x - mob.getX();
+								double d1 = target.getEyeY() - (double)1.1F - mob.getY();
+								double d2 = target.getZ() + vec3.z - mob.getZ();
+								double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+								pearl.shoot(d0, d1 + d3 * 0.2D, d2, 0.75F, 8.0F);
+								storage.setValue("thrown_ender_pearl", pearl);
+								
+								mob.level.addFreshEntity(pearl);
+								return true;
+							}
+						}.setCustomName("throw_pearl"),
+						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND))
+					));
+	}
+	
+	public static TreeNode throwTrident()
+	{
+		return Sequence.reactive(
+				new Condition(NodePredicates.CAN_SEE_TARGET),
+				Selector.sequential(
+					Sequence.reactive(
+						Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() == Items.TRIDENT; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
+						Actions.swapItems()
+						).setCustomName("swap_held_items").setDiscrete(),
+					Sequence.sequence(
+						new Actions.WaitUntil((mob, storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
+						Actions.startUsingItem(),
+						new Actions.WaitUntil((mob, storage) -> { return storage.getInt(MobWhiteboard.MOB_TICKS_USING) >= Reference.Values.TICKS_PER_SECOND; }),
+						new LeafSingle()
+						{
+							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+							{
+								ThrownTrident pearl = new ThrownTrident(mob.level, mob, storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)));
+								
+								Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+								double d0 = target.getX() - mob.getX();
+							    double d1 = target.getY(0.3333333333333333D) - pearl.getY();
+							    double d2 = target.getZ() - mob.getZ();
+							    double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+							    pearl.shoot(d0, d1 + d3 * (double)0.2F, d2, 1.6F, (float)(14 - mob.level.getDifficulty().getId() * 4));
+							    
+								mob.playSound(SoundEvents.DROWNED_SHOOT, 1.0F, 1.0F / (mob.getRandom().nextFloat() * 0.4F + 0.8F));
+								mob.level.addFreshEntity(pearl);
+								return true;
+							}
+						}.setCustomName("throw_pearl"),
+						Actions.stopUsingItem(),
+						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND * 2))
+					));
 	}
 }

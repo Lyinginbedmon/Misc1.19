@@ -9,21 +9,17 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
-public class Checks
+public class NodePredicates
 {
-	public static final NodePredicate HAS_TARGET = (mob, storage) ->
+	public static final NodePredicate HAS_LIVING_TARGET = (mob, storage) ->
 			{
-				return storage.hasValue(MobWhiteboard.MOB_TARGET) && storage.getEntity(MobWhiteboard.MOB_TARGET) != null && storage.getEntity(MobWhiteboard.MOB_TARGET).isAlive();
+				Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+				return storage.hasValue(MobWhiteboard.MOB_TARGET) && target != null && target.isAlive() && !target.isRemoved();
 			};
 	
 	public static final NodePredicate CAN_SEE_TARGET = (mob, storage) ->
 			{
-				if(HAS_TARGET.test(mob, storage))
-				{
-					Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
-					return !target.isRemoved() && mob.getSensing().hasLineOfSight(target);
-				}
-				return false;
+				return HAS_LIVING_TARGET.test(mob, storage) && storage.getBoolean(MobWhiteboard.MOB_TARGET_VISIBLE);
 			};
 	
 	public static NodePredicate hasValue(String address)

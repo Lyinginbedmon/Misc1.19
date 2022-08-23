@@ -5,6 +5,7 @@ import com.example.examplemod.entity.ai.TreeNode.LeafSingle;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -122,6 +123,30 @@ public class Actions
 			mobIn.playSound(sounds.length == 1 ? sounds[0] : sounds[mobIn.getRandom().nextInt(sounds.length)]);
 			return true;
 		}
+	}
+	
+	public static final TreeNode setWhiteboardValue(String address, Object value)
+	{
+		return new LeafSingle()
+			{
+				public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+				{
+					storage.setValue(address, value);
+					return true;
+				}
+			};
+	}
+	
+	public static final TreeNode setWhiteboardTimer(ResourceLocation address, int value)
+	{
+		return new LeafSingle()
+			{
+				public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+				{
+					storage.setTimer(address, value);
+					return true;
+				}
+			};
 	}
 	
 	/**
@@ -255,6 +280,42 @@ public class Actions
 		}
 	}
 	
+	public static class Counter extends LeafRunning
+	{
+		private final String address;
+		private final int initialValue;
+		private final int finalValue;
+		
+		public Counter(String addressIn) { this(addressIn, 0); }
+		public Counter(String addressIn, int startValue) { this(addressIn, startValue, (int)(Integer.MAX_VALUE * Math.signum(startValue))); }
+		public Counter(String addressIn, int startValue, int maxValue)
+		{
+			this.address = addressIn;
+			this.initialValue = startValue;
+			this.finalValue = maxValue;
+		}
+		
+		protected boolean start(PathfinderMob mob, Whiteboard<?> storage)
+		{
+			storage.setValue(address, initialValue);
+			return true;
+		}
+		
+		protected Status run(PathfinderMob mob, Whiteboard<?> storage)
+		{
+			int value = storage.hasValue(address) ? storage.getInt(address) : initialValue;
+			if(value != finalValue)
+				value += Math.signum(finalValue - value);
+			storage.setValue(address, value);
+			return Status.RUNNING;
+		}
+		
+		protected void stop(PathfinderMob mob, Whiteboard<?> storage)
+		{
+			storage.clearValue(address);
+		}
+	}
+	
 	/**
 	 * Sets the mob's navigator to move to the given position, then terminates when the navigator is empty.<br>
 	 * Note that the navigator may be empty simply because no valid path exists.
@@ -291,11 +352,37 @@ public class Actions
 		}
 	}
 	
+	public static class MoveTowards extends MoveAwayFrom
+	{
+		public MoveTowards(String addressIn, double speedIn, double minDistIn)
+		{
+			super(addressIn, speedIn, minDistIn);
+			setCustomName("move_closer_to");
+		}
+		
+		protected Vec3 getDest(PathfinderMob mobIn, Whiteboard<?> storage)
+		{
+			return Whiteboard.getDest(storage, address);
+		}
+		
+		protected boolean validTargetPoint(PathfinderMob mobIn, Vec3 dest, Vec3 point)
+		{
+			Vec3 position = mobIn.position();
+			Vec3 direction = point.subtract(mobIn.position()).normalize();
+			return position.distanceTo(dest) < position.add(direction).distanceTo(dest);
+		}
+		
+		protected boolean isWithinRangeOf(PathfinderMob mobIn, Vec3 dest)
+		{
+			return dest == null || mobIn.distanceToSqr(dest) <= (minDist * minDist);
+		}
+	}
+	
 	public static class MoveAwayFrom extends LeafRunning
 	{
-		private final String address;
 		private final double speed;
-		private final double minDist;
+		protected final String address;
+		protected final double minDist;
 		
 		public MoveAwayFrom(String addressIn, double speedIn, double minDistIn)
 		{
@@ -310,12 +397,7 @@ public class Actions
 			if(!storage.hasValue(address))
 				return false;
 			
-			Vec3 dest = Whiteboard.getDest(storage, address);
-			Vec3 point = null;
-			int attempts = 30;
-			while(point == null && attempts-- > 0)
-				point = DefaultRandomPos.getPosAway((PathfinderMob)mobIn, 16, 7, dest);
-			
+			Vec3 point = getDest(mobIn, storage);
 			if(point != null)
 				return mobIn.getNavigation().moveTo(point.x, point.y, point.z, speed);
 			return false;
@@ -327,7 +409,7 @@ public class Actions
 				return Status.SUCCESS;
 			
 			Vec3 dest = Whiteboard.getDest(storage, address);
-			if(dest == null || mobIn.distanceToSqr(dest) >= (minDist * minDist))
+			if(dest == null || isWithinRangeOf(mobIn, dest))
 				return Status.SUCCESS;
 			
 			return Status.RUNNING;
@@ -336,6 +418,33 @@ public class Actions
 		public void stop(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			mobIn.getNavigation().stop();
+		}
+		
+		protected Vec3 getDest(PathfinderMob mobIn, Whiteboard<?> storage)
+		{
+			Vec3 dest = Whiteboard.getDest(storage, address);
+			Vec3 point = null;
+			int attempts = 30;
+			while(point == null && attempts-- > 0)
+			{
+				point = DefaultRandomPos.getPosAway(mobIn, 16, 7, dest);
+				
+				if(point != null && !validTargetPoint(mobIn, dest, point))
+					point = null;
+			}
+			return point;
+		}
+		
+		protected boolean validTargetPoint(PathfinderMob mobIn, Vec3 dest, Vec3 point)
+		{
+			Vec3 position = mobIn.position();
+			Vec3 direction = point.subtract(mobIn.position()).normalize();
+			return position.distanceTo(dest) >= position.add(direction).distanceTo(dest);
+		}
+		
+		protected boolean isWithinRangeOf(PathfinderMob mobIn, Vec3 dest)
+		{
+			return mobIn.distanceToSqr(dest) >= (minDist * minDist);
 		}
 	}
 	
@@ -483,5 +592,17 @@ public class Actions
 				return true;
 			}
 		}.setCustomName("use_held_item");
+	}
+	
+	public static TreeNode stopUsingItem()
+	{
+		return new LeafSingle()
+		{
+			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+			{
+				mobIn.releaseUsingItem();
+				return true;
+			}
+		}.setCustomName("stop_held_item");
 	}
 }

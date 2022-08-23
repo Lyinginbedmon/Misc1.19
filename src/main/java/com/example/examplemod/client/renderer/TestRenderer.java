@@ -40,16 +40,19 @@ public class TestRenderer extends MobRenderer<TestEntity, HumanoidModel<TestEnti
 	{
 		super.render(entity, p_114830_, p_114831_, poseStack, renderBuffer, packedLight);
 		
-		boolean showFull = Minecraft.getInstance().player.isDiscrete();
-		NodeMap map = entity.getTree().mapTree();
-		poseStack.pushPose();
-			poseStack.translate(0D, entity.getBbHeight() + 0.5D, 0D);
-			poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
-			float scale = 1F / 80F;
-			poseStack.scale(-scale, -scale, scale);
-			poseStack.translate(getMapWidth(map, getFont(), showFull) * -0.5D, -getMapHeight(map, getFont(), showFull), 0D);
-			renderNodeMap(map, poseStack, poseStack.last().pose(), renderBuffer, packedLight, getFont(), 0F);
-		poseStack.popPose();
+		if(Minecraft.getInstance().player.isCreative())// && entity == this.entityRenderDispatcher.crosshairPickEntity)
+		{
+			boolean showFull = Minecraft.getInstance().player.isDiscrete();
+			NodeMap map = entity.getTree().mapTree();
+			poseStack.pushPose();
+				poseStack.translate(0D, entity.getBbHeight() + 0.5D, 0D);
+				poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+				float scale = 1F / 80F;
+				poseStack.scale(-scale, -scale, scale);
+				poseStack.translate(getMapWidth(map, getFont(), showFull) * -0.5D, -getMapHeight(map, getFont(), showFull), 0D);
+				renderNodeMap(map, poseStack, poseStack.last().pose(), renderBuffer, packedLight, getFont(), 0F);
+			poseStack.popPose();
+		}
 	}
 	
 	private double getMapHeight(NodeMap nodeMap, Font font, boolean showFull)

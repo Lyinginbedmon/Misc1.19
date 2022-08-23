@@ -28,6 +28,8 @@ public class BehaviourTree
 	/** List of all nodes that reported either RUNNING or SUCCESS in the latest tick */
 	private final List<TreeNode> nodesOfLastRun = Lists.newArrayList();
 	
+	public PathfinderMob mobOfLastRun = null;
+	
 	private final List<BehaviourTree> subTrees = Lists.newArrayList();
 	
 	public BehaviourTree(String nameIn, TreeNode node)
@@ -62,12 +64,8 @@ public class BehaviourTree
 	private static void updateTree(BehaviourTree tree, PathfinderMob mobIn, Whiteboard<PathfinderMob> storage)
 	{
 		tree.nodesOfLastRun.clear();
+		tree.mobOfLastRun = mobIn;
 		tree.getRoot().doTick(mobIn, storage);
-//		if(!tree.nodesOfLastRun.isEmpty())
-//		{
-//			ExampleMod.LOG.info("Behaviour tree "+tree.name()+" returned status "+tree.getRoot().previousResult().name());
-//			tree.mapTree().printToLog(ExampleMod.LOG);
-//		}
 	}
 	
 	public final TreeNode getRoot() { return this.root; }

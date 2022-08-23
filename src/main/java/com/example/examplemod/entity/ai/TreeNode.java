@@ -2,15 +2,15 @@ package com.example.examplemod.entity.ai;
 
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.logging.Logger;
 
 import javax.annotation.Nullable;
 
-import org.apache.commons.compress.utils.Lists;
-import org.slf4j.Logger;
+import com.google.common.collect.Lists;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.PathfinderMob;
 
 public abstract class TreeNode
@@ -49,8 +49,6 @@ public abstract class TreeNode
 		{
 			if(lastTick.isEndState())
 				stop(mob, storage);
-//			if(hasCustomName())
-//				ExampleMod.LOG.info("  Ran node "+customName+" with result "+lastTick);
 		}
 		if(lastTick != Status.FAILURE && hasParentTree())
 			getParentTree().reportNodeActive(this);
@@ -60,6 +58,7 @@ public abstract class TreeNode
 	
 	protected Status tick(PathfinderMob mob, Whiteboard<?> storage) { return Status.FAILURE; }
 	
+	/** Performs all necessary cleanup when this node is stopped for any reason */
 	protected void stop(PathfinderMob mob, Whiteboard<?> storage) { }
 	
 	/** Returns the last status reported by tick from this node */
@@ -68,7 +67,8 @@ public abstract class TreeNode
 	public final void saveToNBT(CompoundTag compound)
 	{
 		compound.putInt("LastTick", lastTick.ordinal());
-		compound.putString("CustomName", this.customName);
+		if(hasCustomName())
+			compound.putString("CustomName", this.customName);
 		compound.putBoolean("WasActive", wasActive());
 		compound.putBoolean("Discrete", this.hideDescendants);
 		save(compound);
@@ -77,7 +77,8 @@ public abstract class TreeNode
 	public final void loadFromNBT(CompoundTag compound)
 	{
 		lastTick = Status.values()[compound.getInt("LastTick")];
-		customName = compound.getString("CustomName");
+		if(compound.contains("CustomName"))
+			customName = compound.getString("CustomName");
 		wasActive = compound.getBoolean("WasActive");
 		hideDescendants = compound.getBoolean("Discrete");
 		load(compound);
@@ -181,18 +182,15 @@ public abstract class TreeNode
 	public static interface NodePredicate
 	{
 		boolean test(PathfinderMob mob, Whiteboard<?> storage);
-		
-		default NodePredicate not() { return (mob, storage) -> !test(mob, storage); }
-		
-		default NodePredicate and(NodePredicate other) { Objects.requireNonNull(other); return (mob, storage) -> test(mob, storage) && other.test(mob, storage); }
-		
-		default NodePredicate or(NodePredicate other) { Objects.requireNonNull(other); return (mob, storage) -> test(mob, storage) || other.test(mob, storage); }
 	}
 	
 	/** Pseudo-node that only returns SUCCESS or FAILURE based on a given predicate */
 	public static class Condition extends TreeNode
 	{
 		private final NodePredicate condition;
+		
+		public static TreeNode alwaysTrue() { return new Condition((mob,storage) -> { return true; }).setCustomName("always_true"); }
+		public static TreeNode alwaysFalse() { return new Condition((mob,storage) -> { return false; }).setCustomName("always_false"); }
 		
 		public Condition(NodePredicate conditionIn)
 		{
@@ -237,6 +235,14 @@ public abstract class TreeNode
 		
 		@Nullable
 		protected TreeNode getCurrentNode() { return index >= 0 && hasChildren() ? nodes[index%nodes.length] : null; }
+		
+		protected void stop(PathfinderMob mob, Whiteboard<?> storage)
+		{
+			if(getCurrentNode() != null)
+				getCurrentNode().stop(mob, storage);
+		}
+		
+		protected void stopAllChildren(PathfinderMob mob, Whiteboard<?> storage) { getChildren().forEach((node) -> node.stop(mob, storage)); }
 	}
 	
 	public static class Decorator extends CompoundNode
@@ -251,6 +257,9 @@ public abstract class TreeNode
 			type = typeIn;
 			runs = triesIn;
 			index = 0;
+			
+			if(nodeIn instanceof Condition)
+				this.setDiscrete();
 		}
 		
 		protected void save(CompoundTag compound)
@@ -285,6 +294,9 @@ public abstract class TreeNode
 		public static TreeNode repeat(int times, TreeNode nodeIn) { return new Decorator(Type.REPEAT, times, nodeIn).setCustomName("repeat_"+times); }
 		/** Ticks the child node N times until it does not return FAILURE */
 		public static TreeNode retry(int times, TreeNode nodeIn) { return new Decorator(Type.RETRY, times, nodeIn).setCustomName("retry_"+times); }
+		
+		@Nullable
+		protected TreeNode getCurrentNode() { return nodes.length > 0 ? nodes[0] : null; }
 		
 		public Status tick(PathfinderMob mob, Whiteboard<?> storage)
 		{
@@ -332,7 +344,9 @@ public abstract class TreeNode
 		
 		protected void stop(PathfinderMob mob, Whiteboard<?> storage)
 		{
-			attempts = -1;
+			super.stop(mob, storage);
+			if(type.needsLimit())
+				attempts = -1;
 		}
 		
 		private static enum Type
@@ -357,26 +371,70 @@ public abstract class TreeNode
 	
 	public static class Selector extends CompoundNode
 	{
-		public Selector(TreeNode... nodesIn)
+		private Type type;
+		
+		protected Selector(Type typeIn, TreeNode... nodesIn)
 		{
 			super(nodesIn);
+			this.type = typeIn;
 		}
 		
-		public static TreeNode root(TreeNode... nodesIn) { return new Selector(nodesIn).setCustomName("root"); }
+		public static TreeNode root(TreeNode... nodesIn) { return new Selector(Type.SEQUENTIAL, nodesIn).setCustomName("root"); }
+		/** Returns a selector which will check its descendant nodes in the order they were entered */
+		public static TreeNode sequential(TreeNode... nodesIn) { return new Selector(Type.SEQUENTIAL, nodesIn); }
+		/** Returns a selector which will check its descendant nodes in a random order */
+		public static TreeNode random(TreeNode... nodesIn) { return new Selector(Type.RANDOM, nodesIn); }
+		
+		protected void save(CompoundTag compound)
+		{
+			super.save(compound);
+			compound.putInt("Type", this.type.ordinal());
+		}
+		
+		protected void load(CompoundTag compound)
+		{
+			super.load(compound);
+			this.type = Type.values()[compound.getInt("Type")];
+		}
 		
 		public Status tick(PathfinderMob mob, Whiteboard<?> storage)
 		{
 			if(index < 0)
 			{
-				for(int i=0; i<nodes.length; i++)
+				switch(type)
 				{
-					TreeNode node = nodes[i];
-					Status result = node.doTick(mob, storage);
-					if(result != Status.FAILURE)
-					{
-						index = i;
-						return result;
-					}
+					case SEQUENTIAL:
+						for(int i=0; i<nodes.length; i++)
+						{
+							Status result = nodes[i].doTick(mob, storage);
+							if(result != Status.FAILURE)
+							{
+								index = i;
+								return result;
+							}
+						}
+						break;
+					case RANDOM:
+						List<Integer> indices = Lists.newArrayList();
+						for(int i=0; i<nodes.length; i++)
+							indices.add(i);
+						
+						RandomSource rand = mob.getRandom();
+						int check = rand.nextInt(indices.size());
+						Status result = Status.FAILURE;
+						while(!indices.isEmpty() && (result = nodes[check].doTick(mob, storage)) == Status.FAILURE)
+						{
+							indices.remove(check);
+							check = rand.nextInt(indices.size());
+						}
+						
+						if(result != Status.FAILURE)
+						{
+							index = check;
+							return result;
+						}
+						
+						break;
 				}
 				return Status.FAILURE;
 			}
@@ -387,13 +445,21 @@ public abstract class TreeNode
 					return Status.RUNNING;
 				else
 				{
+					getCurrentNode().stop(mob, storage);
 					index = -1;
 					return result;
 				}
 			}
 		}
+		
+		private static enum Type
+		{
+			SEQUENTIAL,
+			RANDOM;
+		}
 	}
 	
+	/** Returns a reactive sequence with the given node and a condition of the given predicate */
 	public static TreeNode conditional(NodePredicate predicate, TreeNode child)
 	{
 		return Sequence.reactive(new Condition(predicate), child);
@@ -451,25 +517,29 @@ public abstract class TreeNode
 				switch(getCurrentNode().doTick(mob, storage))
 				{
 					case FAILURE:
+						getCurrentNode().stop(mob, storage);
 						switch(type)
 						{
-							default:
-								index = 0;
-								return Status.FAILURE;
 							case STAR:
 								return Status.RUNNING;
+							default:
+								return Status.FAILURE;
 						}
 					case SUCCESS:
+						getCurrentNode().stop(mob, storage);
 						if(++index >= nodes.length)
-						{
-							index = 0;
 							return Status.SUCCESS;
-						}
 						else
 							return Status.RUNNING;
 					default:
 						return Status.RUNNING;
 				}
+		}
+		
+		protected void stop(PathfinderMob mob, Whiteboard<?> storage)
+		{
+			super.stop(mob, storage);
+			index = 0;
 		}
 		
 		private enum Type
@@ -526,7 +596,7 @@ public abstract class TreeNode
 			return output;
 		}
 		
-		protected void stop(PathfinderMob mob, Whiteboard<?> storage) { getChildren().forEach((node) -> node.stop(mob, storage)); }
+		protected void stop(PathfinderMob mob, Whiteboard<?> storage) { stopAllChildren(mob, storage); }
 	}
 	
 	/** Leaf node that performs a single-tick action and cannot return RUNNING */

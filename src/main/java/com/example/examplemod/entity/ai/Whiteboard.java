@@ -1,12 +1,17 @@
 package com.example.examplemod.entity.ai;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.compress.utils.Lists;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -23,6 +28,8 @@ public abstract class Whiteboard<T>
 	private Whiteboard<?> parent;
 	
 	private final Map<String, Function<T,Object>> expansions = new HashMap<>();
+	private final Map<ResourceLocation, Integer> timers = new HashMap<>();
+	private final Map<ResourceLocation, Counter> counters = new HashMap<>();
 	
 	public final void addExpansion(String address, Function<T,Object> expansionIn) { expansions.put(address, expansionIn); }
 	
@@ -69,11 +76,38 @@ public abstract class Whiteboard<T>
 	
 	public final void tick(T obj)
 	{
+		/** Update all registered expansions */
 		for(String address : expansions.keySet())
 			setValue(address, expansions.get(address).apply(obj));
 		
+		/** Timer handling, decrement towards 0 then erase */
+		List<ResourceLocation> finished = Lists.newArrayList();
+		for(ResourceLocation key : this.timers.keySet())
+		{
+			int val = getTimer(key);
+			if(val != 0)
+				setTimer(key, val - (int)Math.signum(val));
+			else
+				finished.add(key);
+		}
+		finished.forEach((key) -> this.timers.remove(key));
+		
+		this.counters.forEach((key, counter) -> counter.tick(obj));
+		
+		/** Perform any class-specific operations */
 		specialDataOperations(obj);
 	}
+	
+	/** Gets the current value of an internal timer, or zero if it doesn't exist */
+	public final int getTimer(ResourceLocation name) { return this.timers.getOrDefault(name, 0); }
+	/** Sets the value of an internal timer, which is constantly ticked towards zero */
+	public final void setTimer(ResourceLocation name, int val) { this.timers.put(name, val); }
+	
+	/** Gets the current value of an internal counter, or zero if it doesn't exist */
+	public final int getCounter(ResourceLocation name) { return this.counters.containsKey(name) ? this.counters.get(name).getValue() : 0; }
+	/** Registers an internal counter, which ticks up as long as its qualifier is true, resetting to 0 when it first becomes true */
+	public final void addCounter(ResourceLocation name, Predicate<T> inc) { addCounter(name, inc, Predicates.alwaysFalse()); }
+	public final void addCounter(ResourceLocation name, Predicate<T> inc, Predicate<T> reset) { this.counters.put(name, new Counter(inc, reset)); }
 	
 	public void specialDataOperations(T obj) { }
 	
@@ -104,6 +138,40 @@ public abstract class Whiteboard<T>
 			catch(Exception e) { }
 		
 		return dest;
+	}
+	
+	private class Counter
+	{
+		private final Predicate<T> incQualifier;
+		private final Predicate<T> resetQualifier;
+		
+		private int value = 0;
+		private boolean prevQuality = false;
+		
+		public Counter(Predicate<T> incIn, Predicate<T> resetIn)
+		{
+			this.incQualifier = incIn;
+			this.resetQualifier = resetIn;
+		}
+		
+		public void tick(T mob)
+		{
+			if(resetQualifier.test(mob))
+			{
+				this.value = 0;
+				return;
+			}
+			
+			boolean quality = incQualifier.test(mob);
+			if(quality)
+				if(!prevQuality)
+					value = 0;
+				else
+					value++;
+			prevQuality = quality;
+		}
+		
+		public int getValue() { return this.value; }
 	}
 	
 	public static class Expansions
@@ -168,6 +236,7 @@ public abstract class Whiteboard<T>
 		
 		private static final Map<EquipmentSlot, String> ITEM_ADDRESSES = new HashMap<>();
 		
+		public static final ResourceLocation MOB_MELEE_COOLDOWN = new ResourceLocation("mob_melee_cooldown");
 		public static final String MOB_ITEM_USING = "mob_using_item";
 		public static final String MOB_TICKS_USING = "mob_using_ticks";
 		
@@ -175,6 +244,9 @@ public abstract class Whiteboard<T>
 		public static final String MOB_POS_BLOCK = "mob_blockpos";
 		
 		public static final String MOB_TARGET = "mob_attack_target";
+		public static final String MOB_TARGET_VISIBLE = "mob_can_see_target";
+		/** Increments whilst mob has attack target it cannot see, resets while no attack target */
+		public static final ResourceLocation MOB_TARGET_NOT_VISIBLE = new ResourceLocation("mob_cannot_see_target");
 		public static final String MOB_MOUNT = "mob_mount";
 		
 		public static final String MOB_LEASHED = "mob_is_leashed";
@@ -213,6 +285,8 @@ public abstract class Whiteboard<T>
 			addExpansion(MOB_HOME_POS, Mob::getRestrictCenter);
 			
 			addExpansion(MOB_TARGET, Mob::getTarget);
+			addExpansion(MOB_TARGET_VISIBLE, this::canSeeTarget);
+			addCounter(MOB_TARGET_NOT_VISIBLE, this::cannotSeeTarget, this::canSeeTarget);
 			addExpansion(MOB_MOUNT, Mob::getVehicle);
 			
 			addExpansion(MOB_LEASHER, Mob::isLeashed);
@@ -224,6 +298,9 @@ public abstract class Whiteboard<T>
 		private double getMobAttackDamage(Mob mobIn) { return mobIn.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE) ? mobIn.getAttributeValue(Attributes.ATTACK_DAMAGE) : -1D; }
 		private double getMobArmor(Mob mobIn) { return mobIn.getAttributes().hasAttribute(Attributes.ARMOR) ? mobIn.getAttributeValue(Attributes.ARMOR) : -1D; }
 		private double getMobSpeed(Mob mobIn) { return mobIn.getAttributes().hasAttribute(Attributes.MOVEMENT_SPEED) ? mobIn.getAttributeValue(Attributes.MOVEMENT_SPEED) : -1D; }
+		private boolean hasTarget(Mob mobIn) { return mobIn.getTarget() != null && mobIn.getTarget().isAlive() && mobIn.getTarget().isAddedToWorld(); }
+		private boolean canSeeTarget(Mob mobIn) { return hasTarget(mobIn) && mobIn.getSensing().hasLineOfSight(mobIn.getTarget()); }
+		private boolean cannotSeeTarget(Mob mobIn) { return hasTarget(mobIn) && !mobIn.getSensing().hasLineOfSight(mobIn.getTarget()); }
 		
 		private BlockPos getLeashKnotPosition(Mob mobIn)
 		{
