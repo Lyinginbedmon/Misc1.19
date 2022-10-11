@@ -1,4 +1,4 @@
-package com.example.examplemod.entity.ai;
+package com.example.examplemod.entity.ai.tree;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -9,11 +9,13 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.example.examplemod.entity.ai.SelectorSmart.TreeNodeSmart;
+import com.example.examplemod.entity.ai.Whiteboard;
+import com.example.examplemod.entity.ai.tree.SelectorSmart.TreeNodeSmart;
 import com.example.examplemod.init.ExRegistries;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -56,10 +58,10 @@ public class SelectorSmartItem extends TreeNode
 	{
 		super.load(compound);
 		this.index = compound.getInt("Index");
-		ListTag sortList = compound.getList("SortMap", 10);
-		for(int i=0; i<sortList.size(); i++)
+		ListTag sortList = compound.getList("SortMap", Tag.TAG_COMPOUND);
+		for(Tag tag : sortList)
 		{
-			CompoundTag data = sortList.getCompound(i);
+			CompoundTag data = (CompoundTag)tag;
 			sortMap.put(data.getInt("Key"), data.getInt("Index"));
 		}
 	}

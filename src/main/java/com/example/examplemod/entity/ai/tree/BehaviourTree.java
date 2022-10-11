@@ -1,4 +1,4 @@
-package com.example.examplemod.entity.ai;
+package com.example.examplemod.entity.ai.tree;
 
 import java.util.List;
 
@@ -6,10 +6,13 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.example.examplemod.entity.ai.TreeNode.NodeMap;
+import com.example.examplemod.entity.ai.Whiteboard;
+import com.example.examplemod.entity.ai.tree.TreeNode.NodeMap;
+import com.google.common.base.Function;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.PathfinderMob;
 
 /**
@@ -22,10 +25,10 @@ import net.minecraft.world.entity.PathfinderMob;
 public class BehaviourTree
 {
 	private final String treeName;
-	private final Whiteboard<PathfinderMob> whiteboard;
+	private final Function<PathfinderMob,Whiteboard<PathfinderMob>> boardFunc;
 	
 	private final TreeNode root;
-	/** List of all nodes that reported either RUNNING or SUCCESS in the latest tick */
+	/** List of all nodes that reported either RUNNING or SUCCESS in the latest tick.<br>Used for client-side diagnostics. */
 	private final List<TreeNode> nodesOfLastRun = Lists.newArrayList();
 	
 	public PathfinderMob mobOfLastRun = null;
@@ -37,10 +40,10 @@ public class BehaviourTree
 		this(nameIn, null, node);
 	}
 	
-	public BehaviourTree(String nameIn, Whiteboard<PathfinderMob> board, TreeNode node)
+	public BehaviourTree(String nameIn, Function<PathfinderMob,Whiteboard<PathfinderMob>> boardFuncIn, TreeNode node)
 	{
 		treeName = nameIn;
-		whiteboard = board;
+		boardFunc = boardFuncIn;
 		root = node;
 		root.setParentTree(this);
 	}
@@ -51,9 +54,7 @@ public class BehaviourTree
 	
 	public void tick(PathfinderMob mobIn)
 	{
-		if(whiteboard == null)
-			return;
-		
+		Whiteboard<PathfinderMob> whiteboard = this.boardFunc.apply(mobIn);
 		whiteboard.tick(mobIn);
 		updateTree(this, mobIn, whiteboard);
 		
@@ -96,7 +97,7 @@ public class BehaviourTree
 	
 	public void load(CompoundTag compound)
 	{
-		ListTag dataSet = compound.getList("Nodes", 10);
+		ListTag dataSet = compound.getList("Nodes", Tag.TAG_COMPOUND);
 		List<TreeNode> nodes = nodeContents();
 		for(int i=0; i<dataSet.size(); i++)
 		{

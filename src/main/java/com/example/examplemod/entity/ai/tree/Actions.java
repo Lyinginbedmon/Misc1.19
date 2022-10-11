@@ -1,8 +1,10 @@
-package com.example.examplemod.entity.ai;
+package com.example.examplemod.entity.ai.tree;
 
-import com.example.examplemod.entity.ai.TreeNode.LeafRunning;
-import com.example.examplemod.entity.ai.TreeNode.LeafSingle;
+import com.example.examplemod.entity.ai.CommandStack;
+import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
+import com.example.examplemod.entity.ai.tree.TreeNode.LeafRunning;
+import com.example.examplemod.entity.ai.tree.TreeNode.LeafSingle;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -16,6 +18,7 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -42,6 +45,21 @@ public class Actions
 				return Status.RUNNING;
 			}
 		};
+	}
+	
+	public static TreeNode breakBlock(String addressIn)
+	{
+		return new LeafSingle()
+		{
+			public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+			{
+				BlockPos minePos = storage.getBlockPos(addressIn);
+				Level world = mob.getLevel();
+				world.destroyBlock(minePos, true);
+				world.destroyBlockProgress(mob.getId(), minePos, 10);
+				return true;
+			}
+		}.setCustomName("break_block");
 	}
 	
 	/** Attempts to equip the item held in the mob's main hand */
@@ -476,10 +494,22 @@ public class Actions
 			return true;
 		}
 		
-		public static double getAttackReachSqr(Entity targetIn, LivingEntity mobIn)
+		public static double getAttackReachSqr(Entity targetIn, Entity mobIn)
 		{
 			return (double)(mobIn.getBbWidth() * 2F * mobIn.getBbWidth() * 2F + targetIn.getBbWidth());
 		}
+	}
+	
+	public static TreeNode swingArm(InteractionHand handIn)
+	{
+		return new LeafSingle()
+				{
+					public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+					{
+						mobIn.swing(handIn);
+						return true;
+					}
+				}.setCustomName("swing_"+handIn.name().toLowerCase());
 	}
 	
 	/** Adds the given item entity to the mob's main hand. */
@@ -604,5 +634,19 @@ public class Actions
 				return true;
 			}
 		}.setCustomName("stop_held_item");
+	}
+	
+	public static TreeNode completeCurrentTask()
+	{
+		return new LeafSingle()
+		{
+			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
+			{
+				CommandStack stack = storage.getCommands();
+				stack.complete();
+				storage.setCommands(stack);
+				return true;
+			}
+		}.setCustomName("complete_task");
 	}
 }

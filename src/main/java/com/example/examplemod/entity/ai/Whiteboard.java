@@ -4,8 +4,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import org.apache.commons.compress.utils.Lists;
 
+import com.example.examplemod.entity.ITreeEntity;
+import com.example.examplemod.entity.ai.tree.Branches;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -15,7 +19,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -30,6 +36,16 @@ public abstract class Whiteboard<T>
 	private final Map<String, Function<T,Object>> expansions = new HashMap<>();
 	private final Map<ResourceLocation, Integer> timers = new HashMap<>();
 	private final Map<ResourceLocation, Counter> counters = new HashMap<>();
+	
+	private CommandStack commands = null;
+	
+	@Nullable
+	public static Whiteboard<?> tryGetWhiteboard(LivingEntity objIn)
+	{
+		if(objIn instanceof ITreeEntity && objIn instanceof PathfinderMob)
+			return ((ITreeEntity)objIn).getWhiteboard((PathfinderMob)objIn);
+		return null;
+	}
 	
 	public final void addExpansion(String address, Function<T,Object> expansionIn) { expansions.put(address, expansionIn); }
 	
@@ -57,6 +73,9 @@ public abstract class Whiteboard<T>
 	}
 	
 	public final void setParent(Whiteboard<?> board) { this.parent = board; }
+	
+	public final boolean hasParent() { return this.parent != null; }
+	public final Whiteboard<?> getParent(){ return this.parent; }
 	
 	public boolean getBoolean(String input) { return (boolean)get(input); }
 	
@@ -108,6 +127,11 @@ public abstract class Whiteboard<T>
 	/** Registers an internal counter, which ticks up as long as its qualifier is true, resetting to 0 when it first becomes true */
 	public final void addCounter(ResourceLocation name, Predicate<T> inc) { addCounter(name, inc, Predicates.alwaysFalse()); }
 	public final void addCounter(ResourceLocation name, Predicate<T> inc, Predicate<T> reset) { this.counters.put(name, new Counter(inc, reset)); }
+	
+	public final boolean hasCommands() { return this.commands != null && !this.commands.isEmpty(); }
+	public final void setCommands(CommandStack stackIn) { this.commands = stackIn; }
+	public final CommandStack getCommands() { return this.commands; }
+	public final MobCommand currentCommand() { return hasCommands() ? getCommands().current() : null; }
 	
 	public void specialDataOperations(T obj) { }
 	
@@ -223,6 +247,11 @@ public abstract class Whiteboard<T>
 		}
 	}
 	
+	public static class GroupWhiteboard<T extends ITreeEntity> extends Whiteboard<T>
+	{
+		
+	}
+	
 	public static class MobWhiteboard<T extends Mob> extends Whiteboard<T>
 	{
 		private final Mob theMob;
@@ -243,6 +272,7 @@ public abstract class Whiteboard<T>
 		public static final String MOB_POS_VEC = "mob_position";
 		public static final String MOB_POS_BLOCK = "mob_blockpos";
 		
+		public static final String ATTACK_TARGET = "attack_target";
 		public static final String MOB_TARGET = "mob_attack_target";
 		public static final String MOB_TARGET_VISIBLE = "mob_can_see_target";
 		/** Increments whilst mob has attack target it cannot see, resets while no attack target */
@@ -284,6 +314,7 @@ public abstract class Whiteboard<T>
 			addExpansion(MOB_HOME_RADIUS, Mob::getRestrictRadius);
 			addExpansion(MOB_HOME_POS, Mob::getRestrictCenter);
 			
+			addExpansion(ATTACK_TARGET, this::getCurrentTarget);
 			addExpansion(MOB_TARGET, Mob::getTarget);
 			addExpansion(MOB_TARGET_VISIBLE, this::canSeeTarget);
 			addCounter(MOB_TARGET_NOT_VISIBLE, this::cannotSeeTarget, this::canSeeTarget);
@@ -301,6 +332,7 @@ public abstract class Whiteboard<T>
 		private boolean hasTarget(Mob mobIn) { return mobIn.getTarget() != null && mobIn.getTarget().isAlive() && mobIn.getTarget().isAddedToWorld(); }
 		private boolean canSeeTarget(Mob mobIn) { return hasTarget(mobIn) && mobIn.getSensing().hasLineOfSight(mobIn.getTarget()); }
 		private boolean cannotSeeTarget(Mob mobIn) { return hasTarget(mobIn) && !mobIn.getSensing().hasLineOfSight(mobIn.getTarget()); }
+		private Entity getCurrentTarget(Mob mobIn){ return hasParent() ? getEntity(ATTACK_TARGET) : mobIn.getTarget(); }
 		
 		private BlockPos getLeashKnotPosition(Mob mobIn)
 		{

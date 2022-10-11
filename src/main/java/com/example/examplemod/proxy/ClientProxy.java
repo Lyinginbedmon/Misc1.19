@@ -1,5 +1,6 @@
 package com.example.examplemod.proxy;
 
+import com.example.examplemod.client.KeyBindings;
 import com.example.examplemod.client.renderer.TestRenderer;
 import com.example.examplemod.init.ExEntities;
 
@@ -8,6 +9,7 @@ import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -15,6 +17,11 @@ import net.minecraftforge.network.NetworkEvent;
 public class ClientProxy extends CommonProxy
 {
 	private static final Minecraft mc = Minecraft.getInstance();
+	
+	public static void registerKeyMappings(RegisterKeyMappingsEvent event)
+	{
+		KeyBindings.register(event::register);
+	}
 	
 	public void clientInit()
 	{

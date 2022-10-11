@@ -1,8 +1,8 @@
 package com.example.examplemod.client.renderer;
 
 import com.example.examplemod.entity.TestEntity;
-import com.example.examplemod.entity.ai.TreeNode;
-import com.example.examplemod.entity.ai.TreeNode.NodeMap;
+import com.example.examplemod.entity.ai.tree.TreeNode;
+import com.example.examplemod.entity.ai.tree.TreeNode.NodeMap;
 import com.example.examplemod.reference.Reference;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Matrix4f;

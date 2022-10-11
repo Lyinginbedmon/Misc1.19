@@ -1,22 +1,42 @@
-package com.example.examplemod.entity.ai;
+package com.example.examplemod.entity.ai.tree;
+
+import java.util.Comparator;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.example.examplemod.entity.ai.Actions.WaitUntil;
-import com.example.examplemod.entity.ai.TreeNode.Condition;
-import com.example.examplemod.entity.ai.TreeNode.Decorator;
-import com.example.examplemod.entity.ai.TreeNode.LeafSingle;
-import com.example.examplemod.entity.ai.TreeNode.NodePredicate;
-import com.example.examplemod.entity.ai.TreeNode.Selector;
-import com.example.examplemod.entity.ai.TreeNode.Sequence;
+import org.apache.commons.compress.utils.Lists;
+
+import com.example.examplemod.entity.ai.MobCommand;
+import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
+import com.example.examplemod.entity.ai.group.GroupAction;
+import com.example.examplemod.entity.ai.group.IMobGroup;
+import com.example.examplemod.entity.ai.group.Strategy;
+import com.example.examplemod.entity.ai.tree.Actions.WaitUntil;
+import com.example.examplemod.entity.ai.tree.TreeNode.Condition;
+import com.example.examplemod.entity.ai.tree.TreeNode.Decorator;
+import com.example.examplemod.entity.ai.tree.TreeNode.LeafRunning;
+import com.example.examplemod.entity.ai.tree.TreeNode.LeafSingle;
+import com.example.examplemod.entity.ai.tree.TreeNode.NodePredicate;
+import com.example.examplemod.entity.ai.tree.TreeNode.Selector;
+import com.example.examplemod.entity.ai.tree.TreeNode.Sequence;
 import com.example.examplemod.reference.Reference;
+import com.example.examplemod.utility.MobCommanding.Mark;
+import com.example.examplemod.utility.GroupSaveData;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Multimap;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Registry;
+import net.minecraft.core.Vec3i;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -121,17 +141,82 @@ public class Branches
 	public static final TreeNode attackMelee()
 	{
 		return Sequence.reactive(
-				Actions.LookAtConstant.instant(MobWhiteboard.MOB_TARGET),
-				Selector.sequential(
-					TreeNode.conditional((mob, storage) ->
-					{
-						Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
-						return target != null && mob.distanceToSqr(target) > Actions.AttackMelee.getAttackReachSqr(target, mob);
-					}, new Actions.MoveTo(MobWhiteboard.MOB_TARGET, 0.5D)).setCustomName("move_closer").setDiscrete(),
-					Sequence.sequence(
-						new Actions.WaitUntil((mob,storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
-						new Actions.AttackMelee(MobWhiteboard.MOB_TARGET),
-						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND)).setCustomName("basic_melee").setDiscrete())).setCustomName("melee_attack").setDiscrete();
+					Actions.LookAtConstant.instant(MobWhiteboard.ATTACK_TARGET),
+					Selector.sequential(
+						TreeNode.conditional((mob, storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) > 0; }, Selector.sequential(
+								Sequence.sequence(
+										new Condition((mob, storage) -> { return storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)).is(Items.SHIELD) || storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.OFFHAND)).is(Items.SHIELD); }).setCustomName("has_shield"),
+										new Condition((mob, storage) -> { return !storage.getItemStack(MobWhiteboard.MOB_ITEM_USING).is(Items.SHIELD); }).setCustomName("not_using_shield"),
+										swapHandsIfInvalid((stack) -> stack.is(Items.SHIELD)),
+										Actions.startUsingItem()).setCustomName("use_shield").setDiscrete(),
+								Sequence.sequence(
+										// Set destination, respecting group strategy
+										new LeafSingle()
+										{
+											public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+											{
+												storage.clearValue("fallback_pos");
+												
+												Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
+												List<BlockPos> positions = Lists.newArrayList();
+												// Generate list of viable destinations away from target
+												
+												// Search range
+												double minRange = Actions.AttackMelee.getAttackReachSqr(mob, target);
+												double maxRange = minRange * 2;
+												
+												// Direction away from target
+												Vec3i offset = mob.blockPosition().subtract(target.blockPosition());
+												PathNavigation navigator = mob.getNavigation();
+												
+												for(int x=(offset.getX() == 0 ? -(int)minRange : 0); x<maxRange; x++)
+													for(int z=(offset.getZ() == 0 ? -(int)minRange : 0); z<maxRange; z++)
+														for(int y=0; y<3; y++)
+														{
+															BlockPos testPos = target.blockPosition().offset(x*offset.getX(), y, z*offset.getZ());
+															// Exclude any positions that are too close or that we can't move to
+															if(testPos.distSqr(target.blockPosition()) < minRange || navigator.createPath(testPos, (int)maxRange + 1) == null)
+																continue;
+															
+															positions.add(testPos);
+														}
+												
+												if(!positions.isEmpty())
+												{
+													// If part of group using a strategy, sort positions according to group's optimum
+													IMobGroup group = GroupSaveData.get(mob.getServer()).getGroup(mob);
+													if(group != null && group.getStrategy() != null)
+													{
+														Strategy<?> strategy = group.getStrategy();
+														positions.sort(new Comparator<BlockPos>()
+														{
+															public int compare(BlockPos o1, BlockPos o2)
+															{
+																float u1 = strategy.evaluatePosition(o1, group);
+																float u2 = strategy.evaluatePosition(o2, group);
+																return u1 < u2 ? 1 : u1 > u2 ? -1 : 0;
+															}
+														});
+													}
+													
+													storage.setValue("fallback_pos", positions.get(0));
+												}
+												
+												return storage.hasValue("fallback_pos");
+											}
+										},
+										new Actions.MoveTo("fallback_pos", 0.5D)
+										).setCustomName("fall_back")
+							)).setCustomName("waiting_to_attack"),
+						TreeNode.conditional((mob, storage) ->
+						{
+							Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
+							return target != null && mob.distanceToSqr(target) > Actions.AttackMelee.getAttackReachSqr(target, mob);
+						}, new Actions.MoveTo(MobWhiteboard.ATTACK_TARGET, 0.5D)).setCustomName("move_closer").setDiscrete(),
+						Sequence.sequence(
+							new Actions.AttackMelee(MobWhiteboard.ATTACK_TARGET),
+							Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND)).setCustomName("melee_attack").setDiscrete()
+					)).setCustomName("melee_attack").setDiscrete();
 	}
 	
 	public static final TreeNode equipBestGear(double speed)
@@ -285,29 +370,20 @@ public class Branches
 	{
 		NodePredicate targetClose = (mob, storage) ->
 		{
-			LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.MOB_TARGET);
+			LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 			return target != null && target.distanceTo(mob) <= Actions.AttackMelee.getAttackReachSqr(mob, target) + 1D;
 		};
 		
 		NodePredicate targetFar = (mob, storage) ->
 		{
-			LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.MOB_TARGET);
+			LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 			return target != null && target.distanceTo(mob) > Actions.AttackMelee.getAttackReachSqr(mob, target) + 5D;
 		};
 		
 		return Selector.sequential(
-				TreeNode.conditional(targetClose, new Actions.MoveAwayFrom(MobWhiteboard.MOB_TARGET, 0.5D, 8D)).setCustomName("move_farther").setDiscrete(),
-				TreeNode.conditional(targetFar, new Actions.MoveTowards(MobWhiteboard.MOB_TARGET, 0.5D, 12D)).setCustomName("move_closer").setDiscrete(),
+				TreeNode.conditional(targetClose, new Actions.MoveAwayFrom(MobWhiteboard.ATTACK_TARGET, 0.5D, 8D)).setCustomName("move_farther").setDiscrete(),
+				TreeNode.conditional(targetFar, new Actions.MoveTowards(MobWhiteboard.ATTACK_TARGET, 0.5D, 12D)).setCustomName("move_closer").setDiscrete(),
 				Condition.alwaysTrue().setCustomName("good_position")).setCustomName("manage_distance");
-	}
-	
-	public static final TreeNode attackRanged()
-	{
-		return Sequence.reactive(
-				Selector.sequential(
-					attackRangeBow(),
-					attackRangeCrossbow()),
-				rangeAttackMotion()).setCustomName("ranged_attacks");
 	}
 	
 	public static final TreeNode attackRangeBow()
@@ -316,7 +392,7 @@ public class Branches
 		NodePredicate shouldShoot = (mob, storage) ->
 		{
 			int ticksUsing = storage.getInt(MobWhiteboard.MOB_TICKS_USING);
-			LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.MOB_TARGET);
+			LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 			if(target == null || !target.isAlive() || !mob.getSensing().hasLineOfSight(target))
 				return false;
 			else
@@ -334,10 +410,7 @@ public class Branches
 				return mob.getItemInHand(InteractionHand.MAIN_HAND).getItem() instanceof BowItem || mob.getItemInHand(InteractionHand.OFF_HAND).getItem() instanceof BowItem;
 			}).setCustomName("has_bow"),
 			Selector.sequential(
-				Sequence.reactive(
-					Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() instanceof BowItem; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
-					Actions.swapItems()
-					).setCustomName("swap_held_items").setDiscrete(),
+				swapHandsIfInvalid((item)->{ return item.is(Items.BOW); }),
 				Sequence.sequence(
 					Actions.startUsingItem(),
 					new WaitUntil(shouldShoot),
@@ -345,7 +418,7 @@ public class Branches
 					{
 						public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 						{
-							LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.MOB_TARGET);
+							LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 							int drawTime = storage.getInt(MobWhiteboard.MOB_TICKS_USING);
 							float draw = BowItem.getPowerForTime(drawTime);
 							
@@ -397,12 +470,12 @@ public class Branches
 							}.setCustomName("finish_loading")).setCustomName("reload")).setCustomName("if_unloaded"),
 					TreeNode.conditional((mob, storage) ->
 					{
-						return CrossbowItem.isCharged(mob.getItemInHand(InteractionHand.MAIN_HAND)) && storage.hasValue(MobWhiteboard.MOB_TARGET) && mob.getSensing().hasLineOfSight(storage.getEntity(MobWhiteboard.MOB_TARGET));
+						return CrossbowItem.isCharged(mob.getItemInHand(InteractionHand.MAIN_HAND)) && storage.hasValue(MobWhiteboard.ATTACK_TARGET) && mob.getSensing().hasLineOfSight(storage.getEntity(MobWhiteboard.ATTACK_TARGET));
 					}, new LeafSingle()
 						{
 							public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 							{
-								LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.MOB_TARGET);
+								LivingEntity target = (LivingEntity)storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 								if(target == null || !target.isAlive())
 									return false;
 								
@@ -441,8 +514,10 @@ public class Branches
 						}.setCustomName("shoot_crossbow")))).setCustomName("crossbow_attack").setDiscrete();
 	}
 	
+	@SuppressWarnings("deprecation")
 	public static TreeNode attackSplashPotion()
 	{
+		ResourceLocation timerName = Registry.ITEM.getKey(Items.SPLASH_POTION);
 		return Sequence.reactive(
 				new Condition((mob, storage) ->
 				{
@@ -474,13 +549,10 @@ public class Branches
 					return false;
 				}).setCustomName("has_splash_potion"),
 				new Condition(NodePredicates.CAN_SEE_TARGET).setCustomName("can_see_target"),
+				new Condition(NodePredicates.isTimerZero(timerName)),
 				Selector.sequential(
-					Sequence.reactive(
-						Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() == Items.SPLASH_POTION; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
-						Actions.swapItems()
-						).setCustomName("swap_held_items").setDiscrete(),
+					swapHandsIfInvalid((item)->{ return item.getItem() == Items.SPLASH_POTION; }),
 					Sequence.sequence(
-						new Actions.WaitUntil((mob,storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
 						new LeafSingle()
 						{
 							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -490,7 +562,7 @@ public class Branches
 								potion.setItem(stack);
 								potion.setXRot(potion.getXRot() - -20.0F);
 								
-								Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+								Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 								Vec3 vec3 = target.getDeltaMovement();
 								double d0 = target.getX() + vec3.x - mob.getX();
 								double d1 = target.getEyeY() - (double)1.1F - mob.getY();
@@ -504,7 +576,7 @@ public class Branches
 								return true;
 							}
 						}.setCustomName("throw_potion"),
-						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND * 3)))
+						Actions.setWhiteboardTimer(timerName, Reference.Values.TICKS_PER_SECOND * 3)))
 				);
 	}
 	
@@ -518,8 +590,8 @@ public class Branches
 			{
 				public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 				{
-					Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
-					if(!storage.hasValue(MobWhiteboard.MOB_TARGET) || target == null)
+					Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
+					if(!storage.hasValue(MobWhiteboard.ATTACK_TARGET) || target == null)
 					{
 						storage.clearValue(LAST_SIGHTING);
 						return false;
@@ -590,18 +662,17 @@ public class Branches
 				}.setCustomName("finish_search")).setCustomName("search_area").setDiscrete();
 	}
 	
+	@SuppressWarnings("deprecation")
 	public static TreeNode throwEnderPearl()
 	{
+		ResourceLocation timerName = Registry.ITEM.getKey(Items.ENDER_PEARL);
 		return Sequence.reactive(
 				new Condition((mob, storage) -> { return !storage.hasValue("thrown_ender_pearl") || storage.getEntity("thrown_ender_pearl").isRemoved(); }),
 				new Condition(NodePredicates.CAN_SEE_TARGET),
+				new Condition(NodePredicates.isTimerZero(timerName)),
 				Selector.sequential(
-					Sequence.reactive(
-						Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() == Items.ENDER_PEARL; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
-						Actions.swapItems()
-						).setCustomName("swap_held_items").setDiscrete(),
+					swapHandsIfInvalid((item)->{ return item.is(Items.ENDER_PEARL); }),
 					Sequence.sequence(
-						new Actions.WaitUntil((mob, storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
 						new LeafSingle()
 						{
 							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -609,7 +680,7 @@ public class Branches
 								ThrownEnderpearl pearl = new ThrownEnderpearl(mob.level, mob);
 								pearl.setItem(storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)));
 								
-								Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
+								Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 								Vec3 vec3 = target.getDeltaMovement();
 								double d0 = target.getX() + vec3.x - mob.getX();
 								double d1 = target.getEyeY() - (double)1.1F - mob.getY();
@@ -617,48 +688,316 @@ public class Branches
 								double d3 = Math.sqrt(d0 * d0 + d2 * d2);
 								pearl.shoot(d0, d1 + d3 * 0.2D, d2, 0.75F, 8.0F);
 								storage.setValue("thrown_ender_pearl", pearl);
-								
+								mob.level.playSound((Player)null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.ENDER_PEARL_THROW, SoundSource.NEUTRAL, 0.5F, 0.4F / (mob.getRandom().nextFloat() * 0.4F + 0.8F));
 								mob.level.addFreshEntity(pearl);
 								return true;
 							}
 						}.setCustomName("throw_pearl"),
-						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND))
+						Actions.setWhiteboardTimer(timerName, Reference.Values.TICKS_PER_SECOND))
 					));
 	}
 	
+	@SuppressWarnings("deprecation")
 	public static TreeNode throwTrident()
 	{
+		ResourceLocation timerName = Registry.ITEM.getKey(Items.TRIDENT);
 		return Sequence.reactive(
 				new Condition(NodePredicates.CAN_SEE_TARGET),
 				Selector.sequential(
-					Sequence.reactive(
-						Decorator.inverter(new Condition(NodePredicates.isItemValid((item)->{ return item.getItem() == Items.TRIDENT; }, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
-						Actions.swapItems()
-						).setCustomName("swap_held_items").setDiscrete(),
-					Sequence.sequence(
-						new Actions.WaitUntil((mob, storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) == 0; }),
-						Actions.startUsingItem(),
-						new Actions.WaitUntil((mob, storage) -> { return storage.getInt(MobWhiteboard.MOB_TICKS_USING) >= Reference.Values.TICKS_PER_SECOND; }),
-						new LeafSingle()
-						{
-							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+					swapHandsIfInvalid((item)->{ return item.is(Items.TRIDENT); }),
+					Selector.sequential(
+						Sequence.sequence(
+							new Condition((mob, storage) -> { return mob.distanceTo(storage.getEntity(MobWhiteboard.ATTACK_TARGET)) > mob.getBbWidth() + 4D; }),
+							new Condition(NodePredicates.isTimerZero(timerName)),
+							Actions.startUsingItem(),
+							new Actions.WaitUntil((mob, storage) -> { return storage.getInt(MobWhiteboard.MOB_TICKS_USING) >= Reference.Values.TICKS_PER_SECOND; }),
+							new LeafSingle()
 							{
-								ThrownTrident pearl = new ThrownTrident(mob.level, mob, storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)));
-								
-								Entity target = storage.getEntity(MobWhiteboard.MOB_TARGET);
-								double d0 = target.getX() - mob.getX();
-							    double d1 = target.getY(0.3333333333333333D) - pearl.getY();
-							    double d2 = target.getZ() - mob.getZ();
-							    double d3 = Math.sqrt(d0 * d0 + d2 * d2);
-							    pearl.shoot(d0, d1 + d3 * (double)0.2F, d2, 1.6F, (float)(14 - mob.level.getDifficulty().getId() * 4));
-							    
-								mob.playSound(SoundEvents.DROWNED_SHOOT, 1.0F, 1.0F / (mob.getRandom().nextFloat() * 0.4F + 0.8F));
-								mob.level.addFreshEntity(pearl);
-								return true;
-							}
-						}.setCustomName("throw_pearl"),
-						Actions.stopUsingItem(),
-						Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND * 2))
-					));
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									ThrownTrident trident = new ThrownTrident(mob.level, mob, storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)));
+									
+									Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
+									double d0 = target.getX() - mob.getX();
+								    double d1 = target.getY(0.3333333333333333D) - trident.getY();
+								    double d2 = target.getZ() - mob.getZ();
+								    double d3 = Math.sqrt(d0 * d0 + d2 * d2);
+								    trident.shoot(d0, d1 + d3 * (double)0.2F, d2, 1.6F, (float)(14 - mob.level.getDifficulty().getId() * 4));
+								    
+									mob.playSound(SoundEvents.DROWNED_SHOOT, 1.0F, 1.0F / (mob.getRandom().nextFloat() * 0.4F + 0.8F));
+									mob.level.addFreshEntity(trident);
+									return true;
+								}
+							}.setCustomName("throw_trident"),
+							Actions.stopUsingItem(),
+							Actions.setWhiteboardTimer(timerName, Reference.Values.TICKS_PER_SECOND * 2)).setCustomName("throw_trident").setDiscrete(),
+						Branches.attackMelee())));
+	}
+	
+	public static TreeNode swapHandsIfInvalid(Predicate<ItemStack> predicate)
+	{
+		return Sequence.reactive(
+				Decorator.inverter(new Condition(NodePredicates.isItemValid(predicate, MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)))),
+				new Condition(NodePredicates.isItemValid(predicate, MobWhiteboard.getSlotAddress(EquipmentSlot.OFFHAND))),
+				Actions.swapItems()).setCustomName("swap_held_items").setDiscrete();
+	}
+	
+	public static TreeNode moveToAndMineBlock(String addressIn)
+	{
+		return Sequence.reactive(
+				new Condition(NodePredicates.hasValue(addressIn)).setCustomName("value_exists"),
+				new Condition(NodePredicates.isBlockMinable(addressIn)).setCustomName("block_is_minable"),
+				new LeafRunning()
+				{
+					protected Status run(PathfinderMob mob, Whiteboard<?> storage)
+					{
+						BlockPos minePos = storage.getBlockPos(addressIn);
+						mob.getLookControl().setLookAt(minePos.getX(), minePos.getY(), minePos.getZ(), 10, 10);
+						return Status.RUNNING;
+					}
+				}.setCustomName("look_at_pos"),
+				Selector.sequential(
+					TreeNode.conditional((mob, storage) ->
+					{
+						BlockPos pos = (BlockPos)storage.getBlockPos(addressIn);
+						
+						// Check blocks immediately adjacent to ourselves
+						if(mob.getBoundingBox().inflate(1D).contains(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D))
+							return true;
+						
+						// Check distance to our head
+						Vec3 minePos = new Vec3(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
+						Vec3 eyePos = mob.getEyePosition();
+						return minePos.distanceTo(eyePos) < 2D;
+					}, mineBlock(addressIn)).setCustomName("do_mining"),
+					new Actions.MoveTo(addressIn, 0.5D).setCustomName("move_to_block"))
+				).setCustomName("move_and_mine");
+	}
+	
+	public static TreeNode mineBlock(String addressIn)
+	{
+		String PROGRESS = "mining_progress";
+		return Sequence.reactive(
+				new Condition(NodePredicates.hasValue(addressIn)).setCustomName("value_exists"),
+				new Condition(NodePredicates.isBlockMinable(addressIn)).setCustomName("block_is_minable"),
+				Sequence.sequence(
+					Actions.setWhiteboardValue(PROGRESS, 0F).setCustomName("start_mining"),
+					Decorator.doWhile(
+						(mob, storage) -> { return storage.getFloat(PROGRESS) < 1F; },
+						Sequence.sequence(
+							Actions.swingArm(InteractionHand.MAIN_HAND),
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									float progress = storage.getFloat(PROGRESS);
+									float inc = 0.8F;	// TODO Change to value based on blockstate and held item etc.
+									progress += inc;
+									
+									storage.setValue(PROGRESS, progress);
+									mob.getLevel().destroyBlockProgress(mob.getId(), storage.getBlockPos(addressIn), 10 - (int)Mth.clamp(progress, 0F, 10F));
+									return true;
+								}
+							}.setCustomName("inc_progress"))).setCustomName("mining_loop").setDiscrete(),
+					TreeNode.conditional((mob,storage) -> { return storage.getFloat(PROGRESS) >= 1F; }, Actions.breakBlock(addressIn)).setCustomName("break_if_complete").setDiscrete())).setCustomName("mine_block");
+	}
+	
+	public static TreeNode executeGroupCommand()
+	{
+		return Sequence.reactive(
+				new Condition((mob, storage) -> { return storage.hasCommands(); }).setCustomName("has_commands"),
+				Selector.sequential(
+					Sequence.reactive(
+						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.MINE; }),
+						Sequence.sequence(
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									storage.setValue("mine_position", (BlockPos)storage.currentCommand().variable(0));
+									return true;
+								}
+							}.setCustomName("set_mine_position"),
+							Decorator.forceSuccess(moveToAndMineBlock("mine_position")),
+							Actions.completeCurrentTask())
+						).setCustomName("mine_block").setDiscrete(),
+					Sequence.reactive(
+						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.QUARRY; }),
+						Sequence.sequence(
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									storage.clearValue("mine_position");
+									MobCommand current = storage.currentCommand();
+									BlockPos minPos;
+									BlockPos maxPos;
+									if(current.variables() > 2)
+									{
+										minPos = (BlockPos)current.variable(0);
+										maxPos = (BlockPos)current.variable(2);
+									}
+									else
+									{
+										BlockPos core = (BlockPos)current.variable(0);
+										minPos = core.offset(-5, 0, -5);
+										maxPos = core.offset(5, 3, 5);
+									}
+									
+									Direction orientation = (Direction)current.variable(1);
+									List<BlockPos> consignment = GroupAction.ActionQuarry.makeConsignment(minPos, maxPos, orientation, mob.getLevel(), Lists.newArrayList(), 1);
+									if(!consignment.isEmpty())
+										storage.setValue("mine_position", consignment.get(0));
+									return true;
+								}
+							}.setCustomName("set_mine_position"),
+							Decorator.forceSuccess(TreeNode.conditional((mob,storage) -> { return !storage.hasValue("mine_position"); }, Actions.completeCurrentTask())).setCustomName("complete_if_no_blocks").setDiscrete(),
+							moveToAndMineBlock("mine_position").setCustomName("mine_current_block").setDiscrete()).setCustomName("quarry_loop")
+						).setCustomName("quarry_region").setDiscrete(),
+					Sequence.reactive(
+						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.ATTACK; }),
+						Sequence.sequence(
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									storage.setValue(MobWhiteboard.ATTACK_TARGET, storage.currentCommand().variable(0));
+									return true;
+								}
+							}.setCustomName("set_attack_target"),
+							Actions.completeCurrentTask())).setCustomName("attack_target").setDiscrete(),
+					Sequence.reactive(
+						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.CEASEFIRE; }),
+						Sequence.sequence(
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									storage.setValue(MobWhiteboard.ATTACK_TARGET, null);
+									return true;
+								}
+							}.setCustomName("clear_attack_target"),
+							Actions.completeCurrentTask())).setCustomName("ceasefire").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.CEASEFIRE_MOB; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
+										if(target == storage.currentCommand().variable(0))
+											storage.setValue(MobWhiteboard.ATTACK_TARGET, null);
+										return true;
+									}
+								}.setCustomName("clear_attack_target"),
+								Actions.completeCurrentTask())).setCustomName("ceasefire_mob").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.DISMOUNT; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										mob.stopRiding();
+										return true;
+									}
+								}.setCustomName("dismount_vehicle"),
+								Actions.completeCurrentTask())).setCustomName("dismount").setDiscrete(),
+					Sequence.reactive(
+						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.GOTO_POS; }),
+						Sequence.sequence(
+							new LeafSingle()
+							{
+								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+								{
+									storage.setValue("command_dest", (BlockPos)storage.currentCommand().variable(0));
+									return true;
+								}
+							}.setCustomName("set_dest"),
+							new Actions.MoveTo("command_dest", 0.5D),
+							Actions.completeCurrentTask())).setCustomName("goto_pos").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.GOTO_MOB; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										storage.setValue("command_dest", ((Entity)storage.currentCommand().variable(0)));
+										return true;
+									}
+								}.setCustomName("set_dest"),
+								new Actions.MoveTo("command_dest", 0.5D),
+								Actions.completeCurrentTask())).setCustomName("goto_mob").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.PICK_UP; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										storage.setValue("pickup_target", storage.currentCommand().variable(0));
+										return true;
+									}
+								}.setCustomName("set_pickup_target"),
+								Branches.moveToPickUp("pickup_target"),
+								Actions.completeCurrentTask())).setCustomName("pick_up").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.EQUIP; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										storage.setValue("equip_target", storage.currentCommand().variable(0));
+										return true;
+									}
+								}.setCustomName("set_equip_target"),
+								Branches.equipFromEntity("equip_target", 1D),
+								Actions.completeCurrentTask())).setCustomName("equip").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> 
+							{
+								Mark type = storage.currentCommand().type();
+								return type == Mark.JOIN_MY_GROUP || type == Mark.JOIN_GROUP;
+							}),
+							new Condition((mob, storage) -> { return GroupSaveData.get(mob.getServer()).hasGroup((LivingEntity)storage.currentCommand().variable(0)); }).setCustomName("target_has_group"),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										MobCommand current = storage.currentCommand();
+										LivingEntity target = (LivingEntity)current.variable(0);
+										IMobGroup targetGroup = GroupSaveData.get(mob.getServer()).getGroup(target);
+										IMobGroup myGroup = GroupSaveData.get(mob.getServer()).getGroup(mob);
+										if(targetGroup == myGroup)
+											return true;
+										
+										if(myGroup != null)
+											myGroup.remove(mob);
+										
+										targetGroup.add(mob);
+										return true;
+									}
+								}.setCustomName("join_target_group"),
+								Actions.completeCurrentTask())).setCustomName("join_group").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.START_GROUP; }),
+							new Condition((mob, storage) -> { return GroupSaveData.get(mob.getServer()).hasGroup(mob); }).setCustomName("has_group"),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										IMobGroup group = GroupSaveData.get(mob.getServer()).getGroup(mob);
+										group.split(mob);
+										return true;
+									}
+								}.setCustomName("split_group"),
+								Actions.completeCurrentTask())).setCustomName("start_group"),
+					Actions.completeCurrentTask()	// This node will complete any task we're not actually equipped to handle
+				)).setCustomName("group_command");
 	}
 }

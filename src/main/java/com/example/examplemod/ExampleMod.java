@@ -2,19 +2,22 @@ package com.example.examplemod;
 
 import org.slf4j.Logger;
 
+import com.example.examplemod.entity.ai.group.GroupType;
 import com.example.examplemod.init.ExEntities;
 import com.example.examplemod.init.ExItems;
+import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.proxy.ClientProxy;
 import com.example.examplemod.proxy.CommonProxy;
 import com.example.examplemod.proxy.ServerProxy;
 import com.example.examplemod.reference.Reference;
+import com.example.examplemod.utility.bus.ClientBus;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.Material;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -47,10 +50,12 @@ public class ExampleMod
 
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(ClientBus::registerOverlayEvent);
         
         ExEntities.ENTITIES.register(modEventBus);
         BLOCKS.register(modEventBus);
         ExItems.ITEMS.register(modEventBus);
+        GroupType.init();
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -59,7 +64,7 @@ public class ExampleMod
     {
         // Some common setup code
         LOG.info("HELLO FROM COMMON SETUP");
-        LOG.info("DIRT BLOCK >> {}", ForgeRegistries.BLOCKS.getKey(Blocks.DIRT));
+        PacketHandler.init();
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
@@ -77,10 +82,17 @@ public class ExampleMod
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event)
         {
+        	MinecraftForge.EVENT_BUS.register(ClientBus.class);
         	PROXY.clientInit();
             // Some client setup code
             LOG.info("HELLO FROM CLIENT SETUP");
             LOG.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+        }
+        
+        @SubscribeEvent
+        public static void registerKeybindings(RegisterKeyMappingsEvent event)
+        {
+        	ClientProxy.registerKeyMappings(event);
         }
     }
 }

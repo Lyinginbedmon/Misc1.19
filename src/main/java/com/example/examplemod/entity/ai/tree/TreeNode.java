@@ -1,4 +1,4 @@
-package com.example.examplemod.entity.ai;
+package com.example.examplemod.entity.ai.tree;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 
 import javax.annotation.Nullable;
 
+import com.example.examplemod.entity.ai.Whiteboard;
 import com.google.common.collect.Lists;
 
 import net.minecraft.ChatFormatting;
@@ -294,6 +295,9 @@ public abstract class TreeNode
 		public static TreeNode repeat(int times, TreeNode nodeIn) { return new Decorator(Type.REPEAT, times, nodeIn).setCustomName("repeat_"+times); }
 		/** Ticks the child node N times until it does not return FAILURE */
 		public static TreeNode retry(int times, TreeNode nodeIn) { return new Decorator(Type.RETRY, times, nodeIn).setCustomName("retry_"+times); }
+		
+		/** Returns a FORCE_SUCCESS decorator enclosing a reactive sequence of the given condition and node */
+		public static TreeNode doWhile(NodePredicate condition, TreeNode nodeIn){ return forceSuccess(TreeNode.conditional(condition, nodeIn)); }
 		
 		@Nullable
 		protected TreeNode getCurrentNode() { return nodes.length > 0 ? nodes[0] : null; }

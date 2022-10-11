@@ -1,5 +1,7 @@
 package com.example.examplemod.reference;
 
+import java.util.UUID;
+
 public class Reference
 {
 	public static class ModInfo
@@ -19,5 +21,7 @@ public class Reference
 		public static final int ENTITY_MAX_AIR			= 300;
 		public static final int TICKS_PER_BUBBLE		= ENTITY_MAX_AIR / TICKS_PER_SECOND;
 		public static final int TICKS_PER_DAY			= TICKS_PER_SECOND * 1200;
+		
+		public static final UUID DUMMY_ID = UUID.fromString("c19104c4-2c53-4542-a344-4ab17fc83b8b");
 	}
 }
