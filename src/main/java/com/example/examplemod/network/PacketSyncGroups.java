@@ -2,7 +2,6 @@ package com.example.examplemod.network;
 
 import java.util.function.Supplier;
 
-import com.example.examplemod.ExampleMod;
 import com.example.examplemod.utility.GroupSaveData;
 
 import net.minecraft.nbt.CompoundTag;
@@ -40,8 +39,8 @@ public class PacketSyncGroups
 		if(context.getDirection().getReceptionSide().isClient())
 		{
 			GroupSaveData.clientStorageCopy = GroupSaveData.read(msg.data);
-			ExampleMod.LOG.info("Received and processed data on "+GroupSaveData.clientStorageCopy.size()+" groups");
-			GroupSaveData.clientStorageCopy.getAllGroups().forEach((group) -> ExampleMod.LOG.info(" * "+group.getKey()+" ("+group.size()+")"));
+//			ExampleMod.LOG.info("Received and processed data on "+GroupSaveData.clientStorageCopy.size()+" groups");
+//			GroupSaveData.clientStorageCopy.getAllGroups().forEach((group) -> ExampleMod.LOG.info(" * "+group.getKey()+" ("+group.size()+")"));
 		}
 	}
 }

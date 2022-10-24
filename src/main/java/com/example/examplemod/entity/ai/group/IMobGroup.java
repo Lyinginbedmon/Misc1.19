@@ -46,10 +46,6 @@ public interface IMobGroup
 	/** Updates any internal logic of this group, such as AI */
 	public void tick(MinecraftServer server);
 	
-	/** Returns any active battle strategy currently in place for this group */
-	@Nullable
-	public Strategy<?> getStrategy();
-	
 	/** Returns true if this group has changed in a way that requires synchronising to clients */
 	public boolean isDirty();
 	public default void setDirty() { setDirty(true); }
@@ -72,12 +68,14 @@ public interface IMobGroup
 	public default CompoundTag saveToNbt(CompoundTag compound)
 	{
 		saveMemberIds(compound);
+		saveAction(compound);
 		return compound;
 	}
 	
 	public default void loadFromNbt(CompoundTag compound)
 	{
 		loadMemberIds(compound);
+		loadAction(compound);
 	}
 	
 	public default void saveMemberIds(CompoundTag compound)
@@ -102,6 +100,26 @@ public interface IMobGroup
 			if(id != null)
 				membership().put(id, null);
 		});
+	}
+	
+	public default CompoundTag saveAction(CompoundTag compound)
+	{
+		if(!hasAction())
+			return compound;
+		
+		compound.put("Action", getAction().storeInNbt(new CompoundTag()));
+		return compound;
+	}
+	
+	public default void loadAction(CompoundTag compound)
+	{
+		if(!compound.contains("Action", Tag.TAG_COMPOUND))
+			return;
+		
+		CompoundTag actionData = compound.getCompound("Action");
+		GroupAction action = ActionType.createActionFromNbt(new ResourceLocation(actionData.getString("Type")), actionData);
+		if(action != null)
+			setAction(action);
 	}
 	
 	/** Returns true if this group should not be stored, usually because it's empty */
@@ -154,6 +172,7 @@ public interface IMobGroup
 		list.addAll(membership().values());
 		// Membership map may include null values for members that haven't been identified post-load
 		list.removeIf(Predicates.isNull());
+		list.removeIf((entity) -> { return !entity.isAlive() || !entity.isAddedToWorld(); });
 		return list;
 	}
 	
@@ -180,4 +199,26 @@ public interface IMobGroup
 	public default Entity target(int index) { return targets().get(index); }
 	@Nullable
 	public default Entity target() { return target(0); }
+	
+	public default boolean hasAction() { return getAction() != null; }
+	public void setAction(GroupAction actionIn);
+	public default GroupAction getAction() { return null; }
+	
+	public default void updateGroupAction()
+	{
+		if(!hasAction())
+			return;
+		else if(getAction().isComplete())
+		{
+			setAction(null);
+			return;
+		}
+		
+		List<LivingEntity> members = members();
+		if(!members.isEmpty())
+		{
+			getAction().update(members, targets(), members.get(0).getLevel());
+			setDirty();
+		}
+	}
 }

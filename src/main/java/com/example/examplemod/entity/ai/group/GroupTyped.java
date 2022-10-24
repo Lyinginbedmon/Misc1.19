@@ -66,6 +66,7 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 	
 	public void giveCommandToAll(CommandStack stack)
 	{
+		setAction(null);
 		if(stack.isSingle())
 		{
 			MobCommand order = stack.current();
@@ -115,15 +116,21 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 					return;
 				case FOLLOW_MOB:
 					Entity followEnt = (Entity)order.variable(0);
+					if(followEnt instanceof LivingEntity)
+						setAction(new GroupAction.ActionFollow((LivingEntity)followEnt, 3D, 8D));
+					return;
 				case GUARD_MOB:
 					Entity guardEnt = (Entity)order.variable(0);
-					break;
+					if(guardEnt instanceof LivingEntity)
+						setAction(new GroupAction.ActionGuardMob((LivingEntity)guardEnt, 2D, 2D + (size() * 0.5D)));
+					return;
 				case GUARD_POS:
 					BlockPos guardPos = (BlockPos)order.variable(0);
-					break;
+					setAction(new GroupAction.ActionGuardPos(guardPos.relative(((Direction)order.variable(1)).getOpposite()), 6D, 10D));
+					return;
 				case QUARRY:
 					if(order.variables() > 2)
-						currentAction = new GroupAction.ActionQuarry<T>((BlockPos)order.variable(0), (BlockPos)order.variable(2), (Direction)order.variable(1));
+						setAction(new GroupAction.ActionQuarry<T>((BlockPos)order.variable(0), (BlockPos)order.variable(2), (Direction)order.variable(1)));
 					else
 					{
 						BlockPos corePos = (BlockPos)order.variable(0);
@@ -131,7 +138,7 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 						Vec3i min = new Vec3i(-5,0,-5);
 						Vec3i max = new Vec3i(5,3,5);
 						
-						currentAction = new GroupAction.ActionQuarry<T>(corePos.offset(min), corePos.offset(max), facing);
+						setAction(new GroupAction.ActionQuarry<T>(corePos.offset(min), corePos.offset(max), facing));
 					}
 					return;
 				default:
@@ -144,17 +151,10 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 	
 	public List<LivingEntity> targets() { return this.targets; }
 	
-	protected void updateGroupAction()
-	{
-		if(this.currentAction == null)
-			return;
-		
-		this.currentAction.update(members(), members().get(0).getLevel());
-		if(this.currentAction.isComplete())
-			this.currentAction = null;
-	}
-	
 	public Entity target(int index) { return hasTarget() ? this.targets.get(index%this.targets.size()) : null; }
 	
 	public Whiteboard<?> getWhiteboard() { return this.storage; }
+	
+	public GroupAction getAction() { return this.currentAction; }
+	public void setAction(GroupAction action) { this.currentAction = action; setDirty(); }
 }

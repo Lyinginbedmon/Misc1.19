@@ -2,6 +2,9 @@ package com.example.examplemod;
 
 import org.slf4j.Logger;
 
+import com.example.examplemod.client.ActionRenderManager;
+import com.example.examplemod.client.GroupRenderer;
+import com.example.examplemod.entity.ai.group.ActionType;
 import com.example.examplemod.entity.ai.group.GroupType;
 import com.example.examplemod.init.ExEntities;
 import com.example.examplemod.init.ExItems;
@@ -17,6 +20,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.Material;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -56,6 +61,7 @@ public class ExampleMod
         BLOCKS.register(modEventBus);
         ExItems.ITEMS.register(modEventBus);
         GroupType.init();
+        ActionType.init();
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -74,21 +80,25 @@ public class ExampleMod
         // Do something when the server starts
         LOG.info("HELLO from server starting");
     }
-
+    
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
     @Mod.EventBusSubscriber(modid = Reference.ModInfo.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static class ClientModEvents
     {
+    	@OnlyIn(Dist.CLIENT)
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event)
         {
         	MinecraftForge.EVENT_BUS.register(ClientBus.class);
+        	MinecraftForge.EVENT_BUS.addListener(GroupRenderer::renderGroups);
+        	ActionRenderManager.init();
         	PROXY.clientInit();
             // Some client setup code
             LOG.info("HELLO FROM CLIENT SETUP");
             LOG.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
         }
         
+        @OnlyIn(Dist.CLIENT)
         @SubscribeEvent
         public static void registerKeybindings(RegisterKeyMappingsEvent event)
         {

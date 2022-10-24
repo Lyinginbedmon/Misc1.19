@@ -1,7 +1,7 @@
 package com.example.examplemod.entity.ai.tree;
 
-import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 
@@ -12,7 +12,6 @@ import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.example.examplemod.entity.ai.group.GroupAction;
 import com.example.examplemod.entity.ai.group.IMobGroup;
-import com.example.examplemod.entity.ai.group.Strategy;
 import com.example.examplemod.entity.ai.tree.Actions.WaitUntil;
 import com.example.examplemod.entity.ai.tree.TreeNode.Condition;
 import com.example.examplemod.entity.ai.tree.TreeNode.Decorator;
@@ -22,8 +21,8 @@ import com.example.examplemod.entity.ai.tree.TreeNode.NodePredicate;
 import com.example.examplemod.entity.ai.tree.TreeNode.Selector;
 import com.example.examplemod.entity.ai.tree.TreeNode.Sequence;
 import com.example.examplemod.reference.Reference;
-import com.example.examplemod.utility.MobCommanding.Mark;
 import com.example.examplemod.utility.GroupSaveData;
+import com.example.examplemod.utility.MobCommanding.Mark;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Multimap;
 import com.mojang.math.Quaternion;
@@ -65,6 +64,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 
 public class Branches
@@ -171,7 +171,7 @@ public class Branches
 												
 												for(int x=(offset.getX() == 0 ? -(int)minRange : 0); x<maxRange; x++)
 													for(int z=(offset.getZ() == 0 ? -(int)minRange : 0); z<maxRange; z++)
-														for(int y=0; y<3; y++)
+														for(int y=-3; y<3; y++)
 														{
 															BlockPos testPos = target.blockPosition().offset(x*offset.getX(), y, z*offset.getZ());
 															// Exclude any positions that are too close or that we can't move to
@@ -182,25 +182,7 @@ public class Branches
 														}
 												
 												if(!positions.isEmpty())
-												{
-													// If part of group using a strategy, sort positions according to group's optimum
-													IMobGroup group = GroupSaveData.get(mob.getServer()).getGroup(mob);
-													if(group != null && group.getStrategy() != null)
-													{
-														Strategy<?> strategy = group.getStrategy();
-														positions.sort(new Comparator<BlockPos>()
-														{
-															public int compare(BlockPos o1, BlockPos o2)
-															{
-																float u1 = strategy.evaluatePosition(o1, group);
-																float u2 = strategy.evaluatePosition(o2, group);
-																return u1 < u2 ? 1 : u1 > u2 ? -1 : 0;
-															}
-														});
-													}
-													
 													storage.setValue("fallback_pos", positions.get(0));
-												}
 												
 												return storage.hasValue("fallback_pos");
 											}
@@ -808,6 +790,62 @@ public class Branches
 				new Condition((mob, storage) -> { return storage.hasCommands(); }).setCustomName("has_commands"),
 				Selector.sequential(
 					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.GUARD_POS; }),
+							new Condition((mob, storage) -> { return ((BlockPos)storage.currentCommand().variable(0)).distSqr(mob.blockPosition()) > 1D; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										storage.clearValue("guard_move");
+										BlockPos guardPos = (BlockPos)storage.currentCommand().variable(0);
+										
+										BlockPos currentPos = mob.blockPosition();
+										currentPos = new BlockPos(currentPos.getX(), guardPos.getY(), guardPos.getZ());
+										if(currentPos == guardPos)
+											return false;
+										
+										int range = 3;
+										if(mob.getNavigation().createPath(guardPos, range * range) != null)
+										{
+											/*
+											 * If our current position can path directly to the guard position,
+											 * within range^2 nodes, try to move directly to it
+											 */
+											storage.setValue("guard_move", guardPos);
+										}
+										else
+										{
+											float currentUtility = getUtility(mob.blockPosition(), guardPos, mob.getNavigation());
+											double lowest = currentUtility;
+											BlockPos target = mob.blockPosition();
+											for(int x=-range; x<range; x++)
+												for(int z=-range; z<range; z++)
+												{
+													BlockPos offset = currentPos.offset(x, 0, z);
+													float utility = getUtility(offset, guardPos, mob.getNavigation());
+													if(utility < lowest)
+													{
+														lowest = utility;
+														target = offset;
+													}
+												}
+											
+											if(target != currentPos)
+												storage.setValue("guard_move", target);
+										}
+										
+										return storage.hasValue("guard_move");
+									}
+									
+									public final float getUtility(BlockPos pos, BlockPos guard, PathNavigation navi)
+									{
+										Path path = navi.createPath(Set.of(pos, guard), 64);
+										return path == null ? Float.MAX_VALUE : path.getNodeCount();
+									}
+								}.setCustomName("identify_position"),
+								new Actions.MoveTo("guard_move", 0.7D))).setCustomName("guard_pos").setDiscrete(),
+					Sequence.reactive(
 						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.MINE; }),
 						Sequence.sequence(
 							new LeafSingle()
@@ -931,6 +969,18 @@ public class Branches
 								new Actions.MoveTo("command_dest", 0.5D),
 								Actions.completeCurrentTask())).setCustomName("goto_mob").setDiscrete(),
 					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.STOP_MOVING; }),
+							Sequence.sequence(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										mob.getNavigation().stop();
+										return true;
+									}
+								}.setCustomName("stop_moving"),
+								Actions.completeCurrentTask())).setCustomName("stop_moving").setDiscrete(),
+					Sequence.reactive(
 							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.PICK_UP; }),
 							Sequence.sequence(
 								new LeafSingle()
@@ -996,8 +1046,10 @@ public class Branches
 										return true;
 									}
 								}.setCustomName("split_group"),
-								Actions.completeCurrentTask())).setCustomName("start_group"),
-					Actions.completeCurrentTask()	// This node will complete any task we're not actually equipped to handle
+								Actions.completeCurrentTask())).setCustomName("start_group").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> { return storage.currentCommand().type().canBeCompleted(); }),
+							Actions.completeCurrentTask()).setCustomName("default_completion")	// This node will complete any task we're not actually equipped to handle
 				)).setCustomName("group_command");
 	}
 }

@@ -12,7 +12,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -71,8 +70,8 @@ public class KeyBindings
 			}
 		else if(keyID == NOTIFY.getKey().getValue())
 		{
-			if(event.getAction() == 1)
-				MobCommanding.onNotifyPressed(player, Screen.hasShiftDown());
+			if(event.getAction() == 1 && (event.getModifiers() == GLFW.GLFW_MOD_SHIFT || event.getModifiers() == 0))
+				MobCommanding.onNotifyPressed(player, event.getModifiers() == GLFW.GLFW_MOD_SHIFT);
 		}
 	}
 	

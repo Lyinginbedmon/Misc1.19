@@ -26,6 +26,8 @@ public class GroupGeneric implements IMobGroup
 	private GroupWhiteboard<ITreeEntity> storage = new GroupWhiteboard<ITreeEntity>();
 	private List<LivingEntity> targets = Lists.newArrayList();
 	
+	private GroupAction currentAction = null;
+	
 	private boolean dirty = false;
 	
 	public GroupGeneric(PathfinderMob... membersIn)
@@ -79,13 +81,14 @@ public class GroupGeneric implements IMobGroup
 	
 	public Whiteboard<?> getWhiteboard() { return this.storage; }
 	
-	public Strategy<?> getStrategy(){ return null; }
-	
 	public void add(@Nullable LivingEntity objIn)
 	{
 		if(objIn != null && objIn instanceof PathfinderMob)
 			memberMap.put(objIn.getUUID(), (PathfinderMob)objIn);
 	}
+	
+	public GroupAction getAction() { return this.currentAction; }
+	public void setAction(GroupAction action) { this.currentAction = action; }
 	
 	public static class Factory implements IGroupFactory
 	{

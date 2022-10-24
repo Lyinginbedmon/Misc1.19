@@ -1,13 +1,8 @@
 package com.example.examplemod.entity.ai.group;
 
-import java.util.List;
-
-import org.apache.commons.compress.utils.Lists;
-
 import com.example.examplemod.entity.ITreeEntity;
 import com.example.examplemod.entity.ai.CommandStack;
 import com.example.examplemod.entity.ai.Whiteboard;
-import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.MobCommanding.Mark;
 
@@ -66,52 +61,6 @@ public abstract class Strategy<T extends PathfinderMob & ITreeEntity>
 		RUNNING;
 	}
 	
-	/** Entire group attacks immediately */
-	public static class StrategyBrawl<T extends PathfinderMob & ITreeEntity> extends Strategy<T>
-	{
-		public float utility(IMobGroup groupIn)
-		{
-			int tally = 0;
-			float avgHP = 0F;
-			for(LivingEntity member : groupIn.members()) 
-			{
-				avgHP += member.getHealth() / member.getMaxHealth();
-				for(LivingEntity target : groupIn.targets())
-					if(member.distanceToSqr(target) <= getAttackReachSqr(target, member))
-					{
-						tally++;
-						break;
-					}
-			}
-			avgHP /= groupIn.size();
-			
-			return (float)Math.pow((double)tally/(double)groupIn.size(), 6D) * avgHP;
-		}
-		
-		public Status start(IMobGroup groupIn)
-		{
-			groupIn.members().forEach((member) -> 
-			{
-				Entity nearest = null;
-				double minDist = Double.MAX_VALUE;
-				for(LivingEntity target : groupIn.targets())
-				{
-					double dist = member.distanceToSqr(target);
-					if(dist < minDist)
-					{
-						nearest = target;
-						minDist = dist;
-					}
-				}
-				
-				Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
-				if(board != null)
-					board.setCommands(CommandStack.single(Mark.ATTACK, nearest));
-			});
-			return Status.SUCCESS;
-		}
-	}
-	
 	/** Half of group flanks, then entire group attacks */
 	public static class StrategyFlank<T extends PathfinderMob & ITreeEntity> extends Strategy<T>
 	{
@@ -156,7 +105,7 @@ public abstract class Strategy<T extends PathfinderMob & ITreeEntity>
 						
 						CommandStack stack = CommandStack.single(Mark.CEASEFIRE);
 						if(validateFlank(flankPos, member, partner, target))
-							stack.addTask(Mark.GOTO_POS, flankPos);
+							stack.append(Mark.GOTO_POS, flankPos);
 						
 						board.setCommands(stack);
 						break;
@@ -212,49 +161,6 @@ public abstract class Strategy<T extends PathfinderMob & ITreeEntity>
 			}
 			else
 				return Status.RUNNING;
-		}
-	}
-	
-	/** Half of group attack immediately, other half try to flank target first */
-	public static class StrategyAggroFlank<T extends PathfinderMob & ITreeEntity> extends StrategyFlank<T>
-	{
-		public float utility(IMobGroup groupIn)
-		{
-			Entity target = groupIn.target();
-			
-			int tally = 0;
-			for(LivingEntity member : groupIn.members())
-			{
-				if(member.distanceToSqr(target) <= getAttackReachSqr(target, member))
-					tally++;
-			};
-			
-			return (float)Math.pow((double)tally/(double)groupIn.size(), 0.75D);
-		}
-		
-		protected CommandStack groupACommand(Entity target) { return CommandStack.single(Mark.ATTACK, target); }
-		
-		public Status tick(IMobGroup groupIn)
-		{
-			List<LivingEntity> noncombatants = Lists.newArrayList();
-			for(LivingEntity member : groupIn.members())
-			{
-				Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
-				if(board != null && board.getEntity(MobWhiteboard.ATTACK_TARGET) == null)
-					noncombatants.add(member);
-			}
-			
-			if(noncombatants.isEmpty())
-				return Status.SUCCESS;
-			else
-				for(LivingEntity member : noncombatants)
-				{
-					Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
-					if(board != null && board.getEntity(MobWhiteboard.ATTACK_TARGET) == null && !board.hasCommands())
-						board.setCommands(CommandStack.single(Mark.ATTACK, groupIn.target()));
-				}
-			
-			return Status.RUNNING;
 		}
 	}
 }

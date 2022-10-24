@@ -7,6 +7,7 @@
 	"key.examplemod.mark.goto_pos": "Go to %s",
 	"key.examplemod.mark.goto_mob": "Get closer to %s",
 	"key.examplemod.mark.follow_mob": "Follow %s",
+	"key.examplemod.mark.stop_moving": "Stop there",
 	"key.examplemod.mark.guard_pos": "Guard the area around %s",
 	"key.examplemod.mark.guard_mob": "Guard %s",
 	"key.examplemod.mark.mount": "Mount up on %s",

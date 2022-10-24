@@ -258,7 +258,7 @@ public class MobCommanding
 	
 	public static enum MarkCategory
 	{
-		MOTION(Mark.GOTO_POS, Mark.GOTO_MOB, Mark.MOUNT, Mark.DISMOUNT, Mark.FOLLOW_MOB),
+		MOTION(Mark.GOTO_POS, Mark.GOTO_MOB, Mark.MOUNT, Mark.DISMOUNT, Mark.FOLLOW_MOB, Mark.STOP_MOVING),
 		COMBAT(Mark.ATTACK, Mark.CEASEFIRE_MOB, Mark.CEASEFIRE, Mark.GUARD_POS, Mark.GUARD_MOB),
 		UTILITY(Mark.PICK_UP, Mark.DROP, Mark.EQUIP, Mark.ACTIVATE, Mark.MINE, Mark.QUARRY),
 		GROUP(Mark.JOIN_GROUP, Mark.JOIN_MY_GROUP, Mark.START_GROUP),
@@ -276,44 +276,44 @@ public class MobCommanding
 	
 	public static enum Mark implements StringRepresentable
 	{
-		GOTO_POS(HitResult.Type.BLOCK, 0, (input, player) -> { return input instanceof BlockPos; }),
-		GOTO_MOB(HitResult.Type.ENTITY, 0, (input, player) -> { return input instanceof Entity; }),
-		ATTACK(HitResult.Type.ENTITY, 7, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		CEASEFIRE(HitResult.Type.MISS, 13, (input, player) -> { return player.getLevel().isClientSide() ? input == player : true; }),
-		CEASEFIRE_MOB(HitResult.Type.ENTITY, 14, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		FOLLOW_MOB(HitResult.Type.ENTITY, 9, (input, player) -> { return input instanceof LivingEntity; }),
-		GUARD_MOB(HitResult.Type.ENTITY, 1, (input, player) -> { return input instanceof LivingEntity; }),
-		GUARD_POS(HitResult.Type.BLOCK, 2, (input, player) -> { return input instanceof BlockPos; }),
-		MOUNT(HitResult.Type.ENTITY, 8, (input, player) -> 
+		GOTO_POS(HitResult.Type.BLOCK, 0, false, (input, player) -> { return input instanceof BlockPos; }),
+		GOTO_MOB(HitResult.Type.ENTITY, 0, false, (input, player) -> { return input instanceof Entity; }),
+		STOP_MOVING(HitResult.Type.MISS, 15, false, (input, player) -> { return true; }),
+		ATTACK(HitResult.Type.ENTITY, 7, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		CEASEFIRE(HitResult.Type.MISS, 13, false, (input, player) -> { return player.getLevel().isClientSide() ? input == player : true; }),
+		CEASEFIRE_MOB(HitResult.Type.ENTITY, 14, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		FOLLOW_MOB(HitResult.Type.ENTITY, 9, true, (input, player) -> { return input instanceof LivingEntity; }), // TODO Branch implement Follow
+		GUARD_MOB(HitResult.Type.ENTITY, 1, true, (input, player) -> { return input instanceof LivingEntity; }), // TODO Branch implement Guard mob
+		GUARD_POS(HitResult.Type.BLOCK, 2, true, (input, player) -> { return input instanceof BlockPos; }), // TODO Branch implement Guard pos
+		MOUNT(HitResult.Type.ENTITY, 8, false, (input, player) -> // TODO Implement mounting (fue fue)
 			{
 				if(input != player && input instanceof LivingEntity)
-				{
-					LivingEntity living = (LivingEntity)input;
-					return !living.isPassenger();
-				}
+					return !((LivingEntity)input).isPassenger();
 				return false;
 			}),
-		DISMOUNT(HitResult.Type.MISS, 12, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		PICK_UP(HitResult.Type.ENTITY, 10, (input, player) -> { return input instanceof ItemEntity; }),
-		DROP(HitResult.Type.MISS, 3, (input, player) -> { return input == player || input instanceof BlockPos; }),
-		EQUIP(HitResult.Type.ENTITY, 11, (input, player) -> { return input instanceof ItemEntity; }),
-		ACTIVATE(HitResult.Type.BLOCK, 4, (input, player) -> { return input instanceof BlockPos; }),
-		MINE(HitResult.Type.BLOCK, 5, (input, player) -> { return input instanceof BlockPos; }),
-		QUARRY(HitResult.Type.BLOCK, 6, (input, player) -> { return input instanceof BlockPos; }),
-		JOIN_GROUP(HitResult.Type.ENTITY, 16, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		JOIN_MY_GROUP(HitResult.Type.MISS, 17, (input, player) -> { return player.getLevel().isClientSide() ? input == player : true; }),
-		START_GROUP(HitResult.Type.MISS, 18, (input, player) -> { return input == player || input instanceof BlockPos; }),
-		CANCEL(HitResult.Type.MISS, 15, (input, player) -> { return true; });
+		DISMOUNT(HitResult.Type.MISS, 12, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		PICK_UP(HitResult.Type.ENTITY, 10, false, (input, player) -> { return input instanceof ItemEntity; }),
+		DROP(HitResult.Type.MISS, 3, false, (input, player) -> { return input == player || input instanceof BlockPos; }),
+		EQUIP(HitResult.Type.ENTITY, 11, false, (input, player) -> { return input instanceof ItemEntity; }),
+		ACTIVATE(HitResult.Type.BLOCK, 4, false, (input, player) -> { return input instanceof BlockPos; }), // TODO Implement block activation
+		MINE(HitResult.Type.BLOCK, 5, false, (input, player) -> { return input instanceof BlockPos; }),
+		QUARRY(HitResult.Type.BLOCK, 6, false, (input, player) -> { return input instanceof BlockPos; }),
+		JOIN_GROUP(HitResult.Type.ENTITY, 16, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		JOIN_MY_GROUP(HitResult.Type.MISS, 17, false, (input, player) -> { return player.getLevel().isClientSide() ? input == player : true; }),
+		START_GROUP(HitResult.Type.MISS, 18, false, (input, player) -> { return input == player || input instanceof BlockPos; }),
+		CANCEL(HitResult.Type.MISS, 15, false, (input, player) -> { return true; });
 		
 		private final int iconIndex;
 		private final HitResult.Type input;
 		private final BiPredicate<Object, Player> predicate;
+		private final boolean isEternal;
 		
-		private Mark(HitResult.Type inputIn, int iconIndexIn, BiPredicate<Object, Player> predicateIn)
+		private Mark(HitResult.Type inputIn, int iconIndexIn, boolean eternalIn, BiPredicate<Object, Player> predicateIn)
 		{
 			this.input = inputIn;
 			this.iconIndex = iconIndexIn;
 			this.predicate = predicateIn;
+			this.isEternal = eternalIn;
 		}
 		
 		public int iconIndex() { return this.iconIndex; }
@@ -321,6 +321,9 @@ public class MobCommanding
 		public HitResult.Type inputType() { return this.input; }
 		
 		public boolean testInput(Object objIn, Player player) { return predicate.test(objIn, player); }
+		
+		/** Returns true if this type of command can be completed solely by the actions of its recipient and not by external events */
+		public boolean canBeCompleted() { return !this.isEternal; }
 		
 		@OnlyIn(Dist.CLIENT)
 		public MutableComponent translate(Object obj)

@@ -1,5 +1,6 @@
 package com.example.examplemod.utility.bus;
 
+import com.example.examplemod.entity.ai.group.IMobGroup;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.GroupSaveData;
 
@@ -7,8 +8,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -39,5 +42,15 @@ public class ServerBus
 	public static void onPlayerLogin(PlayerLoggedInEvent event)
 	{
 		GroupSaveData.get(event.getEntity().getServer()).syncToClient((ServerPlayer)event.getEntity());
+	}
+	
+	@SubscribeEvent(priority = EventPriority.LOWEST)
+	public static void onLivingDeath(LivingDeathEvent event)
+	{
+		if(event.isCanceled()) return;
+		GroupSaveData manager = GroupSaveData.get(event.getEntity().getServer());
+		IMobGroup group = manager.getGroup(event.getEntity());
+		if(group != null)
+			group.remove(event.getEntity());
 	}
 }

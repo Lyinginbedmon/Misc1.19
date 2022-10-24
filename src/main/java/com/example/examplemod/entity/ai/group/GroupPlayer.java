@@ -39,6 +39,7 @@ public class GroupPlayer extends GroupGeneric
 	public CompoundTag saveToNbt(CompoundTag compound)
 	{
 		saveMemberIds(compound);
+		saveAction(compound);
 		compound.put("Owner", NbtUtils.createUUID(ownerUUID));
 		return compound;
 	}
@@ -47,6 +48,7 @@ public class GroupPlayer extends GroupGeneric
 	{
 		this.ownerUUID = NbtUtils.loadUUID(compound.get("Owner"));
 		loadMemberIds(compound);
+		loadAction(compound);
 	}
 	
 	public boolean shouldListenTo(LivingEntity entity) { return entity.getType() == EntityType.PLAYER && isOwner((Player)entity); }
