@@ -9,7 +9,6 @@ import com.google.common.base.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -20,8 +19,7 @@ public class NodePredicates
 {
 	public static final NodePredicate HAS_LIVING_TARGET = (mob, storage) ->
 			{
-				Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
-				return storage.hasValue(MobWhiteboard.ATTACK_TARGET) && target != null && target.isAlive() && !target.isRemoved();
+				return storage.hasValue(MobWhiteboard.ATTACK_TARGET);
 			};
 	
 	public static final NodePredicate CAN_SEE_TARGET = (mob, storage) ->

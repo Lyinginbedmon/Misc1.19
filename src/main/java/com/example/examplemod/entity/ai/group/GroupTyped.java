@@ -66,7 +66,6 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 	
 	public void giveCommandToAll(CommandStack stack)
 	{
-		setAction(null);
 		if(stack.isSingle())
 		{
 			MobCommand order = stack.current();
@@ -76,6 +75,8 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 				case EQUIP:
 				case MINE:
 				case ACTIVATE:
+					setAction(null);
+					
 					// Give to closest member
 					BlockPos pos = order.type().inputType() == Type.BLOCK ? (BlockPos)order.variable(0) : ((Entity)order.variable(0)).blockPosition();
 					
@@ -112,7 +113,19 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 					
 					if(closeToEnt != null)
 						Whiteboard.tryGetWhiteboard(closeToEnt).setCommands(stack);
-					
+					return;
+				case ATTACK:
+					LivingEntity living =(LivingEntity)order.variable(0);
+					if(!this.targets.contains(living))
+					{
+						this.targets.add(living);
+						System.out.println("Added attack target "+living.getDisplayName().getString());
+					}
+					return;
+				case CEASEFIRE_MOB:
+					LivingEntity target =(LivingEntity)order.variable(0);
+					if(this.targets.contains(target))
+						this.targets.remove(target);
 					return;
 				case FOLLOW_MOB:
 					Entity followEnt = (Entity)order.variable(0);
@@ -130,7 +143,7 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 					return;
 				case QUARRY:
 					if(order.variables() > 2)
-						setAction(new GroupAction.ActionQuarry<T>((BlockPos)order.variable(0), (BlockPos)order.variable(2), (Direction)order.variable(1)));
+						setAction(new GroupAction.ActionQuarry((BlockPos)order.variable(0), (BlockPos)order.variable(2), (Direction)order.variable(1)));
 					else
 					{
 						BlockPos corePos = (BlockPos)order.variable(0);
@@ -138,7 +151,7 @@ public abstract class GroupTyped<T extends PathfinderMob & ITreeEntity> implemen
 						Vec3i min = new Vec3i(-5,0,-5);
 						Vec3i max = new Vec3i(5,3,5);
 						
-						setAction(new GroupAction.ActionQuarry<T>(corePos.offset(min), corePos.offset(max), facing));
+						setAction(new GroupAction.ActionQuarry(corePos.offset(min), corePos.offset(max), facing));
 					}
 					return;
 				default:

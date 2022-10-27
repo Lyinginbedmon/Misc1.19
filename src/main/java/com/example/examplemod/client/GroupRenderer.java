@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.example.examplemod.client.ActionRenderManager.ActionRenderer;
 import com.example.examplemod.entity.ai.group.GroupAction;
 import com.example.examplemod.entity.ai.group.GroupPlayer;
 import com.example.examplemod.entity.ai.group.IMobGroup;
@@ -18,8 +17,8 @@ import com.mojang.math.Matrix4f;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.MultiBufferSource.BufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -61,26 +60,19 @@ public class GroupRenderer
 	private static void renderGroup(IMobGroup group, PoseStack matrixStack, Camera projectedView, int colour)
 	{
 		Vec3 offset = projectedView.getPosition();
-		
+
+		List<LivingEntity> members = group.members();
 		// Central position of the group
-		Vec3 groupPos = group.position().subtract(offset);
-		
-		// Colour values
-		int r = colour >> 16;
-		int g = colour >> 8;
-		int b = colour & 255 >> 0;
-		
-		// Identify members by drawing lines from the group position to them
-		for(LivingEntity member : group.members())
+		Vec3 groupPos = IMobGroup.getWeightedPosition(members).subtract(offset);
+		if(!group.isEmpty())
 		{
-			Vec3 memberPos = member.position().subtract(offset);
-			matrixStack.pushPose();
-				VertexConsumer builder = mc.renderBuffers().bufferSource().getBuffer(RenderType.lines());
-				Matrix4f matrix = matrixStack.last().pose();
-				Matrix3f normal = matrixStack.last().normal();
-				builder.vertex(matrix, (float)groupPos.x, (float)groupPos.y, (float)groupPos.z).color(r, g, b, 1F).normal(normal, 1, 0, 0).endVertex();
-				builder.vertex(matrix, (float)memberPos.x, (float)memberPos.y, (float)memberPos.z).color(r, g, b, 1F).normal(normal, 1, 0, 0).endVertex();
-			matrixStack.popPose();
+			// Colour values
+			int r = colour >> 16;
+			int g = colour >> 8;
+			int b = colour & 255 >> 0;
+			
+			// Identify members by drawing lines from the group position to them
+			drawMembersToPosition(IMobGroup.getWeightedPosition(members), members, matrixStack, projectedView, r, g, b);
 		}
 		
 		if(group.hasAction())
@@ -101,9 +93,27 @@ public class GroupRenderer
 				buffer.endBatch();
 			matrixStack.popPose();
 			
-			ActionRenderer renderer = ActionRenderManager.getRenderer(registryName);
-			if(renderer != null)
-				renderer.render(action, matrixStack, projectedView);
+			ActionRenderManager.tryRenderAction(action, matrixStack, projectedView);
+			
+			if(action.hasChildren())
+				action.children().forEach((child) -> ActionRenderManager.tryRenderAction(child, matrixStack, projectedView));
+		}
+	}
+	
+	private static void drawMembersToPosition(Vec3 vec, List<LivingEntity> members, PoseStack matrixStack, Camera projectedView, float r, float g, float b)
+	{
+		Vec3 offset = projectedView.getPosition();
+		vec = vec.subtract(offset);
+		for(LivingEntity member : members)
+		{
+			Vec3 memberPos = member.position().subtract(offset);
+			matrixStack.pushPose();
+				VertexConsumer builder = mc.renderBuffers().bufferSource().getBuffer(RenderType.lines());
+				Matrix4f matrix = matrixStack.last().pose();
+				Matrix3f normal = matrixStack.last().normal();
+				builder.vertex(matrix, (float)vec.x, (float)vec.y, (float)vec.z).color(r, g, b, 1F).normal(normal, 1, 0, 0).endVertex();
+				builder.vertex(matrix, (float)memberPos.x, (float)memberPos.y, (float)memberPos.z).color(r, g, b, 1F).normal(normal, 1, 0, 0).endVertex();
+			matrixStack.popPose();
 		}
 	}
 }

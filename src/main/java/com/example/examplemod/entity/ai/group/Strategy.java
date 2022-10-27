@@ -15,6 +15,7 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
+@Deprecated
 public abstract class Strategy<T extends PathfinderMob & ITreeEntity>
 {
 	private boolean running = false;

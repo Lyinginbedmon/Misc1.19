@@ -1,5 +1,6 @@
 package com.example.examplemod.entity.ai.group;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -179,18 +180,61 @@ public interface IMobGroup
 	/** Returns the general position of this group, usually based on its cached members */
 	public default Vec3 position()
 	{
-		List<LivingEntity> members = members();
+		return getMeanPosition(members());
+	}
+	
+	public static Vec3 getMeanPosition(List<LivingEntity> entities)
+	{
 		double x = 0D, y = 0D, z = 0D;
-		for(LivingEntity mob : members)
+		for(LivingEntity mob : entities)
 		{
 			x += mob.xo;
 			y += mob.yo;
 			z += mob.zo;
 		}
-		x /= members.size();
-		y /= members.size();
-		z /= members.size();
+		x /= entities.size();
+		y /= entities.size();
+		z /= entities.size();
 		return new Vec3(x, y, z);
+	}
+	
+	public static Vec3 getWeightedPosition(List<LivingEntity> entities)
+	{
+		if(entities.isEmpty())
+			return Vec3.ZERO;
+		
+		int size = entities.size();
+		if(size == 1)
+			return entities.get(0).position();
+		
+		// Lowest average distance between targets
+		double minDist = Double.MAX_VALUE;
+		
+		// Map of targets to their average distance to all other targets
+		Map<Entity, Double> distances = new HashMap<>();
+		for(Entity member : entities)
+		{
+			double avgDist = 0D;
+			for(Entity targetB : entities)
+				if(targetB != member)
+					avgDist += member.distanceToSqr(targetB);
+			avgDist /= size - 1;
+			if(avgDist < minDist)
+				minDist = avgDist;
+			
+			distances.put(member, avgDist);
+		}
+		
+		// Weighted position, reflecting the area with the highest density of targets
+		double weightSum = 0D;
+		Vec3 weightedPos = Vec3.ZERO;
+		for(Entity member : entities)
+		{
+			double weight = minDist / distances.get(member);
+			weightedPos = weightedPos.add(member.position().scale(weight));
+			weightSum += weight;
+		}
+		return weightedPos.scale(1 / weightSum);
 	}
 	
 	/** Returns true if this group has any living attack target */

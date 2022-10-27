@@ -17,6 +17,7 @@ import com.example.examplemod.entity.ITreeEntity;
 import com.example.examplemod.entity.ai.CommandStack;
 import com.example.examplemod.entity.ai.MobCommand;
 import com.example.examplemod.entity.ai.Whiteboard;
+import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.MobCommanding.Mark;
 import com.google.common.base.Predicate;
@@ -41,6 +42,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -56,7 +58,8 @@ public abstract class GroupAction
 	private final int minComplement;
 	private int complement = -1;
 	
-	private List<GroupAction> children = Lists.newArrayList();
+	private Map<ResourceLocation, GroupAction> children = new HashMap<>();
+	private List<ActionOption> potentialChildren = Lists.newArrayList();
 	
 	protected GroupAction(ResourceLocation nameIn, int complementIn)
 	{
@@ -66,9 +69,15 @@ public abstract class GroupAction
 	
 	public ResourceLocation getRegistryName() { return this.registryName; }
 	
+	public GroupAction addOption(ActionOption optionIn) { this.potentialChildren.add(optionIn); return this; }
+	
+	public boolean hasChildren() { return !this.children.isEmpty(); }
+	public Collection<GroupAction> children() { return this.children.values(); }
+	public int maxChildren() { return 1; }
+	
 	/** Returns how many members this action is allowed to use (or -1 if it can use all members provided) */
 	public int getComplement() { return this.complement; }
-	public void setComplement(int par1Int) { this.complement = par1Int; }
+	public GroupAction setComplement(int par1Int) { this.complement = par1Int; return this; }
 	
 	/** Returns the minimum number of participants for this action to begin */
 	public int minimumComplement() { return this.minComplement; }
@@ -101,17 +110,52 @@ public abstract class GroupAction
 		
 		List<LivingEntity> members = Lists.newArrayList();
 		if(getComplement() < 0)
+		{
 			members.addAll(membersIn);
+			membersIn.clear();
+		}
 		else if(getComplement() > 0)
-			members.addAll(membersIn.subList(0, getComplement() - 1));
+		{
+			List<LivingEntity> sub = membersIn.subList(0, getComplement());
+			members.addAll(sub);
+			membersIn.removeAll(sub);
+		}
+		
+		if(members.isEmpty())
+			return;
 		
 		// Remove handled members from the input list to prevent two actions trying to command the same member
-		membersIn.removeAll(members);
 		updateWithComplement(members, targetsIn, world);
 	}
 	
 	private final void updateWithComplement(List<LivingEntity> members, List<LivingEntity> targetsIn, Level world)
 	{
+		if(!this.children.isEmpty())
+		{
+			List<ResourceLocation> completed = Lists.newArrayList();
+//			System.out.println("Updating child actions of "+getRegistryName());
+			for(GroupAction child : this.children.values())
+			{
+//				System.out.println(" * Updating "+child.getRegistryName());
+				if(child.isComplete())
+				{
+					completed.add(child.getRegistryName());
+//					System.out.println(" * * Child action completed");
+				}
+				else
+					child.update(members, targetsIn, world);
+			}
+			completed.forEach((name) -> this.children.remove(name));
+		}
+		
+		int size = members.size();
+		if(size > 1 && this.children.size() < maxChildren())
+		{
+			GroupAction bestOption = evaluateOptions(targetsIn, size - 1);
+			if(bestOption != null)
+				addChild(bestOption, true);
+		}
+		
 		switch(this.status)
 		{
 			case STARTING:
@@ -119,8 +163,6 @@ public abstract class GroupAction
 					this.status = Status.RUNNING;
 				break;
 			case RUNNING:
-				children.forEach((child) -> child.update(members, targetsIn, world));
-				children.removeIf((action) -> action.isComplete());
 				tick(members, targetsIn, world);
 				break;
 			case COMPLETE:
@@ -128,7 +170,12 @@ public abstract class GroupAction
 		}
 	}
 	
-	public final void addChild(GroupAction childIn) { this.children.add(childIn); }
+	public final void addChild(GroupAction childIn, boolean report)
+	{
+		this.children.put(childIn.getRegistryName(), childIn);
+		if(report)
+		System.out.println("Added child action: "+childIn.getRegistryName());
+	}
 	
 	/** Returns the utility value associated with a given plotted graph */
 	protected float getInterpolatedUtility(double distance, double minSq, double maxSq, Map<Double,Float> plot)
@@ -187,7 +234,7 @@ public abstract class GroupAction
 		compound.putInt("Status", status().ordinal());
 		compound.put("Data", saveToNbt(new CompoundTag()));
 		ListTag childActions = new ListTag();
-		for(GroupAction child : children)
+		for(GroupAction child : children.values())
 			childActions.add(child.storeInNbt(new CompoundTag()));
 		compound.put("Children", childActions);
 		return compound;
@@ -206,6 +253,31 @@ public abstract class GroupAction
 					if(entity.isAddedToWorld() && entity.getUUID().equals(uuidIn))
 						return entity;
 		return null;
+	}
+	
+	@Nullable
+	public GroupAction evaluateOptions(List<LivingEntity> targetsIn, int supply)
+	{
+		if(supply < 0)
+			supply = 0;
+		
+		ActionOption bestOption = null;
+		float utility = Float.MIN_VALUE;
+		for(ActionOption option : this.potentialChildren)
+		{
+			GroupAction action = option.supplier.get(this, supply);
+			if(option.isValid(targetsIn, this, supply) && !this.children.containsKey(action.getRegistryName()) && supply >= action.minimumComplement())
+			{
+				float util = option.utility(targetsIn, this, supply);
+				if(util > utility)
+				{
+					utility = util;
+					bestOption = option;
+				}
+			}
+		}
+		
+		return bestOption != null ? bestOption.supplier.get(this, supply) : null;
 	}
 	
 	public static enum Status implements StringRepresentable
@@ -259,7 +331,41 @@ public abstract class GroupAction
 		public LivingEntity entity() { return this.entity; }
 	}
 	
-	public static class ActionQuarry<T extends PathfinderMob & ITreeEntity> extends GroupAction
+	public static class ActionOption
+	{
+		private final ActionSupplier supplier;
+		private final OptionPredicate utility;
+		
+		public ActionOption(OptionPredicate utilityIn, ActionSupplier supplierIn)
+		{
+			this.supplier = supplierIn;
+			this.utility = utilityIn;
+		}
+		
+		public boolean isValid(List<LivingEntity> targets, GroupAction parentAction, int supply)
+		{
+			return utility(targets, parentAction, supply) >= 0F;
+		}
+		
+		public float utility(List<LivingEntity> targets, GroupAction parentAction, int supply)
+		{
+			return utility.test(targets, parentAction, supply);
+		}
+		
+		@FunctionalInterface
+		public interface OptionPredicate
+		{
+			public float test(List<LivingEntity> targets, GroupAction parentAction, int supply);
+		}
+		
+		@FunctionalInterface
+		public interface ActionSupplier
+		{
+			public GroupAction get(GroupAction parentAction, int supply);
+		}
+	}
+	
+	public static class ActionQuarry extends GroupAction
 	{
 		public static final BiPredicate<BlockPos, Level> IS_MINABLE = (pos, world) ->
 		{
@@ -282,7 +388,7 @@ public abstract class GroupAction
 		private final Predicate<BlockPos> isInArea;
 		
 		// Members currently unoccupied
-		private List<T> availableWorkers = Lists.newArrayList();
+		private List<LivingEntity> availableWorkers = Lists.newArrayList();
 		// Blocks members are already mining
 		private List<BlockPos> miningBlocks = Lists.newArrayList();
 		
@@ -299,6 +405,11 @@ public abstract class GroupAction
 				boolean zInside = input.getZ() <= maxPos.getZ() && input.getZ() >= minPos.getZ();
 				return xInside && yInside && zInside;
 			};
+			
+			addOption(new ActionOption(
+					(group,action,supply) -> { return supply > 1 ? 1F : -1F; },
+					(action,supply) -> new ActionPickUp(this.minPos, this.maxPos).setComplement(1)
+					));
 		}
 		
 		protected boolean start(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
@@ -311,11 +422,11 @@ public abstract class GroupAction
 			
 			// Let members already within the quarry area to mine the first nearby blocks
 			boolean needsReassessment = false;
-			for(T member : availableWorkers)
+			for(LivingEntity member : availableWorkers)
 			{
 				Vec3 eyePos = member.getEyePosition();
 				BlockPos headPos = new BlockPos(eyePos.x, eyePos.y, eyePos.z);
-				if(isInArea.test(headPos))
+				if(isInArea.test(headPos) && member instanceof ITreeEntity)
 				{
 					List<BlockPos> consignment = makeConsignmentFor(member, minPos, maxPos, world, miningBlocks, 2 + member.getRandom().nextInt(3));
 					if(!consignment.isEmpty())
@@ -347,12 +458,14 @@ public abstract class GroupAction
 				z /= consignment.size();
 				BlockPos avgPos = new BlockPos(x, y, z);
 				
-				T worker = null;
+				LivingEntity worker = null;
 				double minDist = Double.MAX_VALUE;
-				for(T member : availableWorkers)
+				for(LivingEntity member : availableWorkers)
 				{
+					if(!(member instanceof PathfinderMob))
+						continue;
 					double dist = avgPos.distSqr(member.blockPosition());
-					if(dist < minDist && member.getNavigation().createPath(consignment.get(0), 64) != null)
+					if(dist < minDist && ((PathfinderMob)member).getNavigation().createPath(consignment.get(0), 64) != null)
 					{
 						minDist = dist;
 						worker = member;
@@ -381,7 +494,7 @@ public abstract class GroupAction
 				return;
 			
 			boolean foundMinable = false;
-			for(T member : availableWorkers)
+			for(LivingEntity member : availableWorkers)
 			{
 				List<BlockPos> consignment = makeConsignmentFor(member, minPos, maxPos, world, miningBlocks, 2 + member.getRandom().nextInt(3));
 				if(!consignment.isEmpty())
@@ -393,25 +506,18 @@ public abstract class GroupAction
 				markComplete();
 		}
 		
-		@SuppressWarnings("unchecked")
 		private void assessLabourers(List<LivingEntity> membersIn)
 		{
 			availableWorkers.clear();
 			miningBlocks.clear();
 			membersIn.forEach((living) -> 
 			{
-				T member = null;
-				try
-				{
-					member = (T)living;
-				}
-				catch(Exception e) { }
-				if(member == null)
+				if(!(living instanceof ITreeEntity))
 					return;
 				
-				Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
+				Whiteboard<?> board = Whiteboard.tryGetWhiteboard(living);
 				if(!board.hasCommands())
-					availableWorkers.add(member);
+					availableWorkers.add(living);
 				else
 				{
 					CommandStack stack = board.getCommands();
@@ -420,15 +526,15 @@ public abstract class GroupAction
 			});
 		}
 		
-		private void assignConsignment(T recipient, List<BlockPos> blocks)
+		private void assignConsignment(LivingEntity recipient, List<BlockPos> blocks)
 		{
 			CommandStack stack = new CommandStack();
-			sortConsignment(blocks, recipient).forEach((pos) -> stack.append(new MobCommand(Mark.MINE, pos))); 
+			sortConsignment(blocks, (LivingEntity)recipient).forEach((pos) -> stack.append(new MobCommand(Mark.MINE, pos))); 
 			Whiteboard.tryGetWhiteboard(recipient).setCommands(stack);
 		}
 		
 		/** Sorts the given blocks into the most cohesive cluster possible, minimising the need to move around */
-		private List<BlockPos> sortConsignment(List<BlockPos> blocksIn, T recipient)
+		private List<BlockPos> sortConsignment(List<BlockPos> blocksIn, LivingEntity recipient)
 		{
 			List<BlockPos> blocks = Lists.newArrayList();
 			blocks.addAll(blocksIn);
@@ -529,7 +635,7 @@ public abstract class GroupAction
 		}
 		
 		/** Creates a consignment of minable blocks within the area closest to the given member */
-		private List<BlockPos> makeConsignmentFor(T entity, BlockPos minPos, BlockPos maxPos, Level world, List<BlockPos> occupied, int size)
+		private List<BlockPos> makeConsignmentFor(LivingEntity entity, BlockPos minPos, BlockPos maxPos, Level world, List<BlockPos> occupied, int size)
 		{
 			List<BlockPos> consignment = Lists.newArrayList();
 			
@@ -703,7 +809,12 @@ public abstract class GroupAction
 			// Recache tracked members post-boot
 			for(LivingEntity member : membersIn)
 				getTrackedPos(member);
+			
+			if(guardFormation.size() > membersIn.size())
+				clearFormation();
 		}
+		
+		protected void clearFormation() { guardFormation.clear(); }
 		
 		protected void addTrackedPos(LivingEntity entity, BlockPos pos)
 		{
@@ -933,6 +1044,15 @@ public abstract class GroupAction
 			this.minDist = min * min;
 			this.maxDist = max * max;
 			generateUtilityPlot();
+			
+			addOption(new ActionOption(
+					(targets,action,size) -> targets.isEmpty() ? -1F : ((size * 0.3F) / targets.size()) / 2F,
+					(action,supply) -> new ActionFlank().setComplement((int)Math.ceil(supply * 0.3D))
+					));
+			addOption(new ActionOption(
+					(targets,action,size) -> targets.isEmpty() ? -1F : 0.5F,
+					(action,supply) -> new ActionBrawl().setComplement((int)Math.ceil(supply * 0.4D))
+					));
 		}
 		
 		public CompoundTag saveToNbt(CompoundTag compound)
@@ -1308,18 +1428,51 @@ public abstract class GroupAction
 		}
 	}
 	
-	public static class ActionFlank extends GroupAction
+	public static class ActionFlank extends ActionFormation
 	{
-		/** The mean position of all targets */
-		private Vec3 targetCenter = null;
-		/** The lowest distance of any target to the target center */
-		private double minDist = Double.MAX_VALUE;
+		private Map<Double, Float> utilityPlot = new HashMap<>();
 		
-		public ActionFlank() { super(ActionType.FLANK, 2); }
+		/** The mean position of all targets */
+		private Vec3 targetCenter = Vec3.ZERO;
+		
+		public ActionFlank()
+		{
+			super(ActionType.FLANK, 2);
+			this.minDist = Double.MAX_VALUE;
+			this.maxDist = Double.MAX_VALUE;
+		}
+		
+		public CompoundTag saveToNbt(CompoundTag compound)
+		{
+			super.saveToNbt(compound);
+			
+			CompoundTag center = new CompoundTag();
+			center.putDouble("X", targetCenter.x);
+			center.putDouble("Y", targetCenter.y);
+			center.putDouble("Z", targetCenter.z);
+			compound.put("Center", center);
+			
+			return compound;
+		}
+		
+		public void loadFromNbt(CompoundTag compound)
+		{
+			super.loadFromNbt(compound);
+			
+			CompoundTag center = compound.getCompound("Center");
+			this.targetCenter = new Vec3(center.getDouble("X"), center.getDouble("Y"), center.getDouble("Z"));
+		}
+		
+		public Vec3 getTargetPoint() { return this.targetCenter; }
 		
 		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
 		{
-			// TODO Auto-generated method stub
+			super.tick(membersIn, targetsIn, world);
+			if(targetsIn.isEmpty())
+				markComplete();
+			
+			if(isComplete())
+				return;
 			
 			/**
 			 * Calculate center of target group
@@ -1329,16 +1482,106 @@ public abstract class GroupAction
 			 * Anyone not on cooldown attacks best target (see Brawl)
 			 */
 			
-			// Calculate center of targets based on mean of their position
-			targetCenter = null;
-			for(LivingEntity target : targetsIn)
-				if(targetCenter == null)
-					targetCenter = target.position();
-				else
-					targetCenter = targetCenter.add(target.position());
-			targetCenter = targetCenter.scale(1 / targetsIn.size());
+			// Calculate center of targets based on weighted mean of their position
+			updateTargetCenter(targetsIn);
 			
 			// Calculate flanking radius based on spread of targets and the highest attack range among them
+			updateUtilityPlot(targetsIn);
+			
+			if(formationPoints().size() < membersIn.size())
+			{
+				BlockPos bestPos = getNextBestPos(world.getRandom());
+				
+				// Find closest unassigned member to guard position, and assign
+				List<LivingEntity> options = Lists.newArrayList();
+				options.addAll(membersIn);
+				options.removeAll(trackedMembers());
+				
+				LivingEntity closest = null;
+				double lowest = Double.MAX_VALUE;
+				for(LivingEntity entity : options)
+				{
+					BlockPos current = entity.blockPosition();
+					current = new BlockPos(current.getX(), targetCenter.y, current.getZ());
+					double dist = current.distSqr(bestPos);
+					if(dist < lowest)
+					{
+						closest = entity;
+						lowest = dist;
+					}
+				}
+				
+				if(closest instanceof ITreeEntity)
+					addTrackedPos(closest, bestPos);
+			}
+			
+			// Anyone not on cooldown attacks best target (see Brawl), else return to formation
+			for(LivingEntity member : trackedMembers())
+			{
+				if(!(member instanceof ITreeEntity))
+					continue;
+				
+				Whiteboard<?> storage = Whiteboard.tryGetWhiteboard(member);
+				if(storage == null)
+					continue;
+				
+				updateMember(member, storage, targetsIn, world.getRandom());
+			}
+		}
+		
+		private void updateMember(LivingEntity member, Whiteboard<?> storage, List<LivingEntity> targetsIn, RandomSource random)
+		{
+			if(storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) > 0)
+			{
+				if(storage.hasCommands())
+					return;
+				
+				BlockPos dest = getTrackedPos(member);
+				dest = new BlockPos(dest.getX(), member.blockPosition().getY(), dest.getZ());
+				storage.setCommands(new CommandStack(new MobCommand(Mark.CEASEFIRE), new MobCommand(Mark.GUARD_POS, dest)));
+			}
+			else if(storage.getEntity(MobWhiteboard.AI_TARGET) == null && random.nextInt(20) == 0)
+			{
+				LivingEntity bestTarget = null;
+				
+				if(targetsIn.size() == 1)
+					bestTarget = targetsIn.get(0);
+				else
+				{
+					float utility = Float.MIN_VALUE;
+					for(LivingEntity target : targetsIn)
+					{
+						float util = getCombatUtility(target, member);
+						if(utility < util)
+						{
+							utility = util;
+							bestTarget = target;
+						}
+					}
+				}
+				
+				if(bestTarget != null)
+					storage.setCommands(CommandStack.single(Mark.ATTACK, bestTarget));
+			}
+		}
+		
+		/** Adjusts the target center position based on a weighted average of the given targets */
+		private void updateTargetCenter(List<LivingEntity> targetsIn)
+		{
+			Vec3 weightedPos = IMobGroup.getWeightedPosition(targetsIn);
+			if(weightedPos.distanceTo(targetCenter) > 5D)
+			{
+				targetCenter = weightedPos;
+				clearFormation();
+			}
+		}
+		
+		/** Updates the utility plot based on the spread of the given targets */
+		private void updateUtilityPlot(List<LivingEntity> targetsIn)
+		{
+			if(utilityPlot.isEmpty())
+				generateUtilityPlot();
+			
 			double radius = Double.MAX_VALUE;
 			double reach = Double.MIN_VALUE;
 			for(LivingEntity target : targetsIn)
@@ -1353,14 +1596,174 @@ public abstract class GroupAction
 				if(targetReach > reach)
 					reach = targetReach;
 			}
-			reach += 1D;
+			reach += 1D;	// Add one block of distance just to keep our central line somewhat out of harm's way
 			radius += reach;
 			
 			// Only ever allow flanking radius to decrease, never increase, to force targets together
+			double minimumRadius = 3D;
+			minimumRadius *= minimumRadius;
+			
+			radius = Math.max(minimumRadius, radius * radius);
 			if(radius < this.minDist)
+			{
 				this.minDist = radius;
-			
-			
+				this.maxDist = minDist + (4D * 4D);
+				generateUtilityPlot();
+				clearFormation();
+			}
 		}
+		
+		private void generateUtilityPlot()
+		{
+			utilityPlot.clear();
+			utilityPlot.put(0D, 0F);
+			utilityPlot.put(minDist / 2, 0.3F);
+			utilityPlot.put(minDist, 1F);
+			utilityPlot.put((maxDist + minDist) * 0.5D, 0.9F);
+			utilityPlot.put(maxDist, 0F);
+		}
+		
+		private BlockPos getNextBestPos(RandomSource random)
+		{
+			Collection<BlockPos> unitPositions = formationPoints();
+			BlockPos guardTarget = new BlockPos(targetCenter.x, targetCenter.y, targetCenter.z);
+			
+			// Cached utility values of encountered points, to reduce calls to the utility function
+			Map<BlockPos, Float> utilityCache = new HashMap<>();
+			List<Vec2> movements = List.of
+					(
+						new Vec2(0, 1),
+						new Vec2(0, -1),
+						new Vec2(1, 0),
+						new Vec2(-1, 0),
+						new Vec2(1, 1),
+						new Vec2(1, -1),
+						new Vec2(-1, 1),
+						new Vec2(-1, -1)
+					);
+			
+			// Centre of the 3x3 grid with the best utility found so far
+			BlockPos currentPos = guardTarget;
+			// Utility of the best 3x3 grid found so far
+			float currentUtility = calculateUtility(currentPos, unitPositions, guardTarget, minDist, maxDist, utilityPlot);
+			utilityCache.put(guardTarget, currentUtility);
+			
+			List<BlockPos> nextSearch = Lists.newArrayList();
+			for(Vec2 move : movements)
+			{
+				BlockPos offset = guardTarget.offset(move.x, 0, move.y);
+				float util = calculateUtility(offset, unitPositions, guardTarget, minDist, maxDist, utilityPlot);
+				currentUtility += util;
+				
+				utilityCache.put(offset, util);
+				nextSearch.add(offset);
+			}
+			
+			while(!nextSearch.isEmpty())
+			{
+				List<BlockPos> currentSearch = Lists.newArrayList();
+				currentSearch.addAll(nextSearch);
+				nextSearch.clear();
+				
+				for(BlockPos point : currentSearch)
+				{
+					// Average utility value of the 3x3 grid surrounding this point
+					float utility = utilityCache.containsKey(point) ? utilityCache.get(point) : calculateUtility(point, unitPositions, guardTarget, minDist, maxDist, utilityPlot);
+					utilityCache.put(point, utility);
+					for(Vec2 move : movements)
+					{
+						BlockPos offset = point.offset(move.x, 0, move.y);
+						float util = utilityCache.containsKey(offset) ? utilityCache.get(offset) : calculateUtility(offset, unitPositions, guardTarget, minDist, maxDist, utilityPlot);
+						utilityCache.put(offset, util);
+						utility += util;
+					}
+					
+					// If this 3x3 is of greater average value than our current, move here
+					if(utility > currentUtility)
+					{
+						currentPos = point;
+						currentUtility = utility;
+						
+						for(Vec2 move : movements)
+							nextSearch.add(point.offset(move.x, 0, move.y));
+					}
+				}
+			}
+			
+			return currentPos;
+		}
+		
+		private float calculateUtility(BlockPos pos, Collection<BlockPos> unitPositions, BlockPos target, double minSq, double maxSq, Map<Double,Float> utilityPlot)
+		{
+			// Closer to minimum distance to the target, the better
+			double toTarget = Math.min(maxSq, target.distSqr(pos));
+			float utility = getInterpolatedUtility(toTarget, minSq, maxSq, utilityPlot);
+			
+			// Further from any teammates, the better
+			if(!unitPositions.isEmpty())
+			{
+				double minDist = Double.MAX_VALUE;
+				for(BlockPos position : unitPositions)
+				{
+					double distance = Mth.clamp(pos.distSqr(position), 0, maxSq);
+					if(distance < minDist)
+						minDist = distance;
+				}
+				utility *= minDist;
+			}
+			
+			return utility;
+		}
+		
+		private float getCombatUtility(LivingEntity target, LivingEntity member)
+		{
+			// The closer to the member, the better
+			float distance = Mth.clamp(1F - (float)(target.distanceTo(member) / 16D), 0F, 1F);
+			// The lower the target's health already is, the better, because only the last hit point matters
+			float health = 1F - (target.getHealth() / 20F);
+			float armour = 1F - (float)(target.getAttributeValue(Attributes.ARMOR) / 20D);
+			return distance * health * armour;
+		}
+	}
+	
+	public static class ActionPickUp extends GroupAction
+	{
+		private BlockPos minPos, maxPos;
+		
+		public ActionPickUp(BlockPos minPosIn, BlockPos maxPosIn)
+		{
+			super(ActionType.PICK_UP, 1);
+			this.minPos = minPosIn;
+			this.maxPos = maxPosIn;
+		}
+		
+		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
+		{
+			List<LivingEntity> available = Lists.newArrayList();
+			available.addAll(membersIn);
+			available.removeIf((living) -> !(living instanceof ITreeEntity));
+			
+			for(ItemEntity item : world.getEntitiesOfClass(ItemEntity.class, new AABB(minPos.getX(), minPos.getY(), minPos.getZ(), maxPos.getX() + 1D, maxPos.getY() + 1D, maxPos.getZ() + 1D)))
+			{
+				LivingEntity closest = null;
+				double minDist = Double.MAX_VALUE;
+				for(LivingEntity member : available)
+				{
+					double dist = member.distanceToSqr(item);
+					if(dist < minDist)
+					{
+						minDist = dist;
+						closest = member;
+					}
+				}
+				
+				if(closest != null)
+				{
+					Whiteboard.tryGetWhiteboard(closest).setCommands(CommandStack.single(Mark.PICK_UP, item));
+					available.remove(closest);
+				}
+			}
+		}
+		
 	}
 }

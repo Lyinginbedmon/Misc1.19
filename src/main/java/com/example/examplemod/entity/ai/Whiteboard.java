@@ -273,6 +273,7 @@ public abstract class Whiteboard<T>
 		public static final String MOB_POS_BLOCK = "mob_blockpos";
 		
 		public static final String ATTACK_TARGET = "attack_target";
+		public static final String AI_TARGET = "ai_target";
 		public static final String MOB_TARGET = "mob_attack_target";
 		public static final String MOB_TARGET_VISIBLE = "mob_can_see_target";
 		/** Increments whilst mob has attack target it cannot see, resets while no attack target */
@@ -329,10 +330,34 @@ public abstract class Whiteboard<T>
 		private double getMobAttackDamage(Mob mobIn) { return mobIn.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE) ? mobIn.getAttributeValue(Attributes.ATTACK_DAMAGE) : -1D; }
 		private double getMobArmor(Mob mobIn) { return mobIn.getAttributes().hasAttribute(Attributes.ARMOR) ? mobIn.getAttributeValue(Attributes.ARMOR) : -1D; }
 		private double getMobSpeed(Mob mobIn) { return mobIn.getAttributes().hasAttribute(Attributes.MOVEMENT_SPEED) ? mobIn.getAttributeValue(Attributes.MOVEMENT_SPEED) : -1D; }
-		private boolean hasTarget(Mob mobIn) { return mobIn.getTarget() != null && mobIn.getTarget().isAlive() && mobIn.getTarget().isAddedToWorld(); }
-		private boolean canSeeTarget(Mob mobIn) { return hasTarget(mobIn) && mobIn.getSensing().hasLineOfSight(mobIn.getTarget()); }
-		private boolean cannotSeeTarget(Mob mobIn) { return hasTarget(mobIn) && !mobIn.getSensing().hasLineOfSight(mobIn.getTarget()); }
-		private Entity getCurrentTarget(Mob mobIn){ return hasParent() ? getEntity(ATTACK_TARGET) : mobIn.getTarget(); }
+		private boolean hasTarget(Mob mobIn) { return getCurrentTarget(mobIn) != null; }
+		private boolean canSeeTarget(Mob mobIn) { return hasTarget(mobIn) && mobIn.getSensing().hasLineOfSight(getCurrentTarget(mobIn)); }
+		private boolean cannotSeeTarget(Mob mobIn) { return hasTarget(mobIn) && !mobIn.getSensing().hasLineOfSight(getCurrentTarget(mobIn)); }
+		
+		private static final Predicate<Entity> IS_VALID_TARGET = (entity) -> { return entity != null && entity.isAlive() && entity.isAddedToWorld(); }; 
+		
+		@Nullable
+		public Entity getCurrentTarget(Mob mobIn)
+		{
+			/* Prioritise assigned whiteboard target over mob target */
+			Entity target = null;
+			
+			if(hasValue(AI_TARGET))
+			{
+				target = getEntity(AI_TARGET);
+				if(!IS_VALID_TARGET.apply(target))
+					target = null;
+			}
+			
+			if(target == null)
+			{
+				target = getEntity(MOB_TARGET);
+				if(!IS_VALID_TARGET.apply(target))
+					target = null;
+			}
+			
+			return target;
+		}
 		
 		private BlockPos getLeashKnotPosition(Mob mobIn)
 		{

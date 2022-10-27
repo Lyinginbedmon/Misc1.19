@@ -899,7 +899,8 @@ public class Branches
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 								{
-									storage.setValue(MobWhiteboard.ATTACK_TARGET, storage.currentCommand().variable(0));
+									Entity target = (Entity) storage.currentCommand().variable(0);
+									storage.setValue(MobWhiteboard.AI_TARGET, target);
 									return true;
 								}
 							}.setCustomName("set_attack_target"),
@@ -911,7 +912,8 @@ public class Branches
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 								{
-									storage.setValue(MobWhiteboard.ATTACK_TARGET, null);
+									storage.clearValue(MobWhiteboard.AI_TARGET);
+									mob.setTarget(null);
 									return true;
 								}
 							}.setCustomName("clear_attack_target"),
@@ -923,9 +925,12 @@ public class Branches
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
-										Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
+										Entity target = storage.getEntity(MobWhiteboard.AI_TARGET);
 										if(target == storage.currentCommand().variable(0))
-											storage.setValue(MobWhiteboard.ATTACK_TARGET, null);
+										{
+											storage.clearValue(MobWhiteboard.AI_TARGET);
+											mob.setTarget(null);
+										}
 										return true;
 									}
 								}.setCustomName("clear_attack_target"),

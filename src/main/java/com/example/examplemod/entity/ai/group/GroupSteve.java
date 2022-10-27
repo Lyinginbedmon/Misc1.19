@@ -6,8 +6,6 @@ import javax.annotation.Nullable;
 
 import com.example.examplemod.entity.TestEntity;
 import com.example.examplemod.entity.ai.CommandStack;
-import com.example.examplemod.entity.ai.Whiteboard;
-import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
 import com.example.examplemod.utility.GroupSaveData;
 import com.example.examplemod.utility.MobCommanding.Mark;
 
@@ -44,46 +42,21 @@ public class GroupSteve extends GroupTyped<TestEntity>
 		// Determine current priority target based on known targets amongst Steves
 		if(!isEmpty())
 		{
-			LivingEntity priority = null;
-			for(TestEntity steve : membersTyped())
+			if(hasAction())
+				updateGroupAction();
+			else
 			{
-				Whiteboard<?> storage = steve.getWhiteboard(steve);
-				if(storage.getEntity(MobWhiteboard.MOB_TARGET) != null)
+				List<TestEntity> steves = membersTyped();
+				// Group Steves together
+				for(int i=0; i<steves.size(); i++)
 				{
-					priority = (LivingEntity)storage.getEntity(MobWhiteboard.MOB_TARGET);
-					break;
-				}
-			}
-			setTarget(priority);
-			
-			if(!hasTarget())
-			{
-				// Clear attack targets
-				membersTyped().forEach((steve) -> 
-				{
-					if(steve.getTarget() != null)
-					{
-						Whiteboard<?> board = steve.getWhiteboard(steve);
-						board.setCommands(CommandStack.single(Mark.CEASEFIRE));
-					}
-				});
-				
-				if(hasAction())
-					updateGroupAction();
-				else
-				{
-					List<TestEntity> steves = membersTyped();
-					// Group Steves together
-					for(int i=0; i<steves.size(); i++)
-					{
-						TestEntity steve1 = steves.get(i);
-						TestEntity steve2 = steves.get((i + 1) % steves.size());
-						if(steve1.blockPosition() == null || steve2.blockPosition() == null)
-							continue;
-						
-						if(steve1.distanceTo(steve2) > 6D && !steve1.getWhiteboard(steve1).hasCommands() && !steve2.getWhiteboard(steve2).hasCommands())
-							steve1.getWhiteboard(steve1).setCommands(CommandStack.single(Mark.GOTO_MOB, steve2));
-					}
+					TestEntity steve1 = steves.get(i);
+					TestEntity steve2 = steves.get((i + 1) % steves.size());
+					if(steve1.blockPosition() == null || steve2.blockPosition() == null)
+						continue;
+					
+					if(steve1.distanceTo(steve2) > 6D && !steve1.getWhiteboard(steve1).hasCommands() && !steve2.getWhiteboard(steve2).hasCommands())
+						steve1.getWhiteboard(steve1).setCommands(CommandStack.single(Mark.GOTO_MOB, steve2));
 				}
 			}
 		}

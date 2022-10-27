@@ -26,8 +26,8 @@ public class ActionType
     public static final ResourceLocation GRID		= register("grid", () -> { return new GroupAction.ActionGrid(BlockPos.ZERO, 2D); });
     public static final ResourceLocation GUARD_POS	= register("guard_pos", () -> { return new GroupAction.ActionGuardPos(BlockPos.ZERO, 3D, 10D); });
     public static final ResourceLocation GUARD_MOB	= register("guard_mob", () -> { return new GroupAction.ActionGuardMob(null, 3D, 10D); });
-    @SuppressWarnings("rawtypes")
-	public static final ResourceLocation QUARRY		= register("quarry", () -> { return new GroupAction.ActionQuarry(BlockPos.ZERO, BlockPos.ZERO, Direction.NORTH); });
+    public static final ResourceLocation QUARRY		= register("quarry", () -> { return new GroupAction.ActionQuarry(BlockPos.ZERO, BlockPos.ZERO, Direction.NORTH); });
+    public static final ResourceLocation PICK_UP	= register("pick_up", () -> { return new GroupAction.ActionPickUp(BlockPos.ZERO, BlockPos.ZERO); });
     
     public static ResourceLocation register(String nameIn, Supplier<GroupAction> factory)
     {
@@ -53,7 +53,7 @@ public class ActionType
     			CompoundTag comp = childData.getCompound(i);
     			GroupAction child = createActionFromNbt(new ResourceLocation(comp.getString("Type")), comp);
     			if(child != null)
-    				action.addChild(child);
+    				action.addChild(child, false);
     		};
     		
     		action.loadFromNbt(compound.getCompound("Data"));
