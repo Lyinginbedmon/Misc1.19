@@ -4,6 +4,7 @@ import com.example.examplemod.entity.TestEntity;
 import com.example.examplemod.entity.ai.tree.TreeNode;
 import com.example.examplemod.entity.ai.tree.TreeNode.NodeMap;
 import com.example.examplemod.reference.Reference;
+import com.example.examplemod.utility.GroupSaveData;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Matrix4f;
 
@@ -19,12 +20,15 @@ import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class TestRenderer extends MobRenderer<TestEntity, HumanoidModel<TestEntity>>
 {
+	private static final Minecraft mc = Minecraft.getInstance();
+	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public TestRenderer(EntityRendererProvider.Context context)
 	{
@@ -38,12 +42,22 @@ public class TestRenderer extends MobRenderer<TestEntity, HumanoidModel<TestEnti
 		return new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/entity/test.png");
 	}
 	
+	private static boolean shouldRenderTree(TestEntity entity)
+	{
+		Player localPlayer = mc.player;
+		if(localPlayer.isCreative())
+			return true;
+		
+		GroupSaveData manager = GroupSaveData.get(localPlayer.getServer());
+		return manager.sharesAnyGroup(localPlayer, entity);
+	}
+	
 	@SuppressWarnings("resource")
 	public void render(TestEntity entity, float p_114830_, float p_114831_, PoseStack poseStack, MultiBufferSource renderBuffer, int packedLight)
 	{
 		super.render(entity, p_114830_, p_114831_, poseStack, renderBuffer, packedLight);
 		
-		if(Minecraft.getInstance().player.isCreative())// && entity == this.entityRenderDispatcher.crosshairPickEntity)
+		if(shouldRenderTree(entity))// && entity == this.entityRenderDispatcher.crosshairPickEntity)
 		{
 			boolean showFull = Minecraft.getInstance().player.isDiscrete();
 			NodeMap map = entity.getTree().mapTree();
@@ -93,11 +107,10 @@ public class TestRenderer extends MobRenderer<TestEntity, HumanoidModel<TestEnti
 		return width + max;
 	}
 	
-	@SuppressWarnings("resource")
 	private void renderNodeMap(NodeMap nodeMap, PoseStack poseStack, Matrix4f matrix4f, MultiBufferSource renderBuffer, int packedLight, Font font, float xOffset)
 	{
-		boolean showFull = Minecraft.getInstance().player.isDiscrete();
-        float f1 = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
+		boolean showFull = mc.player.isDiscrete();
+        float f1 = mc.options.getBackgroundOpacity(0.25F);
         int j = (int)(f1 * 255.0F) << 24;
         
 		TreeNode node = nodeMap.parent;

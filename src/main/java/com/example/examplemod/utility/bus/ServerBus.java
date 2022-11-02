@@ -1,5 +1,6 @@
 package com.example.examplemod.utility.bus;
 
+import com.example.examplemod.entity.ai.group.GroupPlayer;
 import com.example.examplemod.entity.ai.group.IMobGroup;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.GroupSaveData;
@@ -41,7 +42,11 @@ public class ServerBus
 	@SubscribeEvent
 	public static void onPlayerLogin(PlayerLoggedInEvent event)
 	{
-		GroupSaveData.get(event.getEntity().getServer()).syncToClient((ServerPlayer)event.getEntity());
+		GroupSaveData manager = GroupSaveData.get(event.getEntity().getServer());
+		manager.syncToClient((ServerPlayer)event.getEntity());
+		// Ensure all players have a personal group as standard
+		if(!manager.hasGroup(event.getEntity()))
+			manager.register(new GroupPlayer(event.getEntity()));
 	}
 	
 	@SubscribeEvent(priority = EventPriority.LOWEST)

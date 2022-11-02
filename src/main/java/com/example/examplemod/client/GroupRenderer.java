@@ -4,9 +4,9 @@ import java.util.List;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.example.examplemod.entity.ai.group.GroupAction;
 import com.example.examplemod.entity.ai.group.GroupPlayer;
 import com.example.examplemod.entity.ai.group.IMobGroup;
+import com.example.examplemod.entity.ai.group.action.GroupAction;
 import com.example.examplemod.utility.GroupSaveData;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
@@ -60,7 +60,7 @@ public class GroupRenderer
 	private static void renderGroup(IMobGroup group, PoseStack matrixStack, Camera projectedView, int colour)
 	{
 		Vec3 offset = projectedView.getPosition();
-
+		
 		List<LivingEntity> members = group.members();
 		// Central position of the group
 		Vec3 groupPos = IMobGroup.getWeightedPosition(members).subtract(offset);

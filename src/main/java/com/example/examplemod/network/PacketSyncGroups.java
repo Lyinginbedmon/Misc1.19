@@ -37,10 +37,6 @@ public class PacketSyncGroups
 		context.setPacketHandled(true);
 		
 		if(context.getDirection().getReceptionSide().isClient())
-		{
-			GroupSaveData.clientStorageCopy = GroupSaveData.read(msg.data);
-//			ExampleMod.LOG.info("Received and processed data on "+GroupSaveData.clientStorageCopy.size()+" groups");
-//			GroupSaveData.clientStorageCopy.getAllGroups().forEach((group) -> ExampleMod.LOG.info(" * "+group.getKey()+" ("+group.size()+")"));
-		}
+			GroupSaveData.clientStorageCopy = GroupSaveData.read(msg.data, true);
 	}
 }

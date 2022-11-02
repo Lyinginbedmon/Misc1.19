@@ -73,12 +73,13 @@ public class PacketMobCommand
 		if(context.getDirection().getReceptionSide().isServer())
 		{
 			Player player = context.getSender();
+			GroupSaveData manager = GroupSaveData.get(player.getServer());
 			Level world = player.getLevel();
 			if(player != null)
 			{
 				CommandStack commandStack = CommandStack.single(MobCommand.loadFromNBT(msg.commandData, 16D, world));
 				if(!msg.isTargeted())
-					tryGiveToGroup(GroupSaveData.get(player.getServer()).getGroup(player), commandStack, player);
+					tryGiveToGroup(manager.getGroup(player), commandStack, player);
 				else
 				{
 					// Find specific recipient
@@ -87,7 +88,7 @@ public class PacketMobCommand
 					{
 						LivingEntity target = (LivingEntity)targetByID;
 						if(msg.isGroup)
-							tryGiveToGroup(GroupSaveData.get(player.getServer()).getGroup(target), commandStack, player);
+							tryGiveToGroup(manager.getGroup(target), commandStack, player);
 						else if(target instanceof ITreeEntity)
 						{
 							Whiteboard<?> board = Whiteboard.tryGetWhiteboard(target);

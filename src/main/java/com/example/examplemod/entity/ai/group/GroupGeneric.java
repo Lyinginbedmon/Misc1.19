@@ -12,6 +12,7 @@ import org.apache.commons.compress.utils.Lists;
 import com.example.examplemod.entity.ITreeEntity;
 import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.GroupWhiteboard;
+import com.example.examplemod.entity.ai.group.action.GroupAction;
 import com.example.examplemod.utility.GroupSaveData;
 
 import net.minecraft.resources.ResourceLocation;
@@ -63,8 +64,14 @@ public class GroupGeneric implements IMobGroup
 	}
 	
 	public List<LivingEntity> targets() { return targets; }
+	public void addTarget(LivingEntity entity) { targets.add(entity); }
+	public void removeTarget(LivingEntity entity) { targets.remove(entity); }
 	
-	public void tick(MinecraftServer server) { }
+	public void tick(MinecraftServer server)
+	{
+		if(!isEmpty() && hasAction())
+			updateGroupAction();
+	}
 	
 	public boolean hasTarget()
 	{
@@ -88,7 +95,7 @@ public class GroupGeneric implements IMobGroup
 	}
 	
 	public GroupAction getAction() { return this.currentAction; }
-	public void setAction(GroupAction action) { this.currentAction = action; }
+	public void setGroupAction(GroupAction action) { this.currentAction = action; }
 	
 	public static class Factory implements IGroupFactory
 	{

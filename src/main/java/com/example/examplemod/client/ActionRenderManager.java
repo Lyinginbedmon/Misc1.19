@@ -5,12 +5,13 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import com.example.examplemod.entity.ai.group.ActionType;
-import com.example.examplemod.entity.ai.group.GroupAction;
-import com.example.examplemod.entity.ai.group.GroupAction.ActionFlank;
-import com.example.examplemod.entity.ai.group.GroupAction.ActionGuardMob;
-import com.example.examplemod.entity.ai.group.GroupAction.ActionGuardPos;
-import com.example.examplemod.entity.ai.group.GroupAction.ActionQuarry;
+import com.example.examplemod.entity.ai.group.action.ActionType;
+import com.example.examplemod.entity.ai.group.action.GroupAction;
+import com.example.examplemod.entity.ai.group.action.GroupAction.ActionFlank;
+import com.example.examplemod.entity.ai.group.action.GroupAction.ActionFollow;
+import com.example.examplemod.entity.ai.group.action.GroupAction.ActionGuardMob;
+import com.example.examplemod.entity.ai.group.action.GroupAction.ActionGuardPos;
+import com.example.examplemod.entity.ai.group.action.GroupAction.ActionQuarry;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Matrix3f;
@@ -67,7 +68,15 @@ public class ActionRenderManager
 			public void render(ActionQuarry action, PoseStack matrixStack, Camera projectedView)
 			{
 				Vec3 camera = projectedView.getPosition();
-				
+				// TODO Implement rendering of quarry points
+			}
+		});
+		register(ActionType.FOLLOW, new ActionRenderer<ActionFollow>()
+		{
+			public void render(ActionFollow action, PoseStack matrixStack, Camera projectedView)
+			{
+				Vec3 camera = projectedView.getPosition();
+				drawSquareAt(action.followPos().subtract(camera), 1D, matrixStack, 0F, 1F, 0F);
 			}
 		});
 	}

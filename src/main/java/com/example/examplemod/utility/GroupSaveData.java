@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.compress.utils.Lists;
 
+import com.example.examplemod.ExampleMod;
 import com.example.examplemod.entity.ai.group.GroupPlayer;
 import com.example.examplemod.entity.ai.group.GroupType;
 import com.example.examplemod.entity.ai.group.IMobGroup;
@@ -38,25 +39,43 @@ public class GroupSaveData extends SavedData
     private List<IMobGroup> allGroups = Lists.newArrayList();
     private boolean needsSync = false;
     
-    public static GroupSaveData read(CompoundTag compound) 
+    private static GroupSaveData read(CompoundTag compound) { return read(compound, false); }
+    
+    public static GroupSaveData read(CompoundTag compound, boolean isClientSide)
     {
+    	if(!isClientSide)
+    		ExampleMod.LOG.info("== Loading groups from save data ==");
+    	
     	GroupSaveData groupManager = new GroupSaveData();
         ListTag tagList = compound.getList(TAG_GROUPS, Tag.TAG_COMPOUND);
         for(Tag tag : tagList)
         {
             CompoundTag data = (CompoundTag)tag;
             if(!data.contains("Type", Tag.TAG_STRING))
+            {
+            	if(!isClientSide)
+            		ExampleMod.LOG.warn(" * Missing group type ID");
             	continue;
+            }
             
             ResourceLocation type = new ResourceLocation(data.getString("Type"));
             IMobGroup group = GroupType.createGroupFromName(type);
             if(group == null)
+            {
+            	if(!isClientSide)
+            		ExampleMod.LOG.warn(" * Couldn't reinstantiate "+type.toString()+" group from data");
             	continue;
+            }
             
             CompoundTag values = data.getCompound("Values");
             group.loadFromNbt(values);
             groupManager.register(group);
+        	if(!isClientSide)
+        		ExampleMod.LOG.info(" * Loaded "+group.getDisplayName().getString()+" with "+group.size()+" members");
         }
+        
+    	if(!isClientSide)
+        	ExampleMod.LOG.info("Loaded "+groupManager.getAllGroups().size()+" groups");
         return groupManager;
     }
     
@@ -168,24 +187,18 @@ public class GroupSaveData extends SavedData
 		if(memberIn instanceof Player)
 		{
 			Player player = (Player)memberIn;
-			List<IMobGroup> groups = GroupPlayer.getGroupsOfPlayer(player);
+			List<IMobGroup> groups = getGroups((group) -> group instanceof GroupPlayer && ((GroupPlayer)group).isOwner(player));
 			if(groups.isEmpty())
-				return register(new GroupPlayer((Player)memberIn));
+				return register(new GroupPlayer(player));
 			
-			// Return group with closest member
+			if(groups.size() == 1)
+				return groups.get(0);
+			
+			// Return closest group
 			groups.sort((o1,o2) -> 
 			{
-				double closest1 = Double.MAX_VALUE;
-				double closest2 = Double.MAX_VALUE;
-				
-				for(LivingEntity member : o1.members())
-					if(member.distanceTo(player) < closest1)
-						closest1 = member.distanceTo(player);
-				
-				for(LivingEntity member : o2.members())
-					if(member.distanceTo(player) < closest2)
-						closest2 = member.distanceTo(player);
-				
+				double closest1 = player.distanceToSqr(o1.position());
+				double closest2 = player.distanceToSqr(o2.position());
 				return closest1 < closest2 ? 1 : closest1 > closest2 ? -1 : 0;
 			});
 			return groups.get(0);
@@ -248,5 +261,11 @@ public class GroupSaveData extends SavedData
 				groups.add(group);
 		});
 		return groups;
+	}
+	
+	public boolean sharesAnyGroup(LivingEntity entityA, LivingEntity entityB)
+	{
+		List<IMobGroup> groups = getGroups((group) -> group.isMember(entityA) && group.isMember(entityB));
+		return !groups.isEmpty();
 	}
 }

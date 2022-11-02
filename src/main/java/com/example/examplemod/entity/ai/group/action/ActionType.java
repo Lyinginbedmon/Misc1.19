@@ -1,10 +1,10 @@
-package com.example.examplemod.entity.ai.group;
+package com.example.examplemod.entity.ai.group.action;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
 
-import com.example.examplemod.entity.ai.group.GroupAction.Status;
+import com.example.examplemod.entity.ai.group.action.GroupAction.Status;
 import com.example.examplemod.reference.Reference;
 import com.google.common.base.Supplier;
 

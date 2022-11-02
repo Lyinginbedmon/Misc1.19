@@ -1,13 +1,9 @@
 package com.example.examplemod.entity.ai.group;
 
-import java.util.List;
-
 import javax.annotation.Nullable;
 
 import com.example.examplemod.entity.TestEntity;
-import com.example.examplemod.entity.ai.CommandStack;
 import com.example.examplemod.utility.GroupSaveData;
-import com.example.examplemod.utility.MobCommanding.Mark;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -46,18 +42,18 @@ public class GroupSteve extends GroupTyped<TestEntity>
 				updateGroupAction();
 			else
 			{
-				List<TestEntity> steves = membersTyped();
-				// Group Steves together
-				for(int i=0; i<steves.size(); i++)
-				{
-					TestEntity steve1 = steves.get(i);
-					TestEntity steve2 = steves.get((i + 1) % steves.size());
-					if(steve1.blockPosition() == null || steve2.blockPosition() == null)
-						continue;
-					
-					if(steve1.distanceTo(steve2) > 6D && !steve1.getWhiteboard(steve1).hasCommands() && !steve2.getWhiteboard(steve2).hasCommands())
-						steve1.getWhiteboard(steve1).setCommands(CommandStack.single(Mark.GOTO_MOB, steve2));
-				}
+//				List<TestEntity> steves = membersTyped();
+//				// Group Steves together
+//				for(int i=0; i<steves.size(); i++)
+//				{
+//					TestEntity steve1 = steves.get(i);
+//					TestEntity steve2 = steves.get((i + 1) % steves.size());
+//					if(steve1.blockPosition() == null || steve2.blockPosition() == null)
+//						continue;
+//					
+//					if(steve1.distanceTo(steve2) > 6D && !steve1.getWhiteboard(steve1).hasCommands() && !steve2.getWhiteboard(steve2).hasCommands())
+//						steve1.getWhiteboard(steve1).setCommands(CommandStack.single(Mark.GOTO_MOB, steve2));
+//				}
 			}
 		}
 	}

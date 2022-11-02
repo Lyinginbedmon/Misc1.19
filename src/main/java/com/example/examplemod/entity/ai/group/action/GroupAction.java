@@ -1,23 +1,22 @@
-package com.example.examplemod.entity.ai.group;
+package com.example.examplemod.entity.ai.group.action;
 
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import java.util.function.BiPredicate;
 
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.tuple.Pair;
-
+import com.example.examplemod.ExampleMod;
 import com.example.examplemod.entity.ITreeEntity;
 import com.example.examplemod.entity.ai.CommandStack;
 import com.example.examplemod.entity.ai.MobCommand;
 import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
+import com.example.examplemod.entity.ai.group.IMobGroup;
+import com.example.examplemod.entity.ai.group.action.ActionUtils.MemberData;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.MobCommanding.Mark;
 import com.google.common.base.Predicate;
@@ -30,13 +29,11 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -73,7 +70,7 @@ public abstract class GroupAction
 	
 	public boolean hasChildren() { return !this.children.isEmpty(); }
 	public Collection<GroupAction> children() { return this.children.values(); }
-	public int maxChildren() { return 1; }
+	public int maxChildren() { return 1; }	// FIXME Make configurable
 	
 	/** Returns how many members this action is allowed to use (or -1 if it can use all members provided) */
 	public int getComplement() { return this.complement; }
@@ -92,6 +89,12 @@ public abstract class GroupAction
 	public final void setStatus(Status statusIn) { this.status = statusIn; }
 	public final void markComplete() { setStatus(Status.COMPLETE); }
 	public final boolean isComplete() { return this.status == Status.COMPLETE; }
+	
+	/** Clears all command stacks in all given members.<br>Used when changing from some long-form group actions. */
+	public static final void clearOrders(List<LivingEntity> membersIn)
+	{
+		membersIn.forEach((entity) -> { if(entity instanceof ITreeEntity) Whiteboard.tryGetWhiteboard(entity).setCommands(null); });
+	}
 	
 	/**
 	 * Initialises or updates this group action
@@ -133,15 +136,10 @@ public abstract class GroupAction
 		if(!this.children.isEmpty())
 		{
 			List<ResourceLocation> completed = Lists.newArrayList();
-//			System.out.println("Updating child actions of "+getRegistryName());
 			for(GroupAction child : this.children.values())
 			{
-//				System.out.println(" * Updating "+child.getRegistryName());
 				if(child.isComplete())
-				{
 					completed.add(child.getRegistryName());
-//					System.out.println(" * * Child action completed");
-				}
 				else
 					child.update(members, targetsIn, world);
 			}
@@ -174,56 +172,7 @@ public abstract class GroupAction
 	{
 		this.children.put(childIn.getRegistryName(), childIn);
 		if(report)
-		System.out.println("Added child action: "+childIn.getRegistryName());
-	}
-	
-	/** Returns the utility value associated with a given plotted graph */
-	protected float getInterpolatedUtility(double distance, double minSq, double maxSq, Map<Double,Float> plot)
-	{
-		Pair<Double,Double> bounds = getPlotBounds(distance, plot.keySet());
-		double keyUnder = bounds.getLeft();
-		double keyOver = bounds.getRight();
-		if(keyUnder == keyOver)
-			return plot.get(keyUnder);
-		
-		double keySep = keyOver - keyUnder;
-		double prog = (distance - keyUnder) / keySep;
-		
-		float lastVal = plot.get(keyUnder);
-		float nextVal = plot.get(keyOver);
-		float valSep = nextVal - lastVal;
-		
-		return Mth.clamp(lastVal + (float)(valSep * prog), 0F, 1F);
-	}
-	
-	protected Pair<Double,Double> getPlotBounds(double distance, Set<Double> values) throws NullPointerException
-	{
-		if(values.isEmpty())
-			throw new NullPointerException();
-		
-		double keyUnder = 0D, keyOver = Double.MIN_VALUE;
-		for(double value : values)
-			if(value > keyOver)
-				keyOver = value;
-		
-		for(double value : values)
-		{
-			if(value > keyUnder && value <= distance)
-				keyUnder = value;
-			
-			if(value < keyOver && value >= distance)
-				keyOver = value;
-		}
-		
-		return Pair.of(keyUnder, keyOver);
-	}
-	
-	protected static double getAttackReachSqr(Entity ent, Entity member)
-	{
-		if(ent.getType() == EntityType.PLAYER)
-			return ((Player)ent).getAttackRange() + member.getBbWidth();
-		else
-			return (double)(ent.getBbWidth() * 2F * ent.getBbWidth() + member.getBbWidth());
+			ExampleMod.LOG.info("Added child action "+childIn.getRegistryName()+" to "+getRegistryName());
 	}
 	
 	/** Stores the action in NBT data for transmission and/or storage */
@@ -245,17 +194,6 @@ public abstract class GroupAction
 	public void loadFromNbt(CompoundTag compound) { }
 	
 	@Nullable
-	protected static LivingEntity tryFindEntityNearby(@Nullable UUID uuidIn, List<LivingEntity> membersIn)
-	{
-		if(uuidIn != null && !membersIn.isEmpty())
-			for(LivingEntity member : membersIn)
-				for(LivingEntity entity : member.getLevel().getEntitiesOfClass(LivingEntity.class, member.getBoundingBox().inflate(16D)))
-					if(entity.isAddedToWorld() && entity.getUUID().equals(uuidIn))
-						return entity;
-		return null;
-	}
-	
-	@Nullable
 	public GroupAction evaluateOptions(List<LivingEntity> targetsIn, int supply)
 	{
 		if(supply < 0)
@@ -265,7 +203,7 @@ public abstract class GroupAction
 		float utility = Float.MIN_VALUE;
 		for(ActionOption option : this.potentialChildren)
 		{
-			GroupAction action = option.supplier.get(this, supply);
+			GroupAction action = option.get(this, supply);
 			if(option.isValid(targetsIn, this, supply) && !this.children.containsKey(action.getRegistryName()) && supply >= action.minimumComplement())
 			{
 				float util = option.utility(targetsIn, this, supply);
@@ -277,7 +215,7 @@ public abstract class GroupAction
 			}
 		}
 		
-		return bestOption != null ? bestOption.supplier.get(this, supply) : null;
+		return bestOption != null ? bestOption.get(this, supply) : null;
 	}
 	
 	public static enum Status implements StringRepresentable
@@ -294,74 +232,6 @@ public abstract class GroupAction
 				if(status.getSerializedName().equalsIgnoreCase(nameIn))
 					return status;
 			return STARTING;
-		}
-	}
-	
-	protected static class MemberData
-	{
-		private LivingEntity entity;
-		private UUID entityID;
-		
-		public MemberData(@Nullable LivingEntity memberIn)
-		{
-			entity = memberIn;
-			if(memberIn != null)
-				entityID = memberIn.getUUID();
-		}
-		
-		public MemberData(UUID idIn)
-		{
-			entityID = idIn;
-		}
-		
-		public boolean matches(@Nullable LivingEntity entityIn)
-		{
-			if(entityIn != null && (entity() == entityIn || entityIn.getUUID().equals(uuid())))
-			{
-				entity = entityIn;
-				return true;
-			}
-			return false;
-		}
-		
-		/** Returns true if the specified entity has been matched since instantiation */
-		public boolean cached() { return this.entity != null; }
-		
-		public UUID uuid() { return this.entityID; }
-		public LivingEntity entity() { return this.entity; }
-	}
-	
-	public static class ActionOption
-	{
-		private final ActionSupplier supplier;
-		private final OptionPredicate utility;
-		
-		public ActionOption(OptionPredicate utilityIn, ActionSupplier supplierIn)
-		{
-			this.supplier = supplierIn;
-			this.utility = utilityIn;
-		}
-		
-		public boolean isValid(List<LivingEntity> targets, GroupAction parentAction, int supply)
-		{
-			return utility(targets, parentAction, supply) >= 0F;
-		}
-		
-		public float utility(List<LivingEntity> targets, GroupAction parentAction, int supply)
-		{
-			return utility.test(targets, parentAction, supply);
-		}
-		
-		@FunctionalInterface
-		public interface OptionPredicate
-		{
-			public float test(List<LivingEntity> targets, GroupAction parentAction, int supply);
-		}
-		
-		@FunctionalInterface
-		public interface ActionSupplier
-		{
-			public GroupAction get(GroupAction parentAction, int supply);
 		}
 	}
 	
@@ -407,7 +277,7 @@ public abstract class GroupAction
 			};
 			
 			addOption(new ActionOption(
-					(group,action,supply) -> { return supply > 1 ? 1F : -1F; },
+					(group,action,supply) -> { return group.size() > 4 && supply > 1 ? 1F : -1F; },
 					(action,supply) -> new ActionPickUp(this.minPos, this.maxPos).setComplement(1)
 					));
 		}
@@ -697,19 +567,21 @@ public abstract class GroupAction
 	
 	public static class ActionFollow extends GroupAction
 	{
-		private LivingEntity followTarget;
-		private UUID followUUID = null;
+		private MemberData follow = null;
+		private Vec3 followPos = Vec3.ZERO;
 		
 		private double minDist;
 		private double maxDist;
 		
+		private List<LivingEntity> order = Lists.newArrayList();
+		
 		public ActionFollow(@Nullable LivingEntity target, double min, double max)
 		{
 			super(ActionType.FOLLOW, 1);
-			this.followTarget = target;
-			if(target != null)
-				this.followUUID = target.getUUID();
 			
+			this.follow = new MemberData(target);
+			if(target != null)
+				this.followPos = target.position();
 			this.minDist = min;
 			this.maxDist = max;
 		}
@@ -721,7 +593,13 @@ public abstract class GroupAction
 		
 		public CompoundTag saveToNbt(CompoundTag compound)
 		{
-			compound.putUUID("UUID", followUUID);
+			compound.put("Target", this.follow.saveToNbt(new CompoundTag()));
+			
+			CompoundTag posData = new CompoundTag();
+			posData.putDouble("X", followPos.x);
+			posData.putDouble("Y", followPos.y);
+			posData.putDouble("Z", followPos.z);
+			compound.put("Pos", posData);
 			compound.putDouble("Min", minDist);
 			compound.putDouble("Max", maxDist);
 			return compound;
@@ -729,128 +607,56 @@ public abstract class GroupAction
 		
 		public void loadFromNbt(CompoundTag compound)
 		{
-			followTarget = null;
-			followUUID = compound.getUUID("UUID");
+			follow = MemberData.fromNbt(compound.getCompound("Target"));
+			CompoundTag posData = compound.getCompound("Pos");
+			followPos = new Vec3(posData.getDouble("X"), posData.getDouble("Y"), posData.getDouble("Z"));
 			minDist = compound.getDouble("Min");
 			maxDist = compound.getDouble("Max");
 		}
+		
+		public Vec3 followPos() { return this.followPos; }
 		
 		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
 		{
-			if(this.followTarget != null)
-				for(LivingEntity member : membersIn)
+			if(this.follow != null && !this.follow.cached())
+				ActionUtils.tryFindEntityNearby(this.follow, membersIn);
+			
+			if(this.order.isEmpty())
+				populateOrder(membersIn);
+			
+			if(this.follow.cached())
+				this.followPos = this.follow.get().position();
+			
+			for(LivingEntity member : membersIn)
+			{
+				int index = order.indexOf(member);
+				LivingEntity target = index > 0 ? order.get(index - 1) : follow.get();
+				if(target == null)
+					continue;
+				
+				double dist = member.distanceToSqr(target);
+				if(member instanceof PathfinderMob && member instanceof ITreeEntity)
 				{
-					double dist = member.distanceToSqr(followTarget);
-					if(member instanceof PathfinderMob && member instanceof ITreeEntity)
-					{
-						Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
-						if(board != null)
-							if(!board.hasCommands() && dist > (maxDist * maxDist))
-								board.setCommands(CommandStack.single(Mark.GOTO_MOB, this.followTarget));
-							else if(dist < (minDist * minDist) && ((PathfinderMob)member).getNavigation().isInProgress())
-								board.setCommands(CommandStack.single(Mark.STOP_MOVING));
-					}
+					Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
+					if(board != null)
+						if(!board.hasCommands() && dist > (maxDist * maxDist))
+							board.setCommands(CommandStack.single(Mark.GOTO_MOB, target));
+						else if(dist < (minDist * minDist) && ((PathfinderMob)member).getNavigation().isInProgress())
+							board.setCommands(CommandStack.single(Mark.STOP_MOVING));
 				}
-			else
-				this.followTarget = tryFindEntityNearby(this.followUUID, membersIn);
-		}
-	}
-	
-	public static abstract class ActionFormation extends GroupAction
-	{
-		protected double minDist;
-		protected double maxDist;
-		
-		// List of block positions either occupied or attempting to be occupied by members of this group
-		private Map<MemberData, BlockPos> guardFormation = new HashMap<>();
-		
-		protected ActionFormation(ResourceLocation nameIn, int complementIn)
-		{
-			super(nameIn, complementIn);
-		}
-		
-		public CompoundTag saveToNbt(CompoundTag compound)
-		{
-			compound.putDouble("Min", minDist);
-			compound.putDouble("Max", maxDist);
-			
-			ListTag formationData = new ListTag();
-			guardFormation.forEach((data,pos) -> 
-			{
-				CompoundTag tag = new CompoundTag();
-				tag.putUUID("UUID", data.uuid());
-				tag.put("Pos", NbtUtils.writeBlockPos(pos));
-				formationData.add(tag);
-			});
-			compound.put("Formation", formationData);
-			return compound;
-		}
-		
-		public void loadFromNbt(CompoundTag compound)
-		{
-			minDist = compound.getDouble("Min");
-			maxDist = compound.getDouble("Max");
-			
-			guardFormation.clear();
-			ListTag formationData = compound.getList("Formation", Tag.TAG_COMPOUND);
-			for(int i=0; i<formationData.size(); i++)
-			{
-				CompoundTag tag = formationData.getCompound(i);
-				BlockPos pos = NbtUtils.readBlockPos(tag.getCompound("Pos"));
-				MemberData data = new MemberData(tag.getUUID("UUID"));
-				guardFormation.put(data, pos);
 			}
 		}
 		
-		public Collection<BlockPos> formationPoints() { return guardFormation.values(); }
-		
-		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
+		private void populateOrder(List<LivingEntity> members)
 		{
-			// Recache tracked members post-boot
-			for(LivingEntity member : membersIn)
-				getTrackedPos(member);
-			
-			if(guardFormation.size() > membersIn.size())
-				clearFormation();
-		}
-		
-		protected void clearFormation() { guardFormation.clear(); }
-		
-		protected void addTrackedPos(LivingEntity entity, BlockPos pos)
-		{
-			guardFormation.put(new MemberData(entity), pos);
-		}
-		
-		protected void removeTrackedEntity(@Nullable LivingEntity entity)
-		{
-			if(entity == null)
-				return;
-			
-			MemberData entry = null;
-			for(MemberData key : guardFormation.keySet())
-				if(key.matches(entity))
-				{
-					entry = key;
-					break;
-				}
-			if(entry != null)
-				guardFormation.remove(entry);
-		}
-		
-		protected BlockPos getTrackedPos(@Nullable LivingEntity entity)
-		{
-			if(entity != null)
-				for(MemberData data : guardFormation.keySet())
-					if(data.matches(entity))
-						return guardFormation.get(data);
-			return BlockPos.ZERO;
-		}
-		
-		protected List<LivingEntity> trackedMembers()
-		{
-			List<LivingEntity> tracked = Lists.newArrayList();
-			guardFormation.keySet().forEach((data) -> { if(data.cached()) tracked.add(data.entity()); });
-			return tracked;
+			order.clear();
+			order.addAll(members);
+			order.sort((mobA, mobB) ->
+			{
+				float durabilityA = ActionUtils.assessDurability(mobA);
+				float durabilityB = ActionUtils.assessDurability(mobB);
+				return durabilityA < durabilityB ? 1 : durabilityA > durabilityB ? -1 : 0;
+			});
 		}
 	}
 	
@@ -859,8 +665,7 @@ public abstract class GroupAction
 		// Manual curve plot
 		private final Map<Double,Float> utilityPlot = new HashMap<>();
 		
-		private LivingEntity guardTarget;
-		private UUID guardUUID;
+		private MemberData target = null;
 		
 		private BlockPos lastPos = BlockPos.ZERO;
 		private int rethinkTicks = 0;
@@ -868,10 +673,9 @@ public abstract class GroupAction
 		public ActionGuardMob(@Nullable LivingEntity target, double min, double max)
 		{
 			super(ActionType.GUARD_MOB, 1);
-			this.guardTarget = target;
 			if(target != null)
 			{
-				this.guardUUID = target.getUUID();
+				this.target = new MemberData(target);
 				this.lastPos = target.blockPosition();
 			}
 			
@@ -888,7 +692,7 @@ public abstract class GroupAction
 		public CompoundTag saveToNbt(CompoundTag compound)
 		{
 			super.saveToNbt(compound);
-			compound.putUUID("UUID", guardUUID);
+			compound.put("Target", this.target.saveToNbt(new CompoundTag()));
 			compound.put("Pos", NbtUtils.writeBlockPos(lastPos));
 			return compound;
 		}
@@ -896,8 +700,7 @@ public abstract class GroupAction
 		public void loadFromNbt(CompoundTag compound)
 		{
 			super.loadFromNbt(compound);
-			guardTarget = null;
-			guardUUID = compound.getUUID("UUID");
+			target = MemberData.fromNbt(compound.getCompound("Target"));
 			lastPos = NbtUtils.readBlockPos(compound.getCompound("Pos"));
 			generateUtilityPlot();
 		}
@@ -916,19 +719,23 @@ public abstract class GroupAction
 		{
 			super.tick(membersIn, targetsIn, world);
 			
-			if(guardTarget == null)
-			{
-				guardTarget = tryFindEntityNearby(this.guardUUID, membersIn);
-				return;
-			}
-			else if(!guardTarget.isAlive())
+			if(target == null || (target.cached() && !target.get().isAlive()))
 			{
 				markComplete();
 				return;
 			}
+			else if(!target.cached())
+			{
+				ActionUtils.tryFindEntityNearby(this.target, membersIn);
+				return;
+			}
 			
+			LivingEntity guardTarget = target.get();
 			if(guardTarget.blockPosition().distSqr(lastPos) > minDist)
+			{
 				lastPos = guardTarget.blockPosition();
+				System.out.println("Updated last position");
+			}
 			
 			// Once every 5 seconds, clean the formation to account for unit losses or reassignments
 			if(++rethinkTicks%(Reference.Values.TICKS_PER_SECOND * 5) == 0)
@@ -1011,7 +818,7 @@ public abstract class GroupAction
 		{
 			// Closer to minimum distance to the target, the better
 			double length = new Vec3(pos.getX() + 0.5D, 0, pos.getZ() + 0.5D).length();
-			float proximity = getInterpolatedUtility(Math.min(maxSq, length), minSq, maxSq, utilityPlot);
+			float proximity = ActionUtils.getInterpolatedUtility(Math.min(maxSq, length), utilityPlot);
 			
 			// Further from any teammates, the better
 			double minDist = Double.MAX_VALUE;
@@ -1197,7 +1004,7 @@ public abstract class GroupAction
 		{
 			// Closer to minimum distance to the target, the better
 			double toTarget = Math.min(maxSq, target.distSqr(pos));
-			float utility = getInterpolatedUtility(toTarget, minSq, maxSq, utilityPlot);
+			float utility = ActionUtils.getInterpolatedUtility(toTarget, utilityPlot);
 			
 			// Further from any teammates, the better
 			if(!unitPositions.isEmpty())
@@ -1421,10 +1228,7 @@ public abstract class GroupAction
 		{
 			// The closer to the member, the better
 			float distance = Mth.clamp(1F - (float)(target.distanceTo(member) / 16D), 0F, 1F);
-			// The lower the target's health already is, the better, because only the last hit point matters
-			float health = 1F - (target.getHealth() / 20F);
-			float armour = 1F - (float)(target.getAttributeValue(Attributes.ARMOR) / 20D);
-			return distance * health * armour;
+			return distance * (1F - ActionUtils.assessDurability(target));
 		}
 	}
 	
@@ -1697,7 +1501,7 @@ public abstract class GroupAction
 		{
 			// Closer to minimum distance to the target, the better
 			double toTarget = Math.min(maxSq, target.distSqr(pos));
-			float utility = getInterpolatedUtility(toTarget, minSq, maxSq, utilityPlot);
+			float utility = ActionUtils.getInterpolatedUtility(toTarget, utilityPlot);
 			
 			// Further from any teammates, the better
 			if(!unitPositions.isEmpty())
@@ -1764,6 +1568,5 @@ public abstract class GroupAction
 				}
 			}
 		}
-		
 	}
 }

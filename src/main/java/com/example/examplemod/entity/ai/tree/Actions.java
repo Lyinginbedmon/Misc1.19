@@ -525,13 +525,12 @@ public class Actions
 		public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 		{
 			ItemEntity target = (ItemEntity)storage.getEntity(address);
-			if(target == null)
+			if(target == null || !target.isAlive() || !target.getBoundingBox().inflate(1).intersects(mobIn.getBoundingBox()))
 				return false;
 			
 			ItemStack heldItem = MobWhiteboard.getItemInSlot(storage, EquipmentSlot.MAINHAND); 
-			if(heldItem.isEmpty() || canMergeStacks(heldItem, target.getItem()))
-				if(!target.getBoundingBox().inflate(1).intersects(mobIn.getBoundingBox()))
-					return false;
+			if(!canMergeStacks(heldItem, target.getItem()))
+				return false;
 			
 			ItemStack stack = target.getItem();
 			if(heldItem.isEmpty())
@@ -552,15 +551,15 @@ public class Actions
 			return true;
 		}
 		
-		private static boolean canMergeStacks(ItemStack stackA, ItemStack stackB)
+		public static boolean canMergeStacks(ItemStack heldStack, ItemStack stackB)
 		{
-			if(
-				!stackA.is(stackB.getItem()) ||
-				stackA.getDamageValue() != stackB.getDamageValue() ||
-				stackA.getCount() > stackA.getMaxStackSize())
-				return false;
-			return ItemStack.tagMatches(stackA, stackB);
-				
+			if(heldStack.isEmpty() || stackB.isEmpty())
+				return true;
+			return 
+					heldStack.is(stackB.getItem()) &&
+					heldStack.getDamageValue() == stackB.getDamageValue() &&
+					heldStack.getCount() < heldStack.getItem().getMaxStackSize(heldStack) && 
+					ItemStack.tagMatches(heldStack, stackB);
 		}
 	}
 	
@@ -636,14 +635,16 @@ public class Actions
 		}.setCustomName("stop_held_item");
 	}
 	
-	public static TreeNode completeCurrentTask()
+	public static TreeNode completeCurrentTask() { return completeCurrentTask(false); }
+	
+	public static TreeNode completeCurrentTask(boolean force)
 	{
 		return new LeafSingle()
 		{
 			public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
 			{
 				CommandStack stack = storage.getCommands();
-				stack.complete();
+				stack.complete(force);
 				storage.setCommands(stack);
 				return true;
 			}

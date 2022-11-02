@@ -26,5 +26,6 @@
 	"key.examplemod.mark.start_group": "Start a new group",
 	"gui.examplemod.notify_target.add": "Will notify %s",
 	"gui.examplemod.notify_target.remove": "Forgot %s",
-	"gui.examplemod.notify_target.none": "You have no group to command!"
+	"gui.examplemod.notify_target.none": "You have no-one to command!",
+	"gui.examplemod.player_group": "%s's group" 
 }

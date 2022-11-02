@@ -57,9 +57,9 @@ public class CommandStack
 	
 	public boolean isSingle() { return this.activeTasks.size() == 1; }
 	
-	public void complete()
+	public void complete(boolean force)
 	{
-		if(!isEmpty() && current().type.canBeCompleted())
+		if(!isEmpty() && (current().type.canBeCompleted() || force))
 			this.activeTasks.remove(0);
 	}
 	

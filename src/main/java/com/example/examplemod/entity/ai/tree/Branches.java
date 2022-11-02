@@ -1,7 +1,7 @@
 package com.example.examplemod.entity.ai.tree;
 
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
@@ -10,8 +10,8 @@ import org.apache.commons.compress.utils.Lists;
 import com.example.examplemod.entity.ai.MobCommand;
 import com.example.examplemod.entity.ai.Whiteboard;
 import com.example.examplemod.entity.ai.Whiteboard.MobWhiteboard;
-import com.example.examplemod.entity.ai.group.GroupAction;
 import com.example.examplemod.entity.ai.group.IMobGroup;
+import com.example.examplemod.entity.ai.group.action.GroupAction;
 import com.example.examplemod.entity.ai.tree.Actions.WaitUntil;
 import com.example.examplemod.entity.ai.tree.TreeNode.Condition;
 import com.example.examplemod.entity.ai.tree.TreeNode.Decorator;
@@ -305,7 +305,7 @@ public class Branches
 					TreeNode.conditional((mob, storage) ->
 					{
 						Entity target = storage.getEntity(targetAddressIn);
-						return target != null && !mob.getBoundingBox().inflate(1,0,1).intersects(target.getBoundingBox());
+						return target != null && target.isAlive() && !mob.getBoundingBox().inflate(1,0,1).intersects(target.getBoundingBox());
 					}, new Actions.MoveTo(targetAddressIn, 0.5D))));
 	}
 	
@@ -315,10 +315,20 @@ public class Branches
 		return Selector.sequential(
 				new Actions.PickUpItem(targetAddress),
 				Sequence.reactive(
-					new Condition(NodePredicates.hasItemInSlot(EquipmentSlot.MAINHAND)), 
+					new Condition((mob, storage) ->
+					{
+						ItemStack heldStack = MobWhiteboard.getItemInSlot(storage, EquipmentSlot.MAINHAND);
+						ItemStack targetStack = ((ItemEntity)storage.getEntity(targetAddress)).getItem();
+						return !(heldStack.isEmpty() || Actions.PickUpItem.canMergeStacks(heldStack, targetStack));
+					}).setCustomName("need_make_space"), 
 					Selector.sequential(
-						TreeNode.conditional(NodePredicates.isSlotEmpty(EquipmentSlot.OFFHAND), Actions.swapItems()),
-						new Actions.DropItem()))).setCustomName("try_pick_up");
+						TreeNode.conditional((mob,storage) -> 
+						{
+							ItemStack heldStack = MobWhiteboard.getItemInSlot(storage, EquipmentSlot.OFFHAND);
+							ItemStack targetStack = ((ItemEntity)storage.getEntity(targetAddress)).getItem();
+							return Actions.PickUpItem.canMergeStacks(heldStack, targetStack);
+						}, Actions.swapItems()),
+						new Actions.DropItem())).setCustomName("ensure_pickup")).setCustomName("try_pick_up");
 	}
 	
 	public static final TreeNode lookRandom(int min, int max)
@@ -840,7 +850,10 @@ public class Branches
 									
 									public final float getUtility(BlockPos pos, BlockPos guard, PathNavigation navi)
 									{
-										Path path = navi.createPath(Set.of(pos, guard), 64);
+										if(pos == guard)
+											return Float.MIN_VALUE;
+										
+										Path path = navi.createPath(Stream.of(pos, guard), 64);
 										return path == null ? Float.MAX_VALUE : path.getNodeCount();
 									}
 								}.setCustomName("identify_position"),
@@ -992,13 +1005,20 @@ public class Branches
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
-										storage.setValue("pickup_target", storage.currentCommand().variable(0));
-										return true;
+										MobCommand command = storage.currentCommand();
+										Entity target = (Entity)command.variable(0);
+										if(target != null && target.isAlive())
+										{
+											storage.setValue("pickup_target", storage.currentCommand().variable(0));
+											return target != null && target.isAlive();
+										}
+										else
+											return false;
 									}
 								}.setCustomName("set_pickup_target"),
 								Branches.moveToPickUp("pickup_target"),
 								Actions.completeCurrentTask())).setCustomName("pick_up").setDiscrete(),
-					Sequence.reactive(
+					Sequence.reactive(	// FIXME Currently broken
 							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.EQUIP; }),
 							Sequence.sequence(
 								new LeafSingle()
@@ -1051,10 +1071,7 @@ public class Branches
 										return true;
 									}
 								}.setCustomName("split_group"),
-								Actions.completeCurrentTask())).setCustomName("start_group").setDiscrete(),
-					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type().canBeCompleted(); }),
-							Actions.completeCurrentTask()).setCustomName("default_completion")	// This node will complete any task we're not actually equipped to handle
-				)).setCustomName("group_command");
+								Actions.completeCurrentTask())).setCustomName("start_group").setDiscrete()
+				).setCustomName("group_command"));
 	}
 }

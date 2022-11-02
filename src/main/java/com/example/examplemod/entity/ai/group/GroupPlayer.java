@@ -11,6 +11,8 @@ import com.example.examplemod.utility.GroupSaveData;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,10 +24,13 @@ public class GroupPlayer extends GroupGeneric
 	protected Player owner = null;
 	private UUID ownerUUID;
 	
+	private Component ownerName = null;
+	
 	public GroupPlayer(@Nonnull Player playerIn, PathfinderMob... membersIn)
 	{
 		this(playerIn.getUUID(), membersIn);
 		this.owner = playerIn;
+		this.ownerName = playerIn.getDisplayName();
 	}
 	
 	public GroupPlayer(@Nonnull UUID idIn, PathfinderMob... membersIn)
@@ -36,17 +41,23 @@ public class GroupPlayer extends GroupGeneric
 	
 	public ResourceLocation getKey(){ return GroupType.PLAYER; }
 	
+	public Component getDisplayName() { return this.ownerName == null ? Component.literal(getKey().toString()) : Component.translatable("gui.examplemod.player_group", this.ownerName); }
+	
 	public CompoundTag saveToNbt(CompoundTag compound)
 	{
 		saveMemberIds(compound);
 		saveAction(compound);
 		compound.put("Owner", NbtUtils.createUUID(ownerUUID));
+		if(ownerName != null)
+			compound.putString("Name", Component.Serializer.toJson(ownerName));
 		return compound;
 	}
 	
 	public void loadFromNbt(CompoundTag compound)
 	{
 		this.ownerUUID = NbtUtils.loadUUID(compound.get("Owner"));
+		if(compound.contains("Name", Tag.TAG_STRING))
+			this.ownerName = Component.Serializer.fromJson(compound.getString("Name"));
 		loadMemberIds(compound);
 		loadAction(compound);
 	}
@@ -73,6 +84,7 @@ public class GroupPlayer extends GroupGeneric
 		if(playerIn.getUUID().equals(this.ownerUUID))
 		{
 			this.owner = playerIn;
+			this.ownerName = playerIn.getDisplayName();
 			return true;
 		}
 		return false;

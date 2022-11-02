@@ -9,24 +9,33 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.example.examplemod.entity.ITreeEntity;
 import com.example.examplemod.entity.ai.CommandStack;
+import com.example.examplemod.entity.ai.MobCommand;
 import com.example.examplemod.entity.ai.Whiteboard;
+import com.example.examplemod.entity.ai.group.action.ActionType;
+import com.example.examplemod.entity.ai.group.action.GroupAction;
 import com.google.common.base.Predicates;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.HitResult.Type;
 import net.minecraft.world.phys.Vec3;
 
 public interface IMobGroup
 {
 	public ResourceLocation getKey();
+	
+	public default Component getDisplayName() { return Component.literal(getKey().toString()); }
 	
 	/** Returns the whiteboard of this group */
 	public Whiteboard<?> getWhiteboard();
@@ -34,8 +43,11 @@ public interface IMobGroup
 	/** Returns the live map of members to their UUIDs */
 	public Map<UUID, LivingEntity> membership();
 	
-	/** Returns a list of known hostile targets */
+	/** Returns a list of non-null living known hostile targets */
 	public List<LivingEntity> targets();
+	public default boolean isTarget(LivingEntity entity) { return targets().contains(entity); }
+	public void addTarget(LivingEntity entity);
+	public void removeTarget(LivingEntity entity);
 	
 	/** Returns true if this group should take commands from the given entity */
 	public boolean shouldListenTo(LivingEntity entity);
@@ -55,11 +67,103 @@ public interface IMobGroup
 	/** Delivers the given command stack to all members of this group */
 	public default void giveCommandToAll(CommandStack stack)
 	{
-		members().forEach((member) ->
+		if(stack.isSingle())
 		{
-			if(member != null && member instanceof ITreeEntity)
-				Whiteboard.tryGetWhiteboard(member).setCommands(stack);
-		});
+			MobCommand order = stack.current();
+			boolean shouldClear = false;
+			switch(order.type)
+			{
+				case PICK_UP:
+				case EQUIP:
+				case MINE:
+				case ACTIVATE:
+					shouldClear = true;
+					
+					// Give to closest member
+					BlockPos pos = order.type().inputType() == Type.BLOCK ? (BlockPos)order.variable(0) : ((Entity)order.variable(0)).blockPosition();
+					
+					double minDistToBlock = Double.MAX_VALUE;
+					LivingEntity closeToBlock = null;
+					for(LivingEntity member : members())
+					{
+						double dist = pos.distSqr(member.blockPosition());
+						if(dist < minDistToBlock)
+						{
+							dist = minDistToBlock;
+							closeToBlock = member;
+						}
+					}
+					
+					if(closeToBlock != null)
+						Whiteboard.tryGetWhiteboard(closeToBlock).setCommands(stack);
+					return;
+				case MOUNT:
+					shouldClear = true;
+					
+					// Give to closest unmounted member
+					Entity vehicle = (Entity)order.variable(0);
+					
+					double minDistToEnt = Double.MAX_VALUE;
+					LivingEntity closeToEnt = null;
+					for(LivingEntity member : members())
+					{
+						double dist = member.distanceToSqr(vehicle);
+						if(member.getVehicle() == null && dist < minDistToEnt)
+						{
+							dist = minDistToEnt;
+							closeToEnt = member;
+						}
+					}
+					
+					if(closeToEnt != null)
+						Whiteboard.tryGetWhiteboard(closeToEnt).setCommands(stack);
+					return;
+				case ATTACK:
+					LivingEntity living =(LivingEntity)order.variable(0);
+					if(!isTarget(living))
+						addTarget(living);
+					return;
+				case CEASEFIRE_MOB:
+					LivingEntity target =(LivingEntity)order.variable(0);
+					if(isTarget(target))
+						removeTarget(target);
+					return;
+				case FOLLOW_MOB:
+					Entity followEnt = (Entity)order.variable(0);
+					if(followEnt instanceof LivingEntity)
+						setAction(new GroupAction.ActionFollow((LivingEntity)followEnt, 1.5D, 3D));
+					return;
+				case GUARD_MOB:
+					Entity guardEnt = (Entity)order.variable(0);
+					if(guardEnt instanceof LivingEntity)
+						setAction(new GroupAction.ActionGuardMob((LivingEntity)guardEnt, 2D, 2D + (size() * 0.5D)));
+					return;
+				case GUARD_POS:
+					BlockPos guardPos = (BlockPos)order.variable(0);
+					setAction(new GroupAction.ActionGuardPos(guardPos.relative(((Direction)order.variable(1)).getOpposite()), 6D, 10D));
+					return;
+				case QUARRY:
+					if(order.variables() > 2)
+						setAction(new GroupAction.ActionQuarry((BlockPos)order.variable(0), (BlockPos)order.variable(2), (Direction)order.variable(1)));
+					else
+					{
+						BlockPos corePos = (BlockPos)order.variable(0);
+						Direction facing = (Direction)order.variable(1);
+						Vec3i min = new Vec3i(-5,0,-5);
+						Vec3i max = new Vec3i(5,3,5);
+						
+						setAction(new GroupAction.ActionQuarry(corePos.offset(min), corePos.offset(max), facing));
+					}
+					return;
+				default:
+					shouldClear = true;
+					break;
+			}
+			if(shouldClear)
+				setAction(null);
+		}
+		
+		members().forEach((member) -> Whiteboard.tryGetWhiteboard(member).setCommands(stack));
 	}
 	
 	/** Clears all extant commands from all members */
@@ -245,7 +349,14 @@ public interface IMobGroup
 	public default Entity target() { return target(0); }
 	
 	public default boolean hasAction() { return getAction() != null; }
-	public void setAction(GroupAction actionIn);
+	public default void setAction(GroupAction actionIn)
+	{
+		if(hasAction())
+			GroupAction.clearOrders(members());
+		setGroupAction(actionIn);
+		setDirty();
+	}
+	public void setGroupAction(GroupAction actionIn);
 	public default GroupAction getAction() { return null; }
 	
 	public default void updateGroupAction()
@@ -258,6 +369,7 @@ public interface IMobGroup
 			return;
 		}
 		
+		// System.out.println("Updating "+getAction().getRegistryName()+" in "+getKey());
 		List<LivingEntity> members = members();
 		if(!members.isEmpty())
 		{

@@ -4,8 +4,8 @@ import org.slf4j.Logger;
 
 import com.example.examplemod.client.ActionRenderManager;
 import com.example.examplemod.client.GroupRenderer;
-import com.example.examplemod.entity.ai.group.ActionType;
 import com.example.examplemod.entity.ai.group.GroupType;
+import com.example.examplemod.entity.ai.group.action.ActionType;
 import com.example.examplemod.init.ExEntities;
 import com.example.examplemod.init.ExItems;
 import com.example.examplemod.network.PacketHandler;
