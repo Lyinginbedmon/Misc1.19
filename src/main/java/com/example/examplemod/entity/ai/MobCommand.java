@@ -64,7 +64,7 @@ public class MobCommand
 		for(int i=0; i<variableData.size(); i++)
 			variables[i] = Utils.loadVariable(variableData.getCompound(i), searchRange, world);
 		
-		return new MobCommand(type, variables);
+		return type.makeCommand(variables);
 	}
 	
 	public static class Utils

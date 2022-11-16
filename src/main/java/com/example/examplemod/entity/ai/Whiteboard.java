@@ -130,6 +130,15 @@ public abstract class Whiteboard<T>
 	
 	public final boolean hasCommands() { return this.commands != null && !this.commands.isEmpty(); }
 	public final void setCommands(CommandStack stackIn) { this.commands = stackIn; }
+	public final void addCommands(CommandStack stackIn)
+	{
+//		if(!hasCommands())
+			setCommands(stackIn);
+//		else if(!currentCommand().type().canBeCompleted())
+//			getCommands().prependAll(stackIn);
+//		else
+//			getCommands().appendAll(stackIn);
+	}
 	public final CommandStack getCommands() { return this.commands; }
 	public final MobCommand currentCommand() { return hasCommands() ? getCommands().current() : null; }
 	

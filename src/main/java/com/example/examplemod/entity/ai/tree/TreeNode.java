@@ -31,6 +31,7 @@ public abstract class TreeNode
 			getChildren().forEach((child) -> child.setParentTree(treeIn));
 	}
 	public BehaviourTree getParentTree() { return this.parentTree; }
+	/** Returns true if this node was active in the previous tick */
 	public boolean wasActive() { return hasParentTree() && this.parentTree.nodeWasActiveLastTick(this) || wasActive; }
 	
 	public String getDisplayName() { return this.hasCustomName() ? getCustomName() : getClass().getSimpleName().toLowerCase(); }
@@ -46,11 +47,9 @@ public abstract class TreeNode
 	{
 		Status prev = lastTick;
 		lastTick = tick(mob, storage);
-		if(lastTick != prev)
-		{
-			if(lastTick.isEndState())
-				stop(mob, storage);
-		}
+		if(lastTick != prev && lastTick.isEndState())
+			stop(mob, storage);
+		
 		if(lastTick != Status.FAILURE && hasParentTree())
 			getParentTree().reportNodeActive(this);
 		
@@ -481,7 +480,7 @@ public abstract class TreeNode
 		}
 		
 		/** Moves through child nodes until either last node returns SUCCESS or current node returns FAILURE */
-		public static TreeNode sequence(TreeNode... nodesIn) { return new Sequence(Type.SEQUENCE, nodesIn).setCustomName("sequence"); }
+		public static TreeNode sequential(TreeNode... nodesIn) { return new Sequence(Type.SEQUENCE, nodesIn).setCustomName("sequence"); }
 		/** Runs all child nodes simultaneously until one returns FAILURE */
 		public static TreeNode reactive(TreeNode... nodesIn) { return new Sequence(Type.REACTIVE, nodesIn).setCustomName("reactive_sequence"); }
 		/** Moves through child nodes until every node has returned SUCCESS, even if it has to run failed nodes repeatedly */

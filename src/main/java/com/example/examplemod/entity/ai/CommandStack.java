@@ -28,7 +28,13 @@ public class CommandStack
 			activeTasks.add(taskIn);
 		return this;
 	}
-	public CommandStack append(Mark markIn, Object... objectIn) { return append(new MobCommand(markIn, objectIn)); }
+	public CommandStack append(Mark markIn, Object... objectIn) { return append(markIn.makeCommand(objectIn)); }
+	
+	public CommandStack appendAll(CommandStack stackIn)
+	{
+		stackIn.allTasks().forEach((task) -> stackIn.append(task));
+		return this;
+	}
 	
 	/** Adds the given command to the top of this stack, to be executed first */
 	public CommandStack prepend(@Nullable MobCommand taskIn)
@@ -42,7 +48,13 @@ public class CommandStack
 		}
 		return this;
 	}
-	public CommandStack prepend(Mark markIn, Object... objectIn) { return prepend(new MobCommand(markIn, objectIn)); }
+	public CommandStack prepend(Mark markIn, Object... objectIn) { return prepend(markIn.makeCommand(objectIn)); }
+	
+	public CommandStack prependAll(CommandStack stackIn)
+	{
+		this.activeTasks.forEach((task) -> stackIn.append(task));
+		return stackIn;
+	}
 	
 	public CommandStack clone()
 	{
@@ -63,8 +75,10 @@ public class CommandStack
 			this.activeTasks.remove(0);
 	}
 	
+	public int size() { return this.activeTasks.size(); }
+	
 	public static CommandStack single(MobCommand command) { return new CommandStack(command); }
-	public static CommandStack single(Mark markIn, Object... objectIn) { return single(new MobCommand(markIn, objectIn)); }
+	public static CommandStack single(Mark markIn, Object... objectIn) { return single(markIn.makeCommand(objectIn)); }
 	
 	public CompoundTag saveToNbt(CompoundTag compound)
 	{

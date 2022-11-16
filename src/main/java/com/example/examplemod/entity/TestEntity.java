@@ -22,8 +22,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.level.Level;
 
 public class TestEntity extends PathfinderMob implements ITreeEntity
@@ -35,6 +34,8 @@ public class TestEntity extends PathfinderMob implements ITreeEntity
 	public TestEntity(EntityType<? extends PathfinderMob> p_21683_, Level p_21684_)
 	{
 		super(p_21683_, p_21684_);
+		getNavigation().setCanFloat(true);
+		((GroundPathNavigation)this.getNavigation()).setCanOpenDoors(true);
 		
 		whiteboard = new MobWhiteboard<PathfinderMob>(this);
 			whiteboard.addExpansion(Whiteboard.Expansions.BEST_SWORD, Whiteboard.Expansions::getBestSword);
@@ -73,7 +74,7 @@ public class TestEntity extends PathfinderMob implements ITreeEntity
 	
 	protected void registerGoals()
 	{
-		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Villager.class, false, true));
+//		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Villager.class, false, true));
 	}
 	
 	public void customServerAiStep()

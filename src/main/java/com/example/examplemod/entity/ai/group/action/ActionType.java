@@ -20,14 +20,17 @@ public class ActionType
     private static final ConcurrentHashMap<ResourceLocation, Supplier<GroupAction>> ACTION_TYPES = new ConcurrentHashMap<>();
     
     public static final ResourceLocation AGGRO_FLANK	= register("aggro_flank", () -> { return new GroupAction.ActionAggroFlank(); });
-    public static final ResourceLocation BRAWL		= register("brawl", () -> { return new GroupAction.ActionBrawl(); });
-    public static final ResourceLocation FLANK		= register("flank", () -> { return new GroupAction.ActionFlank(); });
-    public static final ResourceLocation FOLLOW		= register("follow", () -> { return new GroupAction.ActionFollow(null, 3D, 10D); });
-    public static final ResourceLocation GRID		= register("grid", () -> { return new GroupAction.ActionGrid(BlockPos.ZERO, 2D); });
-    public static final ResourceLocation GUARD_POS	= register("guard_pos", () -> { return new GroupAction.ActionGuardPos(BlockPos.ZERO, 3D, 10D); });
-    public static final ResourceLocation GUARD_MOB	= register("guard_mob", () -> { return new GroupAction.ActionGuardMob(null, 3D, 10D); });
-    public static final ResourceLocation QUARRY		= register("quarry", () -> { return new GroupAction.ActionQuarry(BlockPos.ZERO, BlockPos.ZERO, Direction.NORTH); });
-    public static final ResourceLocation PICK_UP	= register("pick_up", () -> { return new GroupAction.ActionPickUp(BlockPos.ZERO, BlockPos.ZERO); });
+    public static final ResourceLocation BRAWL			= register("brawl", () -> { return new GroupAction.ActionBrawl(); });
+    public static final ResourceLocation FLANK			= register("flank", () -> { return new GroupAction.ActionFlank(); });
+    public static final ResourceLocation FOLLOW			= register("follow", () -> { return new GroupAction.ActionFollow(null, 3D, 10D); });
+    public static final ResourceLocation GRID			= register("grid", () -> { return new GroupAction.ActionGrid(BlockPos.ZERO, 2D); });
+    public static final ResourceLocation GUARD_POS		= register("guard_pos", () -> { return new GroupAction.ActionGuardPos(BlockPos.ZERO, 3D, 10D); });
+    public static final ResourceLocation GUARD_MOB		= register("guard_mob", () -> { return new GroupAction.ActionGuardMob(null, 3D, 10D); });
+    public static final ResourceLocation QUARRY			= register("quarry", () -> { return new GroupAction.ActionQuarry(BlockPos.ZERO, BlockPos.ZERO, Direction.NORTH); });
+    public static final ResourceLocation PICK_UP		= register("pick_up", () -> { return new GroupAction.ActionPickUp(BlockPos.ZERO, BlockPos.ZERO); });
+    public static final ResourceLocation PICK_UP_NON_SEEDS	= register("pick_up_non_seeds", () -> { return new GroupAction.ActionPickUpNonSeeds(BlockPos.ZERO, BlockPos.ZERO); });
+    public static final ResourceLocation GENERIC		= register("generic", () -> new GroupAction.ActionGeneric());
+    public static final ResourceLocation FARM			= register("farm", () -> new GroupAction.ActionFarm(BlockPos.ZERO, BlockPos.ZERO));
     
     public static ResourceLocation register(String nameIn, Supplier<GroupAction> factory)
     {
@@ -55,6 +58,7 @@ public class ActionType
     			if(child != null)
     				action.addChild(child, false);
     		};
+    		action.setMaxChildren(compound.getInt("ChildLimit"));
     		
     		action.loadFromNbt(compound.getCompound("Data"));
     		return action;

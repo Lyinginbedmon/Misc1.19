@@ -34,40 +34,64 @@ public class OverlayMobCommand implements IGuiOverlay
 	public void render(ForgeGui gui, PoseStack matrixStack, float partialTicks, int width, int height)
 	{
 		if(MobCommanding.isMarking())
-			drawOptionSet(MobCommanding.currentAction(), matrixStack, width, height);
+			drawOptionSet(matrixStack, width, height);
 		
 		if(MobCommanding.hasRecipients())
 			drawScreenList(matrixStack, width, height);
 	}
 	
-	public void drawOptionSet(Mark current, PoseStack matrixStack, int width, int height)
+	public void drawOptionSet(PoseStack matrixStack, int width, int height)
 	{
+		Mark current = MobCommanding.currentAction();
 		if(current == null)
 			return;
 		
 		int xLev = width / 2;
 		int yLev = (height + font.lineHeight * 2) / 2;
 		
-		MutableComponent textCur = Component.literal("{ ").append(current.translate(MobCommanding.currentTarget()).setStyle(STYLE_ISSUE)).append(Component.literal(" }"));
+    	// Indicate category locking progress
+    	int prog = (int)(5 * (1F - MobCommanding.categoryLocking()));
+		MutableComponent textCur = current.translate(MobCommanding.currentTarget()).setStyle(STYLE_ISSUE);
+		textCur = Component.literal("{" + " ".repeat(prog)).append(textCur).append(Component.literal(" ".repeat(prog) + "}"));
         font.draw(matrixStack, textCur.getString(), xLev - (font.width(textCur.getString()) / 2), yLev, -1);
         
-        Mark[] options = MobCommanding.currentOptions();
-        int optionsSize = options.length;
-        int index = 0;
-        while(optionsSize > 0 && index < options.length)
+        boolean isLocked = MobCommanding.categoryLocking() == 1F;
+        Mark[] headers = MobCommanding.currentHeaders();
+        int category = MobCommanding.currentCategory();
+        
+        float currentBrightness = 0.5F + (MobCommanding.categoryLocking() * 0.5F);
+        currentBrightness -= currentBrightness % 0.1F;
+        
+        int barX = xLev - (headers.length * ICON_SIZE + (headers.length - 1)) / 2;
+        int headerIndex = 0;
+        for(Mark header : headers)
         {
-        	int row = Math.min(optionsSize, 8);
-            int barX = xLev - (row * ICON_SIZE + (row - 1)) / 2;
-        	for(int i=0; i<row; i++)
+        	boolean isCurrentCategory = headerIndex == category;
+        	int x = barX + headerIndex * ICON_SIZE + headerIndex++;
+        	if(isCurrentCategory && isLocked)
         	{
-	        	Mark option = MobCommanding.currentOptions()[index++];
-	        	drawCommandIcon(matrixStack, option, barX + i * ICON_SIZE + i, yLev + 10, option == current);
-	        	
-	        	optionsSize--;
-	        	if(index > options.length)
-	        		break;
+        		Mark[] optionsToShow = MobCommanding.currentOptions();
+        		Mark categoryHead = optionsToShow[0];
+        		drawCommandIcon(matrixStack, categoryHead, x, yLev + 10, categoryHead == current ? 1F : 0.75F, categoryHead == current ? 1F : 0.5F);
+        		
+        		int subList = optionsToShow.length - 1;
+        		int itemsPerColumn = Math.max(1, (int)Math.sqrt(subList));
+        		
+        		int columns = (int)Math.ceil((double)subList / itemsPerColumn) - 1;
+        		int xOffset = (columns + columns * ICON_SIZE) / 2;
+        		for(int i=0; i<optionsToShow.length - 1; i++)
+        		{
+        			Mark option = optionsToShow[i + 1];
+        			
+        			int col = Math.floorDiv(i, itemsPerColumn);
+        			int row = i % itemsPerColumn;
+        			int posX = x - xOffset + col + (ICON_SIZE * col);
+        			int posY = yLev + ICON_SIZE + 10 + 1 + row + (row * ICON_SIZE);
+            		drawCommandIcon(matrixStack, option, posX, posY, option == current ? 1F : 0.75F, option == current ? 1F : 0.5F);
+        		}
         	}
-        	yLev += ICON_SIZE + 1;
+        	else
+        		drawCommandIcon(matrixStack, header, x, yLev + 10, isCurrentCategory ? currentBrightness : 0.5F, isCurrentCategory ? 1F : 0.5F);
         }
 	}
 	
@@ -83,12 +107,11 @@ public class OverlayMobCommand implements IGuiOverlay
 		};
 	}
 	
-	private void drawCommandIcon(PoseStack matrixStack, Mark type, int x, int y, boolean highlight)
+	private void drawCommandIcon(PoseStack matrixStack, Mark type, int x, int y, float colour, float alpha)
 	{
 		int index = type.iconIndex();
 		matrixStack.pushPose();
-			float colour = highlight ? 1F : 0.5F;
-			RenderSystem.setShaderColor(colour, colour, colour, 1F);
+			RenderSystem.setShaderColor(colour, colour, colour, alpha);
 			RenderSystem.enableBlend();
 			RenderSystem.defaultBlendFunc();
 			RenderSystem.setShaderTexture(0, COMMAND_TEXTURES);

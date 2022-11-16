@@ -27,6 +27,14 @@ import net.minecraft.world.phys.Vec3;
  */
 public class Actions
 {
+	public static TreeNode doNothing()
+	{
+		return new LeafSingle()
+		{
+			public boolean doAction(PathfinderMob mob, Whiteboard<?> storage) { return true; }
+		}.setCustomName("do_nothing");
+	}
+	
 	/** Makes the mob do a little jump. */
 	public static TreeNode jump()
 	{
@@ -89,11 +97,20 @@ public class Actions
 			{
 				if(!storage.hasValue(targetAddress))
 					return false;
+				
 				ItemEntity entity = (ItemEntity)storage.getEntity(targetAddress);
 				if(entity == null || entity.isRemoved() || !entity.getBoundingBox().intersects(mobIn.getBoundingBox().inflate(1,0,1)))
 					return false;
 				
 				ItemStack stack = entity.getItem();
+				EquipmentSlot slot = Mob.getEquipmentSlotForItem(stack);
+				ItemStack currentItem = mobIn.getItemBySlot(slot);
+				if(!currentItem.isEmpty())
+				{
+					mobIn.spawnAtLocation(currentItem);
+					mobIn.setItemSlot(slot, ItemStack.EMPTY);
+				}
+				
 				if(mobIn.equipItemIfPossible(stack))
 				{
 					mobIn.onItemPickup(entity);

@@ -1,6 +1,9 @@
 package com.example.examplemod.utility;
 
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiPredicate;
 
 import javax.annotation.Nullable;
@@ -15,14 +18,13 @@ import com.google.common.collect.Lists;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Saddleable;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -34,25 +36,25 @@ import net.minecraft.world.phys.HitResult.Type;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.common.extensions.IForgeAbstractMinecart;
+import net.minecraftforge.common.extensions.IForgeBoat;
 
 public class MobCommanding
 {
-	public static MarkCategory markCategory = MarkCategory.MOTION;
+	private static CommandData currentVars = null;
 	
-	private static Mark[] markOptions = new Mark[]{Mark.CANCEL};
-	public static int markIndex = 0;
-	
-	private static Object targetObj = null;
-	private static CompoundTag targetData = new CompoundTag();
 	private static List<NotifyData> recipients = Lists.newArrayList();
 	
-	public static Object currentTarget() { return targetObj; }
-	public static Mark currentAction() { return markOptions[markIndex]; }
-	public static Mark[] currentOptions() { return markOptions; }
+	public static boolean isMarking() { return currentVars != null; }
+	public static float categoryLocking() { return currentVars.lockProgress(); }
 	
-	public static boolean isMarking() { return targetObj != null; }
+	public static Object currentTarget() { return currentVars.target(); }
 	
-	//FIXME Allow for longer-range targeting
+	public static int currentCategory() { return currentVars.categoryIndex(); }
+	public static Mark[] currentHeaders() { return currentVars.headers(); }
+	public static Mark[] currentOptions() { return currentVars.options(); }
+	public static Mark currentAction() { return currentVars.action(); }
+	
 	private static final double TRACE_RANGE = 32D;
 	
 	@OnlyIn(Dist.CLIENT)
@@ -84,47 +86,26 @@ public class MobCommanding
 	@OnlyIn(Dist.CLIENT)
 	public static void onMarkPressed(Player player)
 	{
-		targetData = new CompoundTag();
-		ListTag variables = new ListTag();
 		HitResult hitResult = getPlayerTarget(player, TRACE_RANGE);
+		Object targetObj = null;
 		if(hitResult == null)
-		{
 			targetObj = player;
-			variables.add(MobCommand.Utils.storeVariable(player));
-		}
 		else
-		{
 			switch(hitResult.getType())
 			{
 				case BLOCK:
-					BlockHitResult blockHit = (BlockHitResult)hitResult;
-					targetObj = blockHit.getBlockPos();
-					
-					// Block position hit
-					variables.add(MobCommand.Utils.storeVariable(blockHit.getBlockPos()));
-					// Direction hit from
-					variables.add(MobCommand.Utils.storeVariable(blockHit.getDirection().getOpposite()));
+					targetObj = ((BlockHitResult)hitResult).getBlockPos();
 					break;
 				case ENTITY:
-					EntityHitResult entityHit = (EntityHitResult)hitResult;
-					targetObj = entityHit.getEntity();
-					
-					variables.add(MobCommand.Utils.storeVariable(entityHit.getEntity()));
+					targetObj = ((EntityHitResult)hitResult).getEntity();
 					break;
+				case MISS:
 				default:
 					targetObj = player;
-					variables.add(MobCommand.Utils.storeVariable(player));
 					break;
 			}
-		}
-		targetData.put("Variables", variables);
 		
-		List<Mark> options = Lists.newArrayList();
-		for(Mark mark : Mark.values())
-			if(mark.testInput(targetObj, player) && mark != Mark.CANCEL)
-				options.add(mark);
-		options.add(Mark.CANCEL);
-		markOptions = options.toArray(new Mark[0]);
+		currentVars = new CommandData(targetObj, hitResult, player);
 	}
 	
 	@Nullable
@@ -163,7 +144,7 @@ public class MobCommanding
 	
 	public static void onMarkReleased(Player player)
 	{
-		PacketMobCommand packet = makeServerPacket();
+		PacketMobCommand packet = currentVars.makePacket(player);
 		if(packet != null)
 		{
 			if(recipients.isEmpty())
@@ -171,28 +152,19 @@ public class MobCommanding
 			else
 				recipients.forEach((data) -> PacketHandler.sendToServer(packet.setTarget(data.hook.getUUID(), data.isGroup)));
 			
-			player.displayClientMessage(currentAction().translate(targetObj), true);
+			player.displayClientMessage(currentAction().translate(currentVars.target()), true);
 			recipients.clear();
 		}
 		
-		targetObj = null;
-		markIndex = 0;
+		currentVars = null;
 	}
 	
-	@Nullable
-	public static PacketMobCommand makeServerPacket()
+	public static void inc(int inc, Player player)
 	{
-		targetData.putString("Type", currentAction().getSerializedName());
-		return currentAction() != Mark.CANCEL ?  new PacketMobCommand(targetData) : null;
-	}
-	
-	public static void incMarkIndex(int inc)
-	{
-		markIndex += inc;
-		if(markIndex < 0)
-			markIndex = markOptions.length - 1;
+		if(currentVars.isLocked())
+			currentVars.incOption(inc);
 		else
-			markIndex = markIndex % markOptions.length;
+			currentVars.incCategory(inc, player);
 	}
 	
 	public static boolean isNotifyTarget(Entity ent)
@@ -228,6 +200,136 @@ public class MobCommanding
 		return recipients;
 	}
 	
+	/** Holder object for managing current selection details */
+	@OnlyIn(Dist.CLIENT)
+	public static class CommandData
+	{
+		private Map<MarkCategory, Mark[]> categoryToOptions = new HashMap<>();
+		private MarkCategory category = MarkCategory.MOTION;
+		private int optionIndex = 0;
+		
+		/** System time at instantiation or last change of category */
+		private long timeStarted = System.currentTimeMillis();
+		/** How long before category becomes locked, in seconds */
+		private int lockPeriod = 1000;
+		
+		/** The initial targeted object, used for option filtration */
+		private final Object targetObject;
+		/** The actual trace from which the targeted object was derived */
+		private final HitResult trace;
+		
+		public CommandData(Object obj, HitResult traceIn, Player player)
+		{
+			this.targetObject = obj;
+			this.trace = traceIn;
+			
+			for(MarkCategory cat : MarkCategory.values())
+			{
+				List<Mark> set = Lists.newArrayList();
+				cat.set(player.isCreative()).forEach((mark) -> 
+				{
+					if(mark.testInput(targetObject, player) || mark == Mark.CANCEL)
+						set.add(mark);
+				});
+				
+				if(!set.isEmpty())
+				{
+					// Always include the option to cancel
+					if(!set.contains(Mark.CANCEL))
+						set.add(Mark.CANCEL);
+					
+					categoryToOptions.put(cat, set.toArray(new Mark[0]));
+				}
+			}
+		}
+		
+		public Object target() { return targetObject; }
+		public Mark[] options() { return categoryToOptions.containsKey(category) ? categoryToOptions.get(category) : new Mark[0]; }
+		public Mark[] headers()
+		{
+			List<Mark> heads = Lists.newArrayList();
+			for(MarkCategory cat : MarkCategory.values())
+				if(categoryToOptions.containsKey(cat))
+					heads.add(categoryToOptions.get(cat)[0]);
+			return heads.toArray(new Mark[0]);
+		}
+		public int categoryIndex()
+		{
+			int index = 0;
+			for(Mark head : headers())
+				if(head.category() == category)
+					return index;
+				else
+					index++;
+			return 0;
+		}
+		public Mark action() { return options().length == 0 ? null : options()[optionIndex]; }
+		
+		@Nullable
+		public PacketMobCommand makePacket(Player player)
+		{
+			if(options().length == 0)
+				return null;
+			
+			Object[] variables = null;
+			if(trace == null)
+				variables = new Object[] {player};
+			else
+				switch(trace.getType())
+				{
+					case BLOCK:
+						BlockHitResult blockHit = (BlockHitResult)trace;
+						variables = new Object[2];
+						
+						// Block position hit
+						variables[0] = blockHit.getBlockPos();
+						// Direction hit from
+						variables[1] = blockHit.getDirection().getOpposite();
+						break;
+					case ENTITY:
+						EntityHitResult entityHit = (EntityHitResult)trace;
+						variables = new Object[1];
+						
+						variables[0] = entityHit.getEntity();
+						break;
+					case MISS:
+					default:
+						variables = new Object[] {player};
+						break;
+				}
+			
+			return action() != Mark.CANCEL ?  new PacketMobCommand(action().makeCommand(player, variables)) : null;
+		}
+		
+		public boolean isLocked() { return lockProgress() >= 1F; }
+		public float lockProgress() { return Math.min(1F, (float)(System.currentTimeMillis() - timeStarted) / (float)(lockPeriod)); }
+		
+		public void incCategory(int inc, Player player)
+		{
+			MarkCategory[] values = MarkCategory.values();
+			int index = category.ordinal() + inc;
+			if(index < 0)
+				index = values.length - 1;
+			else
+				index = index % values.length;
+			
+			category = values[index];
+			timeStarted = System.currentTimeMillis();
+			
+			if(!categoryToOptions.containsKey(category))
+				incCategory((int)Math.signum(inc), player);
+		}
+		
+		public void incOption(int inc)
+		{
+			optionIndex += inc;
+			if(optionIndex < 0)
+				optionIndex = options().length - 1;
+			else
+				optionIndex = optionIndex % options().length;
+		}
+	}
+	
 	public static class NotifyData
 	{
 		public final Entity hook;
@@ -258,72 +360,135 @@ public class MobCommanding
 	
 	public static enum MarkCategory
 	{
-		MOTION(Mark.GOTO_POS, Mark.GOTO_MOB, Mark.MOUNT, Mark.DISMOUNT, Mark.FOLLOW_MOB, Mark.STOP_MOVING),
-		COMBAT(Mark.ATTACK, Mark.CEASEFIRE_MOB, Mark.CEASEFIRE, Mark.GUARD_POS, Mark.GUARD_MOB),
-		UTILITY(Mark.PICK_UP, Mark.DROP, Mark.EQUIP, Mark.ACTIVATE, Mark.MINE, Mark.QUARRY),
+		MOTION(Mark.GOTO_POS, Mark.GOTO_MOB, Mark.GOTO_ME, Mark.FOLLOW_ME, Mark.FOLLOW_MOB, Mark.STOP_MOVING),
+		COMBAT(Mark.ATTACK, Mark.GUARD_POS, Mark.GUARD_ME, Mark.CEASEFIRE, Mark.CEASEFIRE_MOB, Mark.GUARD_MOB),
+		UTILITY(Mark.PICK_UP, Mark.DROP, Mark.EQUIP, Mark.MOUNT, Mark.DISMOUNT, Mark.ACTIVATE, Mark.FARM, Mark.BONEMEAL, Mark.PLACE_BLOCK, Mark.MINE, Mark.QUARRY, Mark.WAIT),
 		GROUP(Mark.JOIN_GROUP, Mark.JOIN_MY_GROUP, Mark.START_GROUP),
 		CANCEL(Mark.CANCEL);
 		
-		public final Mark[] commands;
+		private final List<Mark> commands;
 		
 		private MarkCategory(Mark... commandsIn)
 		{
-			List<Mark> marks = Lists.newArrayList(commandsIn);
-			marks.add(Mark.CANCEL);
-			this.commands = marks.toArray(new Mark[0]);
+			commands = Lists.newArrayList();
+			for(Mark mark : commandsIn)
+				commands.add(mark);
 		}
+		
+		public List<Mark> set(boolean isCreative)
+		{
+			List<Mark> options = Lists.newArrayList();
+			options.addAll(commands);
+			if(!isCreative)
+				options.removeAll(Mark.CREATIVE_ONLY);
+			return options;
+		}
+		
+		public boolean includes(Mark command) { return commands.contains(command); }
 	}
 	
 	public static enum Mark implements StringRepresentable
 	{
-		GOTO_POS(HitResult.Type.BLOCK, 0, false, (input, player) -> { return input instanceof BlockPos; }),
-		GOTO_MOB(HitResult.Type.ENTITY, 0, false, (input, player) -> { return input instanceof Entity; }),
-		STOP_MOVING(HitResult.Type.MISS, 15, false, (input, player) -> { return true; }),
-		ATTACK(HitResult.Type.ENTITY, 7, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		CEASEFIRE(HitResult.Type.MISS, 13, false, (input, player) -> { return player.getLevel().isClientSide() ? input == player : true; }),
-		CEASEFIRE_MOB(HitResult.Type.ENTITY, 14, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		FOLLOW_MOB(HitResult.Type.ENTITY, 9, true, (input, player) -> { return input instanceof LivingEntity; }), // TODO Branch implement Follow
-		GUARD_MOB(HitResult.Type.ENTITY, 1, true, (input, player) -> { return input instanceof LivingEntity; }), // TODO Branch implement Guard mob
-		GUARD_POS(HitResult.Type.BLOCK, 2, true, (input, player) -> { return input instanceof BlockPos; }), // TODO Branch implement Guard pos
-		MOUNT(HitResult.Type.ENTITY, 8, false, (input, player) -> // TODO Implement mounting (fue fue)
+		GOTO_POS(Type.BLOCK, 0, false, (input, player) -> { return input instanceof BlockPos; }),
+		GOTO_MOB(0, false, (input, player) -> { return input instanceof Entity; }),
+		GOTO_ME(0, (player, variables) -> new MobCommand(GOTO_MOB, player)),
+		STOP_MOVING(15),
+		ATTACK(7, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		CEASEFIRE(13),
+		CEASEFIRE_MOB(14, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		FOLLOW_MOB(9, true, (input, player) -> { return input instanceof LivingEntity; }), // TODO Branch implement Follow
+		FOLLOW_ME(9, (player, variables) -> new MobCommand(FOLLOW_MOB, player)),
+		GUARD_MOB(1, true, (input, player) -> { return input instanceof LivingEntity; }), // TODO Branch implement Guard mob
+		GUARD_ME(1, (player, variables) -> new MobCommand(GUARD_MOB, player)),
+		GUARD_POS(Type.BLOCK, 2, true, (input, player) -> { return input instanceof BlockPos; }), // TODO Branch implement Guard pos
+		MOUNT(8, false, (input, player) ->
 			{
 				if(input != player && input instanceof LivingEntity)
-					return !((LivingEntity)input).isPassenger();
+				{
+					if(player.isCreative())
+						return true;
+					LivingEntity living = (LivingEntity)input;
+					if(living.isPassenger() || living.isVehicle())
+						return false;
+					
+					// Not definitive but Minecraft lacks vital architecture for a conclusive ID method
+					if(living instanceof Saddleable)
+						return ((Saddleable)living).isSaddled();
+					else if(living instanceof IForgeAbstractMinecart)
+						return ((IForgeAbstractMinecart)living).canBeRidden();
+					else if(living instanceof IForgeBoat)
+						return true;
+				}
 				return false;
 			}),
-		DISMOUNT(HitResult.Type.MISS, 12, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		PICK_UP(HitResult.Type.ENTITY, 10, false, (input, player) -> { return input instanceof ItemEntity; }),
-		DROP(HitResult.Type.MISS, 3, false, (input, player) -> { return input == player || input instanceof BlockPos; }),
-		EQUIP(HitResult.Type.ENTITY, 11, false, (input, player) -> { return input instanceof ItemEntity; }),
-		ACTIVATE(HitResult.Type.BLOCK, 4, false, (input, player) -> { return input instanceof BlockPos; }), // TODO Implement block activation
-		MINE(HitResult.Type.BLOCK, 5, false, (input, player) -> { return input instanceof BlockPos; }),
-		QUARRY(HitResult.Type.BLOCK, 6, false, (input, player) -> { return input instanceof BlockPos; }),
-		JOIN_GROUP(HitResult.Type.ENTITY, 16, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
-		JOIN_MY_GROUP(HitResult.Type.MISS, 17, false, (input, player) -> { return player.getLevel().isClientSide() ? input == player : true; }),
-		START_GROUP(HitResult.Type.MISS, 18, false, (input, player) -> { return input == player || input instanceof BlockPos; }),
-		CANCEL(HitResult.Type.MISS, 15, false, (input, player) -> { return true; });
+		DISMOUNT(12),
+		PICK_UP(10, false, (input, player) -> { return input instanceof ItemEntity; }),
+		DROP(3, false, (input, player) -> { return input == player || input instanceof BlockPos; }),
+		EQUIP(11, false, (input, player) -> { return input instanceof ItemEntity; }),
+		ACTIVATE(Type.BLOCK, 4, false, (input, player) -> { return input instanceof BlockPos; }), // TODO Implement block activation
+		MINE(Type.BLOCK, 5, false, (input, player) -> { return input instanceof BlockPos; }),
+		QUARRY(Type.BLOCK, 6, false, (input, player) -> { return input instanceof BlockPos; }),
+		FARM(Type.BLOCK, 6, true, (input, player) -> input instanceof BlockPos),
+		BONEMEAL(Type.BLOCK, 6, false, (input, player) -> input instanceof BlockPos),
+		PLACE_BLOCK(Type.BLOCK, 6, false, (input, player) -> input instanceof BlockPos),
+		WAIT(15),
+		JOIN_GROUP(16, false, (input, player) -> { return input instanceof LivingEntity && input != player; }),
+		JOIN_MY_GROUP(17, (player, variables) -> new MobCommand(JOIN_GROUP, player)),
+		START_GROUP(18),
+		CANCEL(15);
+		
+		public static final EnumSet<Mark> CREATIVE_ONLY = EnumSet.of(Mark.STOP_MOVING, Mark.BONEMEAL, Mark.PLACE_BLOCK, Mark.WAIT);
+		public static final EnumSet<Mark> SURVIVAL_ALLOWED = EnumSet.complementOf(CREATIVE_ONLY);
 		
 		private final int iconIndex;
-		private final HitResult.Type input;
 		private final BiPredicate<Object, Player> predicate;
 		private final boolean isEternal;
+		private final CommandSupplier supplier;
 		
-		private Mark(HitResult.Type inputIn, int iconIndexIn, boolean eternalIn, BiPredicate<Object, Player> predicateIn)
+		private Mark(int iconIndexIn)
 		{
-			this.input = inputIn;
+			this(Type.MISS, iconIndexIn, false, (input, player) -> true);
+		}
+		
+		private Mark(int iconIndexIn, CommandSupplier supplierIn)
+		{
+			this.iconIndex = iconIndexIn;
+			this.predicate = (input, player) -> true;
+			this.isEternal = false;
+			this.supplier = supplierIn;
+		}
+		
+		private Mark(int iconIndexIn, boolean eternalIn, BiPredicate<Object, Player> predicateIn)
+		{
+			this(Type.ENTITY, iconIndexIn, eternalIn, predicateIn);
+		}
+		
+		private Mark(Type inputIn, int iconIndexIn, boolean eternalIn, BiPredicate<Object, Player> predicateIn)
+		{
 			this.iconIndex = iconIndexIn;
 			this.predicate = predicateIn;
 			this.isEternal = eternalIn;
+			this.supplier = (player, variables) -> new MobCommand(this, variables);
 		}
 		
-		public int iconIndex() { return this.iconIndex; }
+		public MobCommand makeCommand(Object... variables) { return makeCommand(null, variables); }
+		public MobCommand makeCommand(Player player, Object... variables) { return supplier.apply(player, variables); }
 		
-		public HitResult.Type inputType() { return this.input; }
+		public int iconIndex() { return this.iconIndex; }
 		
 		public boolean testInput(Object objIn, Player player) { return predicate.test(objIn, player); }
 		
 		/** Returns true if this type of command can be completed solely by the actions of its recipient and not by external events */
 		public boolean canBeCompleted() { return !this.isEternal; }
+		
+		public MarkCategory category()
+		{
+			for(MarkCategory cat : MarkCategory.values())
+				if(cat.includes(this))
+					return cat;
+			
+			return MarkCategory.UTILITY;
+		}
 		
 		@OnlyIn(Dist.CLIENT)
 		public MutableComponent translate(Object obj)
@@ -361,6 +526,12 @@ public class MobCommanding
 				if(type.getSerializedName().equals(nameIn))
 					return type;
 			return null;
+		}
+		
+		@FunctionalInterface
+		public static interface CommandSupplier
+		{
+			public MobCommand apply(Player player, Object... variablesIn);
 		}
 	}
 }

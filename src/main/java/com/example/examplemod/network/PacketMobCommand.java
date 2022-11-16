@@ -93,7 +93,7 @@ public class PacketMobCommand
 						{
 							Whiteboard<?> board = Whiteboard.tryGetWhiteboard(target);
 							if(board != null)
-								board.setCommands(commandStack);
+								board.addCommands(commandStack);
 						}
 					}
 				}

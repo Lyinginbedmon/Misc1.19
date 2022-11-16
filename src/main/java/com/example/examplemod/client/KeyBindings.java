@@ -25,6 +25,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 @OnlyIn(Dist.CLIENT)
 public class KeyBindings
 {
+	private static final Minecraft mc = Minecraft.getInstance();
+	
 	private static final List<KeyMapping> KEYS = Lists.newArrayList();
 	private static final String CATEGORY = "keys."+Reference.ModInfo.MOD_ID+".category";
 	
@@ -80,7 +82,7 @@ public class KeyBindings
 	{
 		if(MobCommanding.isMarking())
 		{
-			MobCommanding.incMarkIndex((int)Math.signum(event.getScrollDelta()));
+			MobCommanding.inc((int)Math.signum(event.getScrollDelta()), mc.player);
 			event.setCanceled(true);
 		}
 	}

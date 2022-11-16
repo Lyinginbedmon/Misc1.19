@@ -33,6 +33,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.core.Vec3i;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -58,21 +59,29 @@ import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.entity.projectile.ThrownTrident;
 import net.minecraft.world.item.ArrowItem;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.BonemealableBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.util.BlockSnapshot;
+import net.minecraftforge.event.ForgeEventFactory;
 
 public class Branches
 {
 	/** Moves to random positions near self */
 	public static final TreeNode wanderBasic()
 	{
-		return Sequence.sequence(
+		return Sequence.sequential(
 					new Condition(NodePredicates.hasValue(MobWhiteboard.MOB_POS_BLOCK)),
 					new LeafSingle()
 					{
@@ -106,7 +115,7 @@ public class Branches
 	
 	public static final TreeNode wanderAround(String address, int minWait, int maxWait)
 	{
-		return Sequence.sequence(
+		return Sequence.sequential(
 				new Condition(NodePredicates.hasValue(address)),
 				new LeafSingle()
 				{
@@ -144,12 +153,12 @@ public class Branches
 					Actions.LookAtConstant.instant(MobWhiteboard.ATTACK_TARGET),
 					Selector.sequential(
 						TreeNode.conditional((mob, storage) -> { return storage.getTimer(MobWhiteboard.MOB_MELEE_COOLDOWN) > 0; }, Selector.sequential(
-								Sequence.sequence(
+								Sequence.sequential(
 										new Condition((mob, storage) -> { return storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.MAINHAND)).is(Items.SHIELD) || storage.getItemStack(MobWhiteboard.getSlotAddress(EquipmentSlot.OFFHAND)).is(Items.SHIELD); }).setCustomName("has_shield"),
 										new Condition((mob, storage) -> { return !storage.getItemStack(MobWhiteboard.MOB_ITEM_USING).is(Items.SHIELD); }).setCustomName("not_using_shield"),
 										swapHandsIfInvalid((stack) -> stack.is(Items.SHIELD)),
 										Actions.startUsingItem()).setCustomName("use_shield").setDiscrete(),
-								Sequence.sequence(
+								Sequence.sequential(
 										// Set destination, respecting group strategy
 										new LeafSingle()
 										{
@@ -195,7 +204,7 @@ public class Branches
 							Entity target = storage.getEntity(MobWhiteboard.ATTACK_TARGET);
 							return target != null && mob.distanceToSqr(target) > Actions.AttackMelee.getAttackReachSqr(target, mob);
 						}, new Actions.MoveTo(MobWhiteboard.ATTACK_TARGET, 0.5D)).setCustomName("move_closer").setDiscrete(),
-						Sequence.sequence(
+						Sequence.sequential(
 							new Actions.AttackMelee(MobWhiteboard.ATTACK_TARGET),
 							Actions.setWhiteboardTimer(MobWhiteboard.MOB_MELEE_COOLDOWN, Reference.Values.TICKS_PER_SECOND)).setCustomName("melee_attack").setDiscrete()
 					)).setCustomName("melee_attack").setDiscrete();
@@ -281,18 +290,13 @@ public class Branches
 	/** Attempts to equip the item entity at the given whiteboard address */
 	public static final TreeNode equipFromEntity(String targetAddressIn, double speed)
 	{
-		NodePredicate entityValid = (mob, storage) ->
-		{
-			return storage.hasValue(targetAddressIn) && storage.getEntity(targetAddressIn) != null && !storage.getEntity(targetAddressIn).isRemoved();
-		};
-		
-		return TreeNode.conditional(entityValid, Sequence.sequence( 
-				TreeNode.conditional((mob, storage) ->
-				{
-					Entity target = storage.getEntity(targetAddressIn);
-					return target != null && !mob.getBoundingBox().inflate(1,0,1).intersects(target.getBoundingBox());
-				}, new Actions.MoveTo(targetAddressIn, speed)), 
-				Actions.equipFromEntity(targetAddressIn))).setCustomName("equip_from_entity");
+		return Sequence.sequential(
+				Decorator.forceSuccess(
+					Sequence.reactive(
+						new Condition((mob, storage) -> storage.hasValue(targetAddressIn) && storage.getEntity(targetAddressIn) != null && !storage.getEntity(targetAddressIn).isRemoved()).setCustomName("entity_valid"),
+						new Condition((mob, storage) -> !mob.getBoundingBox().inflate(1,0,1).intersects(storage.getEntity(targetAddressIn).getBoundingBox())).setCustomName("too_far"),
+						new Actions.MoveTo(targetAddressIn, speed))).setCustomName("approach_entity"),
+				Actions.equipFromEntity(targetAddressIn).setCustomName("equip_item")).setCustomName("equip_from_entity");
 	}
 	
 	/** Moves towards the given item entity and attempts to pick it up */
@@ -333,7 +337,7 @@ public class Branches
 	
 	public static final TreeNode lookRandom(int min, int max)
 	{
-		return Sequence.sequence(
+		return Sequence.sequential(
 				new LeafSingle()
 				{
 					public boolean doAction(PathfinderMob mobIn, Whiteboard<?> storage)
@@ -403,7 +407,7 @@ public class Branches
 			}).setCustomName("has_bow"),
 			Selector.sequential(
 				swapHandsIfInvalid((item)->{ return item.is(Items.BOW); }),
-				Sequence.sequence(
+				Sequence.sequential(
 					Actions.startUsingItem(),
 					new WaitUntil(shouldShoot),
 					new LeafSingle()
@@ -441,7 +445,7 @@ public class Branches
 					TreeNode.conditional((mob, storage) ->
 					{
 						return !CrossbowItem.isCharged(mob.getItemInHand(InteractionHand.MAIN_HAND));
-					}, Sequence.sequence(
+					}, Sequence.sequential(
 							Actions.startUsingItem(),
 							new WaitUntil((mob, storage) ->
 							{
@@ -544,7 +548,7 @@ public class Branches
 				new Condition(NodePredicates.isTimerZero(timerName)),
 				Selector.sequential(
 					swapHandsIfInvalid((item)->{ return item.getItem() == Items.SPLASH_POTION; }),
-					Sequence.sequence(
+					Sequence.sequential(
 						new LeafSingle()
 						{
 							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -601,12 +605,12 @@ public class Branches
 	
 	public static TreeNode searchAroundPosition(String addressIn, int repeats)
 	{
-		return Sequence.sequence(
+		return Sequence.sequential(
 				new Actions.MoveTo(addressIn, 0.5D),
 				new Actions.Wait(Reference.Values.TICKS_PER_SECOND, Reference.Values.TICKS_PER_SECOND*3),
 				Actions.setWhiteboardValue(SEARCH_RADIUS, 1),
 				Decorator.repeat(repeats, 
-					Sequence.sequence(
+					Sequence.sequential(
 							new LeafSingle()
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -664,7 +668,7 @@ public class Branches
 				new Condition(NodePredicates.isTimerZero(timerName)),
 				Selector.sequential(
 					swapHandsIfInvalid((item)->{ return item.is(Items.ENDER_PEARL); }),
-					Sequence.sequence(
+					Sequence.sequential(
 						new LeafSingle()
 						{
 							public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -698,7 +702,7 @@ public class Branches
 				Selector.sequential(
 					swapHandsIfInvalid((item)->{ return item.is(Items.TRIDENT); }),
 					Selector.sequential(
-						Sequence.sequence(
+						Sequence.sequential(
 							new Condition((mob, storage) -> { return mob.distanceTo(storage.getEntity(MobWhiteboard.ATTACK_TARGET)) > mob.getBbWidth() + 4D; }),
 							new Condition(NodePredicates.isTimerZero(timerName)),
 							Actions.startUsingItem(),
@@ -772,11 +776,11 @@ public class Branches
 		return Sequence.reactive(
 				new Condition(NodePredicates.hasValue(addressIn)).setCustomName("value_exists"),
 				new Condition(NodePredicates.isBlockMinable(addressIn)).setCustomName("block_is_minable"),
-				Sequence.sequence(
+				Sequence.sequential(
 					Actions.setWhiteboardValue(PROGRESS, 0F).setCustomName("start_mining"),
 					Decorator.doWhile(
 						(mob, storage) -> { return storage.getFloat(PROGRESS) < 1F; },
-						Sequence.sequence(
+						Sequence.sequential(
 							Actions.swingArm(InteractionHand.MAIN_HAND),
 							new LeafSingle()
 							{
@@ -794,15 +798,40 @@ public class Branches
 					TreeNode.conditional((mob,storage) -> { return storage.getFloat(PROGRESS) >= 1F; }, Actions.breakBlock(addressIn)).setCustomName("break_if_complete").setDiscrete())).setCustomName("mine_block");
 	}
 	
+	/**
+	 * Returns a sequential node with node1 nested inside of a reactive sequence with the condition set to force success, then node2<br>
+	 * Useful for performing the actions of node2 regardless the success or validity of node1
+	 * @param condition
+	 * @param node1
+	 * @param node2
+	 * @return
+	 */
+	public static TreeNode doUntilThen(NodePredicate condition, TreeNode node1, TreeNode node2)
+	{
+		return doOnceThen(
+				Sequence.reactive(
+					new Condition(condition),
+					node1),
+				node2).setCustomName("do_until_then");
+	}
+	
+	public static TreeNode doOnceThen(TreeNode node1, TreeNode node2)
+	{
+		return Sequence.sequential(
+				Decorator.forceSuccess(node1),
+				node2).setCustomName("do_once_then");
+	}
+	
+	@SuppressWarnings("deprecation")
 	public static TreeNode executeGroupCommand()
 	{
 		return Sequence.reactive(
-				new Condition((mob, storage) -> { return storage.hasCommands(); }).setCustomName("has_commands"),
+				new Condition((mob, storage) -> storage.hasCommands()).setCustomName("has_commands"),
 				Selector.sequential(
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.GUARD_POS; }),
-							new Condition((mob, storage) -> { return ((BlockPos)storage.currentCommand().variable(0)).distSqr(mob.blockPosition()) > 1D; }),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.GUARD_POS),
+							new Condition((mob, storage) -> ((BlockPos)storage.currentCommand().variable(0)).distSqr(mob.blockPosition()) > 1D),
+							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -859,22 +888,23 @@ public class Branches
 								}.setCustomName("identify_position"),
 								new Actions.MoveTo("guard_move", 0.7D))).setCustomName("guard_pos").setDiscrete(),
 					Sequence.reactive(
-						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.MINE; }),
-						Sequence.sequence(
-							new LeafSingle()
-							{
-								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.MINE),
+						doUntilThen(
+							(mob, storage) -> !mob.getLevel().isEmptyBlock((BlockPos)storage.currentCommand().variable(0)),
+							Sequence.sequential(
+								new LeafSingle()
 								{
-									storage.setValue("mine_position", (BlockPos)storage.currentCommand().variable(0));
-									return true;
-								}
-							}.setCustomName("set_mine_position"),
-							Decorator.forceSuccess(moveToAndMineBlock("mine_position")),
-							Actions.completeCurrentTask())
-						).setCustomName("mine_block").setDiscrete(),
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										storage.setValue("mine_position", (BlockPos)storage.currentCommand().variable(0));
+										return true;
+									}
+								}.setCustomName("set_mine_position"),
+								moveToAndMineBlock("mine_position")),
+							Actions.completeCurrentTask())).setCustomName("mine_block").setDiscrete(),
 					Sequence.reactive(
-						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.QUARRY; }),
-						Sequence.sequence(
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.QUARRY),
+						Sequence.sequential(
 							new LeafSingle()
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -902,12 +932,139 @@ public class Branches
 									return true;
 								}
 							}.setCustomName("set_mine_position"),
-							Decorator.forceSuccess(TreeNode.conditional((mob,storage) -> { return !storage.hasValue("mine_position"); }, Actions.completeCurrentTask())).setCustomName("complete_if_no_blocks").setDiscrete(),
+							Decorator.forceSuccess(TreeNode.conditional((mob,storage) -> !storage.hasValue("mine_position"), Actions.completeCurrentTask())).setCustomName("complete_if_no_blocks").setDiscrete(),
 							moveToAndMineBlock("mine_position").setCustomName("mine_current_block").setDiscrete()).setCustomName("quarry_loop")
 						).setCustomName("quarry_region").setDiscrete(),
 					Sequence.reactive(
-						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.ATTACK; }),
-						Sequence.sequence(
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.BONEMEAL),
+						new Condition((mob, storage) -> storage.getTimer(Registry.ITEM.getKey(Items.BONE_MEAL)) == 0).setCustomName("ready_to_bonemeal"),
+						doOnceThen(
+							Sequence.reactive(
+								new Condition((mob, storage) ->
+								{
+									BlockPos pos = (BlockPos)storage.currentCommand().variable(0);
+									BlockState state = mob.getLevel().getBlockState(pos);
+									return state.getBlock() instanceof BonemealableBlock && ((BonemealableBlock)state.getBlock()).isValidBonemealTarget(mob.getLevel(), pos, state, mob.getLevel().isClientSide);
+								}).setCustomName("target_is_bonemealable"),
+								Sequence.sequential(
+									new Condition((mob, storage) -> mob.getMainHandItem().is(Items.BONE_MEAL) || mob.getOffhandItem().is(Items.BONE_MEAL)).setCustomName("has_bonemeal"),
+									new LeafSingle()
+									{
+										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+										{
+											storage.setValue("bonemeal_target", (BlockPos)storage.currentCommand().variable(0));
+											return true;
+										}
+									}.setCustomName("set_target"),
+									Decorator.forceSuccess(new Actions.MoveTo("bonemeal_target", 0.5D)),
+									new Condition((mob, storage) -> 
+									{
+										BlockPos target = storage.getBlockPos("bonemeal_target");
+										return mob.getBoundingBox().inflate(1D).contains(new Vec3(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D));
+									}).setCustomName("in_range"),
+									Decorator.forceSuccess(swapHandsIfInvalid((stack) -> stack.is(Items.BONE_MEAL))),
+									new LeafSingle()
+									{
+										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+										{
+											// FIXME Action fires multiple times instead of just once
+											BlockPos target = storage.getBlockPos("bonemeal_target");
+											Level level = mob.getLevel();
+											BlockState state = level.getBlockState(target);
+											((BonemealableBlock)state.getBlock()).performBonemeal((ServerLevel)level, mob.getRandom(), target, state);
+											mob.getMainHandItem().shrink(1);
+											storage.setTimer(Registry.ITEM.getKey(Items.BONE_MEAL), 5);
+											return true;
+										}
+									}.setCustomName("apply_bonemeal"))),
+							Actions.completeCurrentTask())).setCustomName("bonemeal").setDiscrete(),
+					Sequence.reactive(	// FIXME Ensure handling for no specified block
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.PLACE_BLOCK),
+						doOnceThen(
+							Sequence.reactive(
+								new Condition((mob, storage) ->
+								{
+									MobCommand command = storage.currentCommand();
+									BlockPos target = (BlockPos)command.variable(0);
+									return command.variables() > 2 ? (Block)command.variable(2) != mob.getLevel().getBlockState(target).getBlock() : mob.getLevel().isEmptyBlock(target);
+								}).setCustomName("block_not_at_pos"),
+								new Condition((mob, storage) -> 
+								{
+									MobCommand command = storage.currentCommand();
+									if(command.variables() > 2)
+									{
+										Block specified = (Block)storage.currentCommand().variable(2);
+										return
+												mob.getMainHandItem().getItem() instanceof BlockItem && ((BlockItem)mob.getMainHandItem().getItem()).getBlock() == specified ||
+												mob.getOffhandItem().getItem() instanceof BlockItem && ((BlockItem)mob.getOffhandItem().getItem()).getBlock() == specified;
+									}
+									else
+										return mob.getMainHandItem().getItem() instanceof BlockItem || mob.getOffhandItem().getItem() instanceof BlockItem;
+								}).setCustomName("has_block_item"),
+								Sequence.sequential(
+									Decorator.forceSuccess(
+										Sequence.reactive(
+										new Condition((mob, storage) -> 
+										{
+											BlockPos pos = (BlockPos)storage.currentCommand().variable(0);
+											return !mob.getBoundingBox().inflate(1.5D).contains(pos.getX(), pos.getY(), pos.getZ());
+										}),
+										Sequence.sequential(
+											new LeafSingle()
+											{
+												public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+												{
+													storage.setValue("place_target_pos", (BlockPos)storage.currentCommand().variable(0));
+													return true;
+												}
+											}.setCustomName("set_destination"),
+											new Actions.MoveTo("place_target_pos", 0.5D)))).setCustomName("move_to_pos").setDiscrete(),
+									Decorator.forceSuccess(
+										Sequence.reactive(
+											new Condition((mob, storage) -> 
+											{
+												MobCommand command = storage.currentCommand();
+												if(command.variables() > 2)
+												{
+													Block specified = (Block)storage.currentCommand().variable(2);
+													return !(mob.getMainHandItem().getItem() instanceof BlockItem && ((BlockItem)mob.getMainHandItem().getItem()).getBlock() == specified);
+												}
+												else
+													return !(mob.getMainHandItem().getItem() instanceof BlockItem);
+											}).setCustomName("not_in_mainhand"),
+											Actions.swapItems())).setCustomName("put_block_in_mainhand").setDiscrete(),
+									new LeafSingle()
+									{
+										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+										{
+											Level world = mob.getLevel();
+											ItemStack heldStack = mob.getMainHandItem();
+											MobCommand command = storage.currentCommand();
+											BlockPos target = (BlockPos)command.variable(0);
+											Direction direction = (Direction)command.variable(1);
+											BlockPos targetBelow = target.relative(direction);
+											
+											Block blockToPlace = ((BlockItem)heldStack.getItem()).getBlock();
+											BlockState targetState = blockToPlace.defaultBlockState();
+											if(targetState != null)
+											{
+												targetState = Block.updateFromNeighbourShapes(targetState, world, target);
+												if(!ForgeEventFactory.onBlockPlace(mob, BlockSnapshot.create(world.dimension(), world, targetBelow), direction.getOpposite()))
+												{
+													world.setBlock(target, targetState, 3);
+													world.gameEvent(GameEvent.BLOCK_PLACE, target, GameEvent.Context.of(mob, targetState));
+													heldStack.shrink(1);
+													return true;
+												}
+											}
+											return false;
+										}
+									}.setCustomName("place_block"))
+								),
+							Actions.completeCurrentTask())).setCustomName("place_block").setDiscrete(),
+					Sequence.reactive(
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.ATTACK),
+						Sequence.sequential(
 							new LeafSingle()
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -919,8 +1076,8 @@ public class Branches
 							}.setCustomName("set_attack_target"),
 							Actions.completeCurrentTask())).setCustomName("attack_target").setDiscrete(),
 					Sequence.reactive(
-						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.CEASEFIRE; }),
-						Sequence.sequence(
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.CEASEFIRE),
+						Sequence.sequential(
 							new LeafSingle()
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -930,27 +1087,64 @@ public class Branches
 									return true;
 								}
 							}.setCustomName("clear_attack_target"),
-							Actions.completeCurrentTask())).setCustomName("ceasefire").setDiscrete(),
+						Actions.completeCurrentTask())).setCustomName("ceasefire").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.CEASEFIRE_MOB; }),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.CEASEFIRE_MOB),
+							doUntilThen(
+								(mob, storage) -> storage.getEntity(MobWhiteboard.AI_TARGET) == storage.currentCommand().variable(0),
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
-										Entity target = storage.getEntity(MobWhiteboard.AI_TARGET);
-										if(target == storage.currentCommand().variable(0))
-										{
-											storage.clearValue(MobWhiteboard.AI_TARGET);
-											mob.setTarget(null);
-										}
+										storage.clearValue(MobWhiteboard.AI_TARGET);
+										mob.setTarget(null);
 										return true;
 									}
 								}.setCustomName("clear_attack_target"),
 								Actions.completeCurrentTask())).setCustomName("ceasefire_mob").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.DISMOUNT; }),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.MOUNT),
+							doUntilThen(
+								(mob, storage) -> 
+								{
+									if(mob.isPassenger())
+										return false;
+									
+									MobCommand command = storage.currentCommand();
+									if(command.variable(0) instanceof Entity)
+									{
+										Entity target = (Entity)command.variable(0);
+										return target != mob && target.isAddedToWorld() && target.isAlive() && !target.isVehicle();
+									}
+									return false;
+								},
+								doUntilThen(
+									(mob, storage) ->
+									{
+										Entity target = (Entity)storage.currentCommand().variable(0);
+										return !target.getBoundingBox().inflate(1D).intersects(mob.getBoundingBox());
+									},
+									Sequence.sequential(
+											new LeafSingle()
+											{
+												public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+												{
+													storage.setValue("mount_target", (Entity)storage.currentCommand().variable(0));
+													return true;
+												}
+											}.setCustomName("set_target"),
+											new Actions.MoveTo("mount_target", 0.5D)),
+									new LeafSingle()
+									{
+										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+										{
+											return mob.startRiding((LivingEntity)storage.currentCommand().variable(0));
+										}
+									}),
+								Actions.completeCurrentTask())).setCustomName("mount").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.DISMOUNT),
+							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -961,8 +1155,8 @@ public class Branches
 								}.setCustomName("dismount_vehicle"),
 								Actions.completeCurrentTask())).setCustomName("dismount").setDiscrete(),
 					Sequence.reactive(
-						new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.GOTO_POS; }),
-						Sequence.sequence(
+						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.GOTO_POS),
+						Sequence.sequential(
 							new LeafSingle()
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -974,8 +1168,9 @@ public class Branches
 							new Actions.MoveTo("command_dest", 0.5D),
 							Actions.completeCurrentTask())).setCustomName("goto_pos").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.GOTO_MOB; }),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.GOTO_MOB),
+							new Condition((mob, storage) -> storage.currentCommand().variable(0) != null),
+							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -987,8 +1182,8 @@ public class Branches
 								new Actions.MoveTo("command_dest", 0.5D),
 								Actions.completeCurrentTask())).setCustomName("goto_mob").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.STOP_MOVING; }),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.STOP_MOVING),
+							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -999,46 +1194,47 @@ public class Branches
 								}.setCustomName("stop_moving"),
 								Actions.completeCurrentTask())).setCustomName("stop_moving").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.PICK_UP; }),
-							Sequence.sequence(
-								new LeafSingle()
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.PICK_UP),
+							doUntilThen(
+								(mob, storage) ->
 								{
-									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									Entity target = (Entity)storage.currentCommand().variable(0);
+									return target != null && target.isAlive();
+								},
+								Sequence.sequential(
+									new LeafSingle()
 									{
-										MobCommand command = storage.currentCommand();
-										Entity target = (Entity)command.variable(0);
-										if(target != null && target.isAlive())
+										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 										{
 											storage.setValue("pickup_target", storage.currentCommand().variable(0));
-											return target != null && target.isAlive();
+											return true;
 										}
-										else
-											return false;
-									}
-								}.setCustomName("set_pickup_target"),
-								Branches.moveToPickUp("pickup_target"),
+									}.setCustomName("set_pickup_target"),
+									Branches.moveToPickUp("pickup_target")),
 								Actions.completeCurrentTask())).setCustomName("pick_up").setDiscrete(),
-					Sequence.reactive(	// FIXME Currently broken
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.EQUIP; }),
-							Sequence.sequence(
-								new LeafSingle()
+					Sequence.reactive(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.EQUIP),
+							doUntilThen(
+								(mob, storage) ->
 								{
-									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									Entity target = (Entity)storage.currentCommand().variable(0);
+									return target != null && target.isAlive();
+								},
+								Sequence.sequential(
+									new LeafSingle()
 									{
-										storage.setValue("equip_target", storage.currentCommand().variable(0));
-										return true;
-									}
-								}.setCustomName("set_equip_target"),
-								Branches.equipFromEntity("equip_target", 1D),
+										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+										{
+											storage.setValue("equip_target", storage.currentCommand().variable(0));
+											return true;
+										}
+									}.setCustomName("set_equip_target"),
+									Branches.equipFromEntity("equip_target", 0.5D)),
 								Actions.completeCurrentTask())).setCustomName("equip").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> 
-							{
-								Mark type = storage.currentCommand().type();
-								return type == Mark.JOIN_MY_GROUP || type == Mark.JOIN_GROUP;
-							}),
-							new Condition((mob, storage) -> { return GroupSaveData.get(mob.getServer()).hasGroup((LivingEntity)storage.currentCommand().variable(0)); }).setCustomName("target_has_group"),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.JOIN_GROUP),
+							doUntilThen(
+								(mob, storage) -> GroupSaveData.get(mob.getServer()).hasGroup((LivingEntity)storage.currentCommand().variable(0)),
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -1059,9 +1255,9 @@ public class Branches
 								}.setCustomName("join_target_group"),
 								Actions.completeCurrentTask())).setCustomName("join_group").setDiscrete(),
 					Sequence.reactive(
-							new Condition((mob, storage) -> { return storage.currentCommand().type() == Mark.START_GROUP; }),
-							new Condition((mob, storage) -> { return GroupSaveData.get(mob.getServer()).hasGroup(mob); }).setCustomName("has_group"),
-							Sequence.sequence(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.START_GROUP),
+							new Condition((mob, storage) -> GroupSaveData.get(mob.getServer()).hasGroup(mob)).setCustomName("has_group"),
+							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -1071,7 +1267,24 @@ public class Branches
 										return true;
 									}
 								}.setCustomName("split_group"),
-								Actions.completeCurrentTask())).setCustomName("start_group").setDiscrete()
+								Actions.completeCurrentTask())).setCustomName("start_group").setDiscrete(),
+					Sequence.reactive(
+							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.WAIT),
+							Sequence.sequential(
+								new LeafSingle()
+								{
+									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
+									{
+										MobCommand command = storage.currentCommand();
+										int duration = command.variables() > 0 && command.variable(0) instanceof Integer ? Math.abs((int)command.variable(0)) : Reference.Values.TICKS_PER_SECOND;
+										storage.setTimer(new ResourceLocation(Reference.ModInfo.MOD_ID, "wait_order"), duration);
+										return true;
+									}
+								},
+								doUntilThen(
+									(mob, storage) -> storage.getTimer(new ResourceLocation(Reference.ModInfo.MOD_ID, "wait_order")) > 0,
+									Actions.doNothing(),
+									Actions.completeCurrentTask()))).setCustomName("wait").setDiscrete()
 				).setCustomName("group_command"));
 	}
 }

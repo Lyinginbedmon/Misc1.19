@@ -27,7 +27,7 @@ public class GroupGeneric implements IMobGroup
 	private GroupWhiteboard<ITreeEntity> storage = new GroupWhiteboard<ITreeEntity>();
 	private List<LivingEntity> targets = Lists.newArrayList();
 	
-	private GroupAction currentAction = null;
+	private GroupAction currentAction = new GroupAction.ActionGeneric();
 	
 	private boolean dirty = false;
 	

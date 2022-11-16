@@ -2,6 +2,7 @@ package com.example.examplemod.entity.ai.group.action;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,32 +21,47 @@ import com.example.examplemod.entity.ai.group.action.ActionUtils.MemberData;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.MobCommanding.Mark;
 import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BonemealableBlock;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.StemGrownBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.IPlantable;
 
 public abstract class GroupAction
 {
@@ -55,6 +71,7 @@ public abstract class GroupAction
 	private final int minComplement;
 	private int complement = -1;
 	
+	private int maxChildren = 1;
 	private Map<ResourceLocation, GroupAction> children = new HashMap<>();
 	private List<ActionOption> potentialChildren = Lists.newArrayList();
 	
@@ -70,7 +87,8 @@ public abstract class GroupAction
 	
 	public boolean hasChildren() { return !this.children.isEmpty(); }
 	public Collection<GroupAction> children() { return this.children.values(); }
-	public int maxChildren() { return 1; }	// FIXME Make configurable
+	public void setMaxChildren(int par1Int) { this.maxChildren = Math.max(0, par1Int); }
+	public int maxChildren() { return this.maxChildren; }
 	
 	/** Returns how many members this action is allowed to use (or -1 if it can use all members provided) */
 	public int getComplement() { return this.complement; }
@@ -186,6 +204,7 @@ public abstract class GroupAction
 		for(GroupAction child : children.values())
 			childActions.add(child.storeInNbt(new CompoundTag()));
 		compound.put("Children", childActions);
+		compound.putInt("ChildLimit", this.maxChildren);
 		return compound;
 	}
 	
@@ -237,24 +256,24 @@ public abstract class GroupAction
 	
 	public static class ActionQuarry extends GroupAction
 	{
+		/** Returns true if the given position has an open neighbour and passes minability checks*/
 		public static final BiPredicate<BlockPos, Level> IS_MINABLE = (pos, world) ->
 		{
 			BlockState state = world.getBlockState(pos);
-			boolean hasOpenSide = false;
+			if(world.isEmptyBlock(pos) || state.getCollisionShape(world, pos).isEmpty() || state.is(BlockTags.WITHER_IMMUNE) || state.getBlock().defaultDestroyTime() < 0F)
+				return false;
+			
 			for(Direction dir : Direction.values())
 			{
 				BlockPos neighbour = pos.relative(dir);
 				if(world.isEmptyBlock(neighbour) || world.getBlockState(neighbour).getCollisionShape(world, neighbour).isEmpty())
-				{
-					hasOpenSide = true;
-					break;
-				}
+					return true;
 			}
 			
-			return hasOpenSide && !(world.isEmptyBlock(pos) || state.is(BlockTags.WITHER_IMMUNE) || state.getBlock().defaultDestroyTime() < 0F);
+			return false;
 		};
-		private final BlockPos minPos, maxPos;
-		private final Direction orientation;
+		private BlockPos minPos, maxPos;
+		private Direction orientation;
 		private final Predicate<BlockPos> isInArea;
 		
 		// Members currently unoccupied
@@ -277,10 +296,39 @@ public abstract class GroupAction
 			};
 			
 			addOption(new ActionOption(
-					(group,action,supply) -> { return group.size() > 4 && supply > 1 ? 1F : -1F; },
+					(targets,action,supply) -> { return supply > 1 ? 1F : -1F; },
 					(action,supply) -> new ActionPickUp(this.minPos, this.maxPos).setComplement(1)
 					));
 		}
+		
+		public CompoundTag saveToNbt(CompoundTag compound)
+		{
+			super.saveToNbt(compound);
+			compound.put("Min", NbtUtils.writeBlockPos(minPos));
+			compound.put("Max", NbtUtils.writeBlockPos(maxPos));
+			compound.putString("Face", this.orientation.getSerializedName());
+			
+			ListTag blocks = new ListTag();
+			for(BlockPos pos : miningBlocks)
+				blocks.add(NbtUtils.writeBlockPos(pos));
+			compound.put("Blocks", blocks);
+			return compound;
+		}
+		
+		public void loadFromNbt(CompoundTag compound)
+		{
+			super.loadFromNbt(compound);
+			this.minPos = NbtUtils.readBlockPos(compound.getCompound("Min"));
+			this.maxPos = NbtUtils.readBlockPos(compound.getCompound("Max"));
+			this.orientation = Direction.byName(compound.getString("Face"));
+			
+			ListTag blocks = compound.getList("Blocks", Tag.TAG_COMPOUND);
+			for(int i=0; i<blocks.size(); i++)
+				this.miningBlocks.add(NbtUtils.readBlockPos(blocks.getCompound(i)));
+		}
+		
+		public AABB getBounds() { return new AABB(minPos.getX(), minPos.getY(), minPos.getZ(), maxPos.getX() + 1D, maxPos.getY() + 1D, maxPos.getZ() + 1D); }
+		public List<BlockPos> currentLot() { return this.miningBlocks; }
 		
 		protected boolean start(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
 		{
@@ -399,7 +447,7 @@ public abstract class GroupAction
 		private void assignConsignment(LivingEntity recipient, List<BlockPos> blocks)
 		{
 			CommandStack stack = new CommandStack();
-			sortConsignment(blocks, (LivingEntity)recipient).forEach((pos) -> stack.append(new MobCommand(Mark.MINE, pos))); 
+			sortConsignment(blocks, (LivingEntity)recipient).forEach((pos) -> stack.append(Mark.MINE.makeCommand(pos))); 
 			Whiteboard.tryGetWhiteboard(recipient).setCommands(stack);
 		}
 		
@@ -565,6 +613,429 @@ public abstract class GroupAction
 		}
 	}
 	
+	public static class ActionFarm extends GroupAction
+	{
+		public static final Predicate<ItemStack> IS_SEED = (stack) -> stack.getItem() instanceof BlockItem && ((BlockItem)stack.getItem()).getBlock() instanceof IPlantable;
+		private static final EquipmentSlot[] SLOTS_SEARCHED = new EquipmentSlot[] {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND};
+		
+		private BlockPos minPos, maxPos;
+		// The mapping area marked by its crop state
+		private Map<CropState, List<BlockPos>> farmMap = new HashMap<>();
+		// Blocks that have been altered since the last major scan
+		private List<BlockPos> blocksAltered = Lists.newArrayList();
+		
+		private int recheckTicks = 0;
+		
+		public ActionFarm(BlockPos pointA, BlockPos pointB)
+		{
+			super(ActionType.FARM, 1);
+			this.minPos = pointA;
+			this.maxPos = pointB;
+			
+			addOption(new ActionOption(
+				(targets,action,supply) -> supply > 0 ? 1F : -1F,
+				(parent,supply) -> new ActionPickUpNonSeeds(minPos, maxPos).setComplement(1)));
+		}
+		
+		public CompoundTag saveToNbt(CompoundTag compound)
+		{
+			super.saveToNbt(compound);
+			compound.put("Min", NbtUtils.writeBlockPos(minPos));
+			compound.put("Max", NbtUtils.writeBlockPos(maxPos));
+			
+			ListTag states = new ListTag();
+			for(CropState state : CropState.values())
+			{
+				ListTag positions = new ListTag();
+				if(farmMap.containsKey(state))
+					for(BlockPos pos : farmMap.get(state))
+						positions.add(NbtUtils.writeBlockPos(pos));
+				states.add(positions);
+			}
+			compound.put("States", states);
+			
+			ListTag boned = new ListTag();
+			blocksAltered.forEach((pos) -> boned.add(NbtUtils.writeBlockPos(pos)));
+			compound.put("Altered", boned);
+			return compound;
+		}
+		
+		public void loadFromNbt(CompoundTag compound)
+		{
+			super.loadFromNbt(compound);
+			this.minPos = NbtUtils.readBlockPos(compound.getCompound("Min"));
+			this.maxPos = NbtUtils.readBlockPos(compound.getCompound("Max"));
+			
+			farmMap.clear();
+			ListTag states = compound.getList("States", Tag.TAG_LIST);
+			for(int i=0; i<states.size(); i++)
+			{
+				CropState state = CropState.values()[i];
+				ListTag positions = states.getList(i);
+				if(positions.isEmpty())
+					continue;
+				
+				List<BlockPos> list = Lists.newArrayList();
+				for(int j=0; j<positions.size(); j++)
+					list.add(NbtUtils.readBlockPos(positions.getCompound(j)));
+				
+				farmMap.put(state, list);
+			}
+			
+			blocksAltered.clear();
+			ListTag boned = compound.getList("Altered", Tag.TAG_COMPOUND);
+			for(Tag tag : boned)
+				blocksAltered.add(NbtUtils.readBlockPos((CompoundTag)tag));
+		}
+		
+		public AABB getBounds() { return new AABB(minPos.getX(), minPos.getY(), minPos.getZ(), maxPos.getX() + 1D, maxPos.getY() + 1D, maxPos.getZ() + 1D); }
+		public List<BlockPos> getBlocksOfState(CropState stateIn)
+		{
+			if(farmMap.containsKey(stateIn))
+			{
+				List<BlockPos> blocks = Lists.newArrayList();
+				blocks.addAll(farmMap.get(stateIn));
+				return blocks;
+			}
+			return Lists.newArrayList();
+		}
+		
+		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
+		{
+			List<LivingEntity> workers = Lists.newArrayList();
+			workers.addAll(membersIn);
+			workers.removeIf((mob) -> !(mob instanceof ITreeEntity));
+			
+			// Every major scan, attempt to expand or improve the farm area
+			if(recheckTicks++ % (Reference.Values.TICKS_PER_SECOND * 10) == 0)
+			{
+				blocksAltered.clear();
+				farmMap.clear();
+				for(int y=minPos.getY(); y<=maxPos.getY(); y++)
+					for(int x=minPos.getX(); x<=maxPos.getX(); x++)
+						for(int z=minPos.getZ(); z<=maxPos.getZ(); z++)
+						{
+							BlockPos position = new BlockPos(x, y, z);
+							CropState state = getStateOfCrop(position, world);
+							if(state != null)
+							{
+								List<BlockPos> set = farmMap.containsKey(state) ? farmMap.get(state) : Lists.newArrayList();
+								set.add(position);
+								farmMap.put(state, set);
+							}
+						}
+			}
+			// Between major scans, monitor known crops
+			else
+			{
+				manageBonemeal(workers);
+				managePlant(world, workers);
+				getBlocksOfState(CropState.HARVEST).forEach((pos) -> managePosHarvest(pos, world, workers));
+			}
+		}
+		
+		@Nullable
+		private CropState updateStateOfPos(BlockPos pos, Level world)
+		{
+			CropState oldState = stateOfPos(pos);
+			CropState newState = getStateOfCrop(pos, world);
+			if(oldState != newState)
+				registerPosAs(pos, newState);
+			return newState;
+		}
+		
+		private void manageBonemeal(List<LivingEntity> workers)
+		{
+			// List of workers able to bonemeal crops if necessary
+			List<LivingEntity> fertilisers = Lists.newArrayList();
+			workers.forEach((worker) -> 
+			{
+				if(worker.getMainHandItem().is(Items.BONE_MEAL) || worker.getOffhandItem().is(Items.BONE_MEAL))
+					fertilisers.add(worker);
+			});
+			
+			List<BlockPos> toFertilise = getBlocksOfState(CropState.BONEMEAL);
+			toFertilise.removeAll(blocksAltered);
+			if(!fertilisers.isEmpty() && !toFertilise.isEmpty())
+				for(LivingEntity fertiliser : fertilisers)
+				{
+					if(toFertilise.isEmpty())
+						break;
+					
+					Whiteboard<?> storage = Whiteboard.tryGetWhiteboard(fertiliser);
+					if(storage == null)
+						continue;
+					
+					CommandStack existing = storage.getCommands();
+					if(existing != null && !existing.isEmpty())
+					{
+						boolean alreadyWorking = false;
+						for(MobCommand command : existing.allTasks())
+							if(command.type() == Mark.BONEMEAL)
+							{
+								alreadyWorking = true;
+								BlockPos position = (BlockPos)command.variable(0);
+								if(!blocksAltered.contains(position))
+									blocksAltered.add(position);
+							}
+						
+						if(alreadyWorking)
+							continue;
+					}
+					
+					int supply =
+							(fertiliser.getMainHandItem().is(Items.BONE_MEAL) ? fertiliser.getMainHandItem().getCount() : 0) + 
+							(fertiliser.getOffhandItem().is(Items.BONE_MEAL) ? fertiliser.getOffhandItem().getCount() : 0);
+					BlockPos lastPos = fertiliser.blockPosition();
+					CommandStack allotment = new CommandStack();
+					while(allotment.size() < Math.min(toFertilise.size(), supply))
+					{
+						toFertilise = sortByDist(lastPos, toFertilise);
+						BlockPos closest = toFertilise.remove(0);
+						blocksAltered.add(closest);
+						allotment.append(Mark.BONEMEAL.makeCommand(closest));
+						lastPos = closest;
+					}
+					storage.setCommands(allotment);
+					workers.remove(fertiliser);
+				}
+		}
+		
+		private static List<BlockPos> sortByDist(BlockPos lastPos, List<BlockPos> blocks)
+		{
+			blocks.sort((pos1, pos2) -> 
+			{
+				double dist1 = lastPos.distSqr(pos1);
+				double dist2 = lastPos.distSqr(pos2);
+				return dist1 < dist2 ? -1 : dist1 > dist2 ? 1 : 0;
+			});
+			return blocks;
+		}
+		
+		private void managePlant(Level world, List<LivingEntity> workers)
+		{
+			if(workers.isEmpty())
+				return;
+			
+			Map<LivingEntity, List<Block>> seedersToSeeds = Maps.newHashMap();
+			List<LivingEntity> seeders = Lists.newArrayList();
+			workers.forEach((worker) -> 
+			{
+				if(!(worker instanceof ITreeEntity) || Whiteboard.tryGetWhiteboard(worker).hasCommands())
+					return;
+				
+				List<Block> seeds = Lists.newArrayList();
+				for(EquipmentSlot slot : SLOTS_SEARCHED)
+				{
+					ItemStack heldItem = worker.getItemBySlot(slot);
+					if(IS_SEED.apply(heldItem))
+						seeds.add(((BlockItem)heldItem.getItem()).getBlock());
+				}
+				
+				if(!seeds.isEmpty())
+				{
+					seedersToSeeds.put(worker, seeds);
+					seeders.add(worker);
+				}
+			});
+			
+			// Prioritise seeding soil close to water
+			List<BlockPos> fertileSoil = getBlocksOfState(CropState.PLANT);
+			List<BlockPos> waterBlocks = getBlocksOfState(CropState.WATER);
+			fertileSoil.sort((pos1, pos2) ->
+			{
+				double dist1 = Double.MAX_VALUE;
+				double dist2 = Double.MAX_VALUE;
+				
+				for(BlockPos water : waterBlocks)
+				{
+					dist1 = Math.min(dist1, pos1.distSqr(water));
+					dist2 = Math.min(dist2, pos2.distSqr(water));
+				}
+				
+				return dist1 < dist2 ? -1 : dist1 > dist2 ? 1 : 0;
+			});
+			
+			for(BlockPos pos : getBlocksOfState(CropState.PLANT))
+			{
+				CropState newState = updateStateOfPos(pos, world);
+				if(newState != CropState.PLANT)
+					return;
+				
+				BlockState stateBelow = world.getBlockState(pos.below());
+				for(LivingEntity seeder : seeders)
+				{
+					if(!seedersToSeeds.containsKey(seeder) || Whiteboard.tryGetWhiteboard(seeder).hasCommands())
+						continue;
+					
+					Block seed = null;
+					for(Block block : seedersToSeeds.get(seeder))
+						if(stateBelow.canSustainPlant(world, pos, Direction.UP, (IPlantable)block))
+							seed = block;
+					
+					if(seed != null)
+					{
+						Whiteboard.tryGetWhiteboard(seeder).setCommands(new CommandStack(Mark.PLACE_BLOCK.makeCommand(pos, Direction.DOWN, seed)));
+						workers.remove(seeder);
+						seedersToSeeds.remove(seeder);
+						break;
+					}
+				}
+			}
+			
+			// Any inactive workers tasked to pick up seeds and bonemeal in the area
+			List<ItemEntity> itemsInArea = world.getEntitiesOfClass(ItemEntity.class, new AABB(minPos.getX(), minPos.getY(), minPos.getZ(), maxPos.getX() + 1D, maxPos.getY() + 1D, maxPos.getZ() + 1D));
+			itemsInArea.removeIf((item) -> !IS_SEED.apply(item.getItem()) && !item.getItem().is(Items.BONE_MEAL));
+			
+			for(ItemEntity item : itemsInArea)
+			{
+				ItemStack stack = item.getItem();
+				
+				LivingEntity closest = null;
+				double minDist = Double.MAX_VALUE;
+				for(LivingEntity member : workers)
+				{
+					// If someone is already holding this item in a non-full stack, assign them
+					boolean foundExisting = false;
+					boolean hasEmpty = false;
+					for(EquipmentSlot slot : SLOTS_SEARCHED)
+					{
+						ItemStack heldStack = member.getItemBySlot(slot);
+						if(heldStack.isEmpty())
+							hasEmpty = true;
+						else if(heldStack.getItem() == stack.getItem() && heldStack.areCapsCompatible(stack) && heldStack.areShareTagsEqual(stack) && heldStack.getCount() < heldStack.getMaxStackSize())
+						{
+							closest = member;
+							foundExisting = true;
+							break;
+						}
+					}
+					
+					// Otherwise pick the closest person with an empty slot
+					if(!foundExisting && hasEmpty)
+					{
+						double dist = member.distanceToSqr(item);
+						if(dist < minDist)
+						{
+							minDist = dist;
+							closest = member;
+						}
+					}
+					else
+						break;
+				}
+				
+				if(closest != null)
+				{
+					Whiteboard.tryGetWhiteboard(closest).setCommands(CommandStack.single(Mark.PICK_UP, item));
+					workers.remove(closest);
+				}
+			}
+		}
+		
+		private void managePosHarvest(BlockPos pos, Level world, List<LivingEntity> workers)
+		{
+			if(workers.isEmpty())
+				return;
+			
+			CropState newState = updateStateOfPos(pos, world);
+			if(newState != CropState.HARVEST || blocksAltered.contains(pos))
+				return;
+			
+			LivingEntity harvester = null;
+			double minDist = Double.MAX_VALUE;
+			for(LivingEntity member : workers)
+			{
+				if(Whiteboard.tryGetWhiteboard(member).hasCommands())
+					continue;
+				
+				double dist = member.distanceToSqr(new Vec3(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D));
+				if(dist < minDist)
+				{
+					minDist = dist;
+					harvester = member;
+				}
+			}
+			
+			if(harvester != null)
+			{
+				Whiteboard.tryGetWhiteboard(harvester).setCommands(CommandStack.single(Mark.MINE.makeCommand(pos)));
+				workers.remove(harvester);
+				blocksAltered.add(pos);
+			}
+		}
+		
+		@Nullable
+		private CropState stateOfPos(BlockPos pos)
+		{
+			for(CropState state : CropState.values())
+				if(farmMap.containsKey(state) && farmMap.get(state).contains(pos))
+					return state;
+			return null;
+		}
+		
+		private void registerPosAs(BlockPos pos, @Nullable CropState newState)
+		{
+			CropState oldState = stateOfPos(pos);
+			if(oldState == newState)
+				return;
+			else if(oldState != null)
+			{
+				List<BlockPos> oldSet = farmMap.get(oldState);
+				oldSet.remove(pos);
+				farmMap.put(oldState, oldSet);
+			}
+			
+			if(newState != null)
+			{
+				List<BlockPos> newSet = farmMap.containsKey(newState) ? farmMap.get(newState) : Lists.newArrayList();
+				newSet.add(pos);
+				farmMap.put(newState, newSet);
+			}
+		}
+		
+		@Nullable
+		public static CropState getStateOfCrop(BlockPos pos, Level world)
+		{
+			BlockState state = world.getBlockState(pos);
+			if(state.getFluidState().is(FluidTags.WATER))
+				return CropState.WATER;
+			else if(world.isEmptyBlock(pos))
+				return world.getBlockState(pos.below()).isFaceSturdy(world, pos.below(), Direction.UP) || world.getBlockState(pos.below()).is(Blocks.FARMLAND) ? CropState.PLANT : null;
+			else
+			{
+				Block block = state.getBlock();
+				if(block instanceof StemGrownBlock)
+					return CropState.HARVEST;
+				else if(block instanceof BonemealableBlock)
+					return ((BonemealableBlock)block).isValidBonemealTarget(world, pos, state, false) ? CropState.BONEMEAL : (block instanceof CropBlock ? CropState.HARVEST : null);
+			}
+			return null;
+		}
+		
+		public static enum CropState
+		{
+			WATER(0F, 1F, 1F),
+			PLANT(1F, 0F, 0F),
+			BONEMEAL(0F, 0F, 1F),
+			HARVEST(0F, 1F, 0F);
+			
+			/** States to monitor inbetween major scans */
+			public static final EnumSet<CropState> WATCHABLES = EnumSet.of(PLANT, BONEMEAL, HARVEST);
+			
+			Float[] colours;
+			
+			private CropState(float r, float g, float b)
+			{
+				colours = new Float[] {r, g, b};
+			}
+			
+			public float red() { return colours[0]; }
+			public float green() { return colours[1]; }
+			public float blue() { return colours[2]; }
+		}
+	}
+	
 	public static class ActionFollow extends GroupAction
 	{
 		private MemberData follow = null;
@@ -667,7 +1138,7 @@ public abstract class GroupAction
 		
 		private MemberData target = null;
 		
-		private BlockPos lastPos = BlockPos.ZERO;
+		private Vec3 lastPos = Vec3.ZERO;
 		private int rethinkTicks = 0;
 		
 		public ActionGuardMob(@Nullable LivingEntity target, double min, double max)
@@ -676,12 +1147,21 @@ public abstract class GroupAction
 			if(target != null)
 			{
 				this.target = new MemberData(target);
-				this.lastPos = target.blockPosition();
+				this.lastPos = target.position();
 			}
 			
 			this.minDist = min * min;
 			this.maxDist = max * max;
 			generateUtilityPlot();
+			
+			addOption(new ActionOption(
+					(targets,action,size) -> targets.isEmpty() ? -1F : ((size * 0.3F) / targets.size()) / 2F,
+					(action,supply) -> new ActionFlank().setComplement((int)Math.ceil(supply * 0.3D))
+					));
+			addOption(new ActionOption(
+					(targets,action,size) -> targets.isEmpty() ? -1F : 0.5F,
+					(action,supply) -> new ActionBrawl().setComplement((int)Math.ceil(supply * 0.4D))
+					));
 		}
 		
 		public ActionGuardMob(LivingEntity target, double distA)
@@ -693,7 +1173,12 @@ public abstract class GroupAction
 		{
 			super.saveToNbt(compound);
 			compound.put("Target", this.target.saveToNbt(new CompoundTag()));
-			compound.put("Pos", NbtUtils.writeBlockPos(lastPos));
+			
+			ListTag posData = new ListTag();
+			posData.add(DoubleTag.valueOf(lastPos.x));
+			posData.add(DoubleTag.valueOf(lastPos.y));
+			posData.add(DoubleTag.valueOf(lastPos.z));
+			compound.put("Pos", posData);
 			return compound;
 		}
 		
@@ -701,7 +1186,9 @@ public abstract class GroupAction
 		{
 			super.loadFromNbt(compound);
 			target = MemberData.fromNbt(compound.getCompound("Target"));
-			lastPos = NbtUtils.readBlockPos(compound.getCompound("Pos"));
+			
+			ListTag posData = compound.getList("Pos", Tag.TAG_DOUBLE);
+			lastPos = new Vec3(posData.getDouble(0), posData.getDouble(1), posData.getDouble(2));
 			generateUtilityPlot();
 		}
 		
@@ -731,11 +1218,10 @@ public abstract class GroupAction
 			}
 			
 			LivingEntity guardTarget = target.get();
-			if(guardTarget.blockPosition().distSqr(lastPos) > minDist)
-			{
-				lastPos = guardTarget.blockPosition();
-				System.out.println("Updated last position");
-			}
+			if(guardTarget.position().distanceToSqr(lastPos) > minDist)
+				lastPos = guardTarget.position();
+			
+			// FIXME Relative vector position, not block position
 			
 			// Once every 5 seconds, clean the formation to account for unit losses or reassignments
 			if(++rethinkTicks%(Reference.Values.TICKS_PER_SECOND * 5) == 0)
@@ -794,7 +1280,7 @@ public abstract class GroupAction
 					BlockPos current = entity.blockPosition();
 					current = new BlockPos(current.getX(), guardTarget.getY(), current.getZ());
 					
-					double dist = current.distSqr(bestPosWorld.offset(lastPos));
+					double dist = current.distSqr(bestPosWorld.offset(lastPos.x, lastPos.y, lastPos.z));
 					if(dist < lowest)
 					{
 						closest = entity;
@@ -808,7 +1294,7 @@ public abstract class GroupAction
 			
 			for(LivingEntity entity : trackedMembers())
 			{
-				BlockPos dest = getTrackedPos(entity).offset(lastPos);
+				BlockPos dest = getTrackedPos(entity).offset(lastPos.x, lastPos.y, lastPos.z);
 				dest = new BlockPos(dest.getX(), entity.blockPosition().getY(), dest.getZ());
 				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.GUARD_POS, dest));
 			}
@@ -833,7 +1319,7 @@ public abstract class GroupAction
 			return (float)(minDist * proximity);
 		}
 		
-		public BlockPos lastPosition() { return this.lastPos; }
+		public Vec3 lastPosition() { return this.lastPos; }
 	}
 	
 	public static class ActionGuardPos extends ActionFormation
@@ -1198,7 +1684,7 @@ public abstract class GroupAction
 				
 				if(bestTarget != null)
 				{
-					Whiteboard.tryGetWhiteboard(bestTarget).setCommands(CommandStack.single(Mark.ATTACK, bestTarget));
+					Whiteboard.tryGetWhiteboard(member).setCommands(CommandStack.single(Mark.ATTACK, bestTarget));
 					haveTarget.add(member);
 				}
 				else
@@ -1342,7 +1828,7 @@ public abstract class GroupAction
 				
 				BlockPos dest = getTrackedPos(member);
 				dest = new BlockPos(dest.getX(), member.blockPosition().getY(), dest.getZ());
-				storage.setCommands(new CommandStack(new MobCommand(Mark.CEASEFIRE), new MobCommand(Mark.GUARD_POS, dest)));
+				storage.setCommands(new CommandStack(Mark.CEASEFIRE.makeCommand(), Mark.GUARD_POS.makeCommand(dest)));
 			}
 			else if(storage.getEntity(MobWhiteboard.AI_TARGET) == null && random.nextInt(20) == 0)
 			{
@@ -1532,13 +2018,34 @@ public abstract class GroupAction
 	
 	public static class ActionPickUp extends GroupAction
 	{
+		protected Predicate<ItemStack> qualifier = Predicates.alwaysTrue();
 		private BlockPos minPos, maxPos;
+		
+		protected ActionPickUp(ResourceLocation typeIn, BlockPos minPosIn, BlockPos maxPosIn)
+		{
+			super(typeIn, 1);
+			this.minPos = minPosIn;
+			this.maxPos = maxPosIn;
+		}
 		
 		public ActionPickUp(BlockPos minPosIn, BlockPos maxPosIn)
 		{
-			super(ActionType.PICK_UP, 1);
-			this.minPos = minPosIn;
-			this.maxPos = maxPosIn;
+			this(ActionType.PICK_UP, minPosIn, maxPosIn);
+		}
+		
+		public CompoundTag saveToNbt(CompoundTag compound)
+		{
+			super.saveToNbt(compound);
+			compound.put("Min", NbtUtils.writeBlockPos(minPos));
+			compound.put("Max", NbtUtils.writeBlockPos(maxPos));
+			return compound;
+		}
+		
+		public void loadFromNbt(CompoundTag compound)
+		{
+			super.loadFromNbt(compound);
+			this.minPos = NbtUtils.readBlockPos(compound.getCompound("Min"));
+			this.maxPos = NbtUtils.readBlockPos(compound.getCompound("Max"));
 		}
 		
 		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world)
@@ -1547,7 +2054,10 @@ public abstract class GroupAction
 			available.addAll(membersIn);
 			available.removeIf((living) -> !(living instanceof ITreeEntity));
 			
-			for(ItemEntity item : world.getEntitiesOfClass(ItemEntity.class, new AABB(minPos.getX(), minPos.getY(), minPos.getZ(), maxPos.getX() + 1D, maxPos.getY() + 1D, maxPos.getZ() + 1D)))
+			for(ItemEntity item : world.getEntitiesOfClass(
+					ItemEntity.class, 
+					new AABB(minPos.getX(), minPos.getY(), minPos.getZ(), maxPos.getX() + 1D, maxPos.getY() + 1D, maxPos.getZ() + 1D), 
+					(item) -> item.isOnGround() && !item.hasPickUpDelay() && qualifier.apply(item.getItem())))
 			{
 				LivingEntity closest = null;
 				double minDist = Double.MAX_VALUE;
@@ -1568,5 +2078,34 @@ public abstract class GroupAction
 				}
 			}
 		}
+	}
+	
+	/** Variant of pickup used by farms which ignores seeds and bone meal */
+	public static class ActionPickUpNonSeeds extends ActionPickUp
+	{
+		public ActionPickUpNonSeeds(BlockPos minPosIn, BlockPos maxPosIn)
+		{
+			super(ActionType.PICK_UP_NON_SEEDS, minPosIn, maxPosIn);
+			this.qualifier = (stack) -> !ActionFarm.IS_SEED.apply(stack) && !stack.is(Items.BONE_MEAL);
+		}
+	}
+	
+	public static class ActionGeneric extends GroupAction
+	{
+		public ActionGeneric()
+		{
+			super(ActionType.GENERIC, -1);
+			
+			addOption(new ActionOption(
+					(targets,action,size) -> targets.isEmpty() ? -1F : ((size * 0.3F) / targets.size()) / 2F,
+					(action,supply) -> new ActionFlank().setComplement(-1)
+					));
+			addOption(new ActionOption(
+					(targets,action,size) -> targets.isEmpty() ? -1F : 0.5F,
+					(action,supply) -> new ActionBrawl().setComplement(-1)
+					));
+		}
+		
+		protected void tick(List<LivingEntity> membersIn, List<LivingEntity> targetsIn, Level world){ }
 	}
 }

@@ -28,7 +28,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.HitResult.Type;
 import net.minecraft.world.phys.Vec3;
 
 public interface IMobGroup
@@ -80,7 +79,7 @@ public interface IMobGroup
 					shouldClear = true;
 					
 					// Give to closest member
-					BlockPos pos = order.type().inputType() == Type.BLOCK ? (BlockPos)order.variable(0) : ((Entity)order.variable(0)).blockPosition();
+					BlockPos pos = order.variable(0) instanceof BlockPos ? (BlockPos)order.variable(0) : ((Entity)order.variable(0)).blockPosition();
 					
 					double minDistToBlock = Double.MAX_VALUE;
 					LivingEntity closeToBlock = null;
@@ -128,6 +127,18 @@ public interface IMobGroup
 					if(isTarget(target))
 						removeTarget(target);
 					return;
+				case FARM:
+					if(order.variables() > 2)
+						setAction(new GroupAction.ActionFarm((BlockPos)order.variable(0), (BlockPos)order.variable(2)));
+					else
+					{
+						BlockPos corePos = (BlockPos)order.variable(0);
+						Vec3i min = new Vec3i(-4,0,-4);
+						Vec3i max = new Vec3i(4,3,4);
+						
+						setAction(new GroupAction.ActionFarm(corePos.offset(min), corePos.offset(max)));
+					}
+					return;
 				case FOLLOW_MOB:
 					Entity followEnt = (Entity)order.variable(0);
 					if(followEnt instanceof LivingEntity)
@@ -149,8 +160,10 @@ public interface IMobGroup
 					{
 						BlockPos corePos = (BlockPos)order.variable(0);
 						Direction facing = (Direction)order.variable(1);
-						Vec3i min = new Vec3i(-5,0,-5);
-						Vec3i max = new Vec3i(5,3,5);
+						Direction right = facing.getClockWise();
+						
+						Vec3i min = right.getNormal().multiply(-5).offset(facing.getNormal().multiply(10));
+						Vec3i max = right.getNormal().multiply(5).above(2);
 						
 						setAction(new GroupAction.ActionQuarry(corePos.offset(min), corePos.offset(max), facing));
 					}
@@ -369,7 +382,6 @@ public interface IMobGroup
 			return;
 		}
 		
-		// System.out.println("Updating "+getAction().getRegistryName()+" in "+getKey());
 		List<LivingEntity> members = members();
 		if(!members.isEmpty())
 		{
