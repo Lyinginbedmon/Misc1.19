@@ -33,5 +33,10 @@
 	"gui.examplemod.notify_target.add": "Will notify %s",
 	"gui.examplemod.notify_target.remove": "Forgot %s",
 	"gui.examplemod.notify_target.none": "You have no-one to command!",
-	"gui.examplemod.player_group": "%s's group" 
+	"gui.examplemod.player_group": "%s's group" ,
+	"command.examplemod.give_order.single.success": "Successfully gave %s order(s) to %s",
+	"command.examplemod.give_order.single.failed": "Could not give order to %s",
+	"command.examplemod.give_order.group.success": "Successfully gave %s order(s) to group of %s",
+	"command.examplemod.give_order.group.failed": "Could not give order to group of %s",
+	"command.examplemod.give_order.invalid": "Could not give order to mob"
 }

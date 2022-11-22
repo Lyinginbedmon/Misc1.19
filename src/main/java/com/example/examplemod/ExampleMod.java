@@ -6,6 +6,7 @@ import com.example.examplemod.client.ActionRenderManager;
 import com.example.examplemod.client.GroupRenderer;
 import com.example.examplemod.entity.ai.group.GroupType;
 import com.example.examplemod.entity.ai.group.action.ActionType;
+import com.example.examplemod.init.ExCommands;
 import com.example.examplemod.init.ExEntities;
 import com.example.examplemod.init.ExItems;
 import com.example.examplemod.network.PacketHandler;
@@ -24,6 +25,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -79,6 +81,12 @@ public class ExampleMod
     {
         // Do something when the server starts
         LOG.info("HELLO from server starting");
+    }
+    
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event)
+    {
+    	ExCommands.init(event);
     }
     
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent

@@ -79,7 +79,7 @@ public interface IMobGroup
 					shouldClear = true;
 					
 					// Give to closest member
-					BlockPos pos = order.variable(0) instanceof BlockPos ? (BlockPos)order.variable(0) : ((Entity)order.variable(0)).blockPosition();
+					BlockPos pos = order.hasVariable("Pos") ? (BlockPos)order.variable("Pos") : ((Entity)order.variable("Entity")).blockPosition();
 					
 					double minDistToBlock = Double.MAX_VALUE;
 					LivingEntity closeToBlock = null;
@@ -100,7 +100,7 @@ public interface IMobGroup
 					shouldClear = true;
 					
 					// Give to closest unmounted member
-					Entity vehicle = (Entity)order.variable(0);
+					Entity vehicle = (Entity)order.variable("Entity");
 					
 					double minDistToEnt = Double.MAX_VALUE;
 					LivingEntity closeToEnt = null;
@@ -118,21 +118,21 @@ public interface IMobGroup
 						Whiteboard.tryGetWhiteboard(closeToEnt).setCommands(stack);
 					return;
 				case ATTACK:
-					LivingEntity living =(LivingEntity)order.variable(0);
+					LivingEntity living =(LivingEntity)order.variable("Entity");
 					if(!isTarget(living))
 						addTarget(living);
 					return;
 				case CEASEFIRE_MOB:
-					LivingEntity target =(LivingEntity)order.variable(0);
+					LivingEntity target =(LivingEntity)order.variable("Entity");
 					if(isTarget(target))
 						removeTarget(target);
 					return;
 				case FARM:
 					if(order.variables() > 2)
-						setAction(new GroupAction.ActionFarm((BlockPos)order.variable(0), (BlockPos)order.variable(2)));
+						setAction(new GroupAction.ActionFarm((BlockPos)order.variable("Pos"), (BlockPos)order.variable("Pos2")));
 					else
 					{
-						BlockPos corePos = (BlockPos)order.variable(0);
+						BlockPos corePos = (BlockPos)order.variable("Pos");
 						Vec3i min = new Vec3i(-4,0,-4);
 						Vec3i max = new Vec3i(4,3,4);
 						
@@ -140,26 +140,26 @@ public interface IMobGroup
 					}
 					return;
 				case FOLLOW_MOB:
-					Entity followEnt = (Entity)order.variable(0);
+					Entity followEnt = (Entity)order.variable("Entity");
 					if(followEnt instanceof LivingEntity)
 						setAction(new GroupAction.ActionFollow((LivingEntity)followEnt, 1.5D, 3D));
 					return;
 				case GUARD_MOB:
-					Entity guardEnt = (Entity)order.variable(0);
+					Entity guardEnt = (Entity)order.variable("Entity");
 					if(guardEnt instanceof LivingEntity)
 						setAction(new GroupAction.ActionGuardMob((LivingEntity)guardEnt, 2D, 2D + (size() * 0.5D)));
 					return;
 				case GUARD_POS:
-					BlockPos guardPos = (BlockPos)order.variable(0);
-					setAction(new GroupAction.ActionGuardPos(guardPos.relative(((Direction)order.variable(1)).getOpposite()), 6D, 10D));
+					BlockPos guardPos = (BlockPos)order.variable("Pos");
+					setAction(new GroupAction.ActionGuardPos(guardPos.relative(((Direction)order.variable("Facing")).getOpposite()), 6D, 10D));
 					return;
 				case QUARRY:
 					if(order.variables() > 2)
-						setAction(new GroupAction.ActionQuarry((BlockPos)order.variable(0), (BlockPos)order.variable(2), (Direction)order.variable(1)));
+						setAction(new GroupAction.ActionQuarry((BlockPos)order.variable("Pos"), (BlockPos)order.variable("Pos2"), (Direction)order.variable("Facing")));
 					else
 					{
-						BlockPos corePos = (BlockPos)order.variable(0);
-						Direction facing = (Direction)order.variable(1);
+						BlockPos corePos = (BlockPos)order.variable("Pos");
+						Direction facing = (Direction)order.variable("Facing");
 						Direction right = facing.getClockWise();
 						
 						Vec3i min = right.getNormal().multiply(-5).offset(facing.getNormal().multiply(10));

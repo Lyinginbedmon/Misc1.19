@@ -830,14 +830,14 @@ public class Branches
 				Selector.sequential(
 					Sequence.reactive(
 							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.GUARD_POS),
-							new Condition((mob, storage) -> ((BlockPos)storage.currentCommand().variable(0)).distSqr(mob.blockPosition()) > 1D),
+							new Condition((mob, storage) -> ((BlockPos)storage.currentCommand().variable("Pos")).distSqr(mob.blockPosition()) > 1D),
 							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
 										storage.clearValue("guard_move");
-										BlockPos guardPos = (BlockPos)storage.currentCommand().variable(0);
+										BlockPos guardPos = (BlockPos)storage.currentCommand().variable("Pos");
 										
 										BlockPos currentPos = mob.blockPosition();
 										currentPos = new BlockPos(currentPos.getX(), guardPos.getY(), guardPos.getZ());
@@ -890,13 +890,13 @@ public class Branches
 					Sequence.reactive(
 						new Condition((mob, storage) -> storage.currentCommand().type() == Mark.MINE),
 						doUntilThen(
-							(mob, storage) -> !mob.getLevel().isEmptyBlock((BlockPos)storage.currentCommand().variable(0)),
+							(mob, storage) -> !mob.getLevel().isEmptyBlock((BlockPos)storage.currentCommand().variable("Pos")),
 							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
-										storage.setValue("mine_position", (BlockPos)storage.currentCommand().variable(0));
+										storage.setValue("mine_position", (BlockPos)storage.currentCommand().variable("Pos"));
 										return true;
 									}
 								}.setCustomName("set_mine_position"),
@@ -915,17 +915,17 @@ public class Branches
 									BlockPos maxPos;
 									if(current.variables() > 2)
 									{
-										minPos = (BlockPos)current.variable(0);
-										maxPos = (BlockPos)current.variable(2);
+										minPos = (BlockPos)current.variable("Pos");
+										maxPos = (BlockPos)current.variable("Pos2");
 									}
 									else
 									{
-										BlockPos core = (BlockPos)current.variable(0);
+										BlockPos core = (BlockPos)current.variable("Pos");
 										minPos = core.offset(-5, 0, -5);
 										maxPos = core.offset(5, 3, 5);
 									}
 									
-									Direction orientation = (Direction)current.variable(1);
+									Direction orientation = (Direction)current.variable("Facing");
 									List<BlockPos> consignment = GroupAction.ActionQuarry.makeConsignment(minPos, maxPos, orientation, mob.getLevel(), Lists.newArrayList(), 1);
 									if(!consignment.isEmpty())
 										storage.setValue("mine_position", consignment.get(0));
@@ -942,7 +942,7 @@ public class Branches
 							Sequence.reactive(
 								new Condition((mob, storage) ->
 								{
-									BlockPos pos = (BlockPos)storage.currentCommand().variable(0);
+									BlockPos pos = (BlockPos)storage.currentCommand().variable("Pos");
 									BlockState state = mob.getLevel().getBlockState(pos);
 									return state.getBlock() instanceof BonemealableBlock && ((BonemealableBlock)state.getBlock()).isValidBonemealTarget(mob.getLevel(), pos, state, mob.getLevel().isClientSide);
 								}).setCustomName("target_is_bonemealable"),
@@ -952,7 +952,7 @@ public class Branches
 									{
 										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 										{
-											storage.setValue("bonemeal_target", (BlockPos)storage.currentCommand().variable(0));
+											storage.setValue("bonemeal_target", (BlockPos)storage.currentCommand().variable("Pos"));
 											return true;
 										}
 									}.setCustomName("set_target"),
@@ -985,15 +985,15 @@ public class Branches
 								new Condition((mob, storage) ->
 								{
 									MobCommand command = storage.currentCommand();
-									BlockPos target = (BlockPos)command.variable(0);
-									return command.variables() > 2 ? (Block)command.variable(2) != mob.getLevel().getBlockState(target).getBlock() : mob.getLevel().isEmptyBlock(target);
+									BlockPos target = (BlockPos)command.variable("Pos");
+									return command.variables() > 2 ? (Block)command.variable("Block") != mob.getLevel().getBlockState(target).getBlock() : mob.getLevel().isEmptyBlock(target);
 								}).setCustomName("block_not_at_pos"),
 								new Condition((mob, storage) -> 
 								{
 									MobCommand command = storage.currentCommand();
 									if(command.variables() > 2)
 									{
-										Block specified = (Block)storage.currentCommand().variable(2);
+										Block specified = (Block)storage.currentCommand().variable("Block");
 										return
 												mob.getMainHandItem().getItem() instanceof BlockItem && ((BlockItem)mob.getMainHandItem().getItem()).getBlock() == specified ||
 												mob.getOffhandItem().getItem() instanceof BlockItem && ((BlockItem)mob.getOffhandItem().getItem()).getBlock() == specified;
@@ -1006,7 +1006,7 @@ public class Branches
 										Sequence.reactive(
 										new Condition((mob, storage) -> 
 										{
-											BlockPos pos = (BlockPos)storage.currentCommand().variable(0);
+											BlockPos pos = (BlockPos)storage.currentCommand().variable("Pos");
 											return !mob.getBoundingBox().inflate(1.5D).contains(pos.getX(), pos.getY(), pos.getZ());
 										}),
 										Sequence.sequential(
@@ -1014,7 +1014,7 @@ public class Branches
 											{
 												public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 												{
-													storage.setValue("place_target_pos", (BlockPos)storage.currentCommand().variable(0));
+													storage.setValue("place_target_pos", (BlockPos)storage.currentCommand().variable("Pos"));
 													return true;
 												}
 											}.setCustomName("set_destination"),
@@ -1026,7 +1026,7 @@ public class Branches
 												MobCommand command = storage.currentCommand();
 												if(command.variables() > 2)
 												{
-													Block specified = (Block)storage.currentCommand().variable(2);
+													Block specified = (Block)storage.currentCommand().variable("Block");
 													return !(mob.getMainHandItem().getItem() instanceof BlockItem && ((BlockItem)mob.getMainHandItem().getItem()).getBlock() == specified);
 												}
 												else
@@ -1040,8 +1040,8 @@ public class Branches
 											Level world = mob.getLevel();
 											ItemStack heldStack = mob.getMainHandItem();
 											MobCommand command = storage.currentCommand();
-											BlockPos target = (BlockPos)command.variable(0);
-											Direction direction = (Direction)command.variable(1);
+											BlockPos target = (BlockPos)command.variable("Pos");
+											Direction direction = (Direction)command.variable("Facing");
 											BlockPos targetBelow = target.relative(direction);
 											
 											Block blockToPlace = ((BlockItem)heldStack.getItem()).getBlock();
@@ -1069,7 +1069,7 @@ public class Branches
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 								{
-									Entity target = (Entity) storage.currentCommand().variable(0);
+									Entity target = (Entity) storage.currentCommand().variable("Entity");
 									storage.setValue(MobWhiteboard.AI_TARGET, target);
 									return true;
 								}
@@ -1091,7 +1091,7 @@ public class Branches
 					Sequence.reactive(
 							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.CEASEFIRE_MOB),
 							doUntilThen(
-								(mob, storage) -> storage.getEntity(MobWhiteboard.AI_TARGET) == storage.currentCommand().variable(0),
+								(mob, storage) -> storage.getEntity(MobWhiteboard.AI_TARGET) == storage.currentCommand().variable("Entity"),
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
@@ -1111,9 +1111,9 @@ public class Branches
 										return false;
 									
 									MobCommand command = storage.currentCommand();
-									if(command.variable(0) instanceof Entity)
+									if(command.hasVariable("Entity"))
 									{
-										Entity target = (Entity)command.variable(0);
+										Entity target = (Entity)command.variable("Entity");
 										return target != mob && target.isAddedToWorld() && target.isAlive() && !target.isVehicle();
 									}
 									return false;
@@ -1121,7 +1121,7 @@ public class Branches
 								doUntilThen(
 									(mob, storage) ->
 									{
-										Entity target = (Entity)storage.currentCommand().variable(0);
+										Entity target = (Entity)storage.currentCommand().variable("Entity");
 										return !target.getBoundingBox().inflate(1D).intersects(mob.getBoundingBox());
 									},
 									Sequence.sequential(
@@ -1129,7 +1129,7 @@ public class Branches
 											{
 												public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 												{
-													storage.setValue("mount_target", (Entity)storage.currentCommand().variable(0));
+													storage.setValue("mount_target", (Entity)storage.currentCommand().variable("Entity"));
 													return true;
 												}
 											}.setCustomName("set_target"),
@@ -1138,7 +1138,7 @@ public class Branches
 									{
 										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 										{
-											return mob.startRiding((LivingEntity)storage.currentCommand().variable(0));
+											return mob.startRiding((LivingEntity)storage.currentCommand().variable("Entity"));
 										}
 									}),
 								Actions.completeCurrentTask())).setCustomName("mount").setDiscrete(),
@@ -1161,7 +1161,7 @@ public class Branches
 							{
 								public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 								{
-									storage.setValue("command_dest", (BlockPos)storage.currentCommand().variable(0));
+									storage.setValue("command_dest", (BlockPos)storage.currentCommand().variable("Pos"));
 									return true;
 								}
 							}.setCustomName("set_dest"),
@@ -1169,13 +1169,13 @@ public class Branches
 							Actions.completeCurrentTask())).setCustomName("goto_pos").setDiscrete(),
 					Sequence.reactive(
 							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.GOTO_MOB),
-							new Condition((mob, storage) -> storage.currentCommand().variable(0) != null),
+							new Condition((mob, storage) -> storage.currentCommand().variable("Entity") != null),
 							Sequence.sequential(
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
-										storage.setValue("command_dest", ((Entity)storage.currentCommand().variable(0)));
+										storage.setValue("command_dest", ((Entity)storage.currentCommand().variable("Entity")));
 										return true;
 									}
 								}.setCustomName("set_dest"),
@@ -1198,7 +1198,7 @@ public class Branches
 							doUntilThen(
 								(mob, storage) ->
 								{
-									Entity target = (Entity)storage.currentCommand().variable(0);
+									Entity target = (Entity)storage.currentCommand().variable("Entity");
 									return target != null && target.isAlive();
 								},
 								Sequence.sequential(
@@ -1206,7 +1206,7 @@ public class Branches
 									{
 										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 										{
-											storage.setValue("pickup_target", storage.currentCommand().variable(0));
+											storage.setValue("pickup_target", storage.currentCommand().variable("Entity"));
 											return true;
 										}
 									}.setCustomName("set_pickup_target"),
@@ -1217,7 +1217,7 @@ public class Branches
 							doUntilThen(
 								(mob, storage) ->
 								{
-									Entity target = (Entity)storage.currentCommand().variable(0);
+									Entity target = (Entity)storage.currentCommand().variable("Entity");
 									return target != null && target.isAlive();
 								},
 								Sequence.sequential(
@@ -1225,7 +1225,7 @@ public class Branches
 									{
 										public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 										{
-											storage.setValue("equip_target", storage.currentCommand().variable(0));
+											storage.setValue("equip_target", storage.currentCommand().variable("Entity"));
 											return true;
 										}
 									}.setCustomName("set_equip_target"),
@@ -1234,13 +1234,13 @@ public class Branches
 					Sequence.reactive(
 							new Condition((mob, storage) -> storage.currentCommand().type() == Mark.JOIN_GROUP),
 							doUntilThen(
-								(mob, storage) -> GroupSaveData.get(mob.getServer()).hasGroup((LivingEntity)storage.currentCommand().variable(0)),
+								(mob, storage) -> GroupSaveData.get(mob.getServer()).hasGroup((LivingEntity)storage.currentCommand().variable("Entity")),
 								new LeafSingle()
 								{
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
 										MobCommand current = storage.currentCommand();
-										LivingEntity target = (LivingEntity)current.variable(0);
+										LivingEntity target = (LivingEntity)current.variable("Entity");
 										IMobGroup targetGroup = GroupSaveData.get(mob.getServer()).getGroup(target);
 										IMobGroup myGroup = GroupSaveData.get(mob.getServer()).getGroup(mob);
 										if(targetGroup == myGroup)
@@ -1276,7 +1276,7 @@ public class Branches
 									public boolean doAction(PathfinderMob mob, Whiteboard<?> storage)
 									{
 										MobCommand command = storage.currentCommand();
-										int duration = command.variables() > 0 && command.variable(0) instanceof Integer ? Math.abs((int)command.variable(0)) : Reference.Values.TICKS_PER_SECOND;
+										int duration = command.variables() > 0 && command.hasVariable("Duration") ? Math.abs((int)command.variable("Duration")) : Reference.Values.TICKS_PER_SECOND;
 										storage.setTimer(new ResourceLocation(Reference.ModInfo.MOD_ID, "wait_order"), duration);
 										return true;
 									}

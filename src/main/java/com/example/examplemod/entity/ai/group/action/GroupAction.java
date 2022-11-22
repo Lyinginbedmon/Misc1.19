@@ -439,7 +439,7 @@ public abstract class GroupAction
 				else
 				{
 					CommandStack stack = board.getCommands();
-					stack.allTasks().forEach((task) -> { if(task.type() == Mark.MINE) miningBlocks.add((BlockPos)task.variable(0)); });
+					stack.allTasks().forEach((task) -> { if(task.type() == Mark.MINE) miningBlocks.add((BlockPos)task.variable("Pos")); });
 				}
 			});
 		}
@@ -447,7 +447,7 @@ public abstract class GroupAction
 		private void assignConsignment(LivingEntity recipient, List<BlockPos> blocks)
 		{
 			CommandStack stack = new CommandStack();
-			sortConsignment(blocks, (LivingEntity)recipient).forEach((pos) -> stack.append(Mark.MINE.makeCommand(pos))); 
+			sortConsignment(blocks, (LivingEntity)recipient).forEach((pos) -> stack.append(Mark.atPos(Mark.MINE, pos))); 
 			Whiteboard.tryGetWhiteboard(recipient).setCommands(stack);
 		}
 		
@@ -774,7 +774,7 @@ public abstract class GroupAction
 							if(command.type() == Mark.BONEMEAL)
 							{
 								alreadyWorking = true;
-								BlockPos position = (BlockPos)command.variable(0);
+								BlockPos position = (BlockPos)command.variable("Pos");
 								if(!blocksAltered.contains(position))
 									blocksAltered.add(position);
 							}
@@ -793,7 +793,7 @@ public abstract class GroupAction
 						toFertilise = sortByDist(lastPos, toFertilise);
 						BlockPos closest = toFertilise.remove(0);
 						blocksAltered.add(closest);
-						allotment.append(Mark.BONEMEAL.makeCommand(closest));
+						allotment.append(Mark.atPos(Mark.BONEMEAL, closest));
 						lastPos = closest;
 					}
 					storage.setCommands(allotment);
@@ -875,7 +875,7 @@ public abstract class GroupAction
 					
 					if(seed != null)
 					{
-						Whiteboard.tryGetWhiteboard(seeder).setCommands(new CommandStack(Mark.PLACE_BLOCK.makeCommand(pos, Direction.DOWN, seed)));
+						Whiteboard.tryGetWhiteboard(seeder).setCommands(new CommandStack(Mark.placeBlock(pos, Direction.DOWN, seed)));
 						workers.remove(seeder);
 						seedersToSeeds.remove(seeder);
 						break;
@@ -927,7 +927,7 @@ public abstract class GroupAction
 				
 				if(closest != null)
 				{
-					Whiteboard.tryGetWhiteboard(closest).setCommands(CommandStack.single(Mark.PICK_UP, item));
+					Whiteboard.tryGetWhiteboard(closest).setCommands(CommandStack.single(Mark.onEntity(Mark.PICK_UP, item)));
 					workers.remove(closest);
 				}
 			}
@@ -959,7 +959,7 @@ public abstract class GroupAction
 			
 			if(harvester != null)
 			{
-				Whiteboard.tryGetWhiteboard(harvester).setCommands(CommandStack.single(Mark.MINE.makeCommand(pos)));
+				Whiteboard.tryGetWhiteboard(harvester).setCommands(CommandStack.single(Mark.atPos(Mark.MINE, pos)));
 				workers.remove(harvester);
 				blocksAltered.add(pos);
 			}
@@ -1111,7 +1111,7 @@ public abstract class GroupAction
 					Whiteboard<?> board = Whiteboard.tryGetWhiteboard(member);
 					if(board != null)
 						if(!board.hasCommands() && dist > (maxDist * maxDist))
-							board.setCommands(CommandStack.single(Mark.GOTO_MOB, target));
+							board.setCommands(CommandStack.single(Mark.onEntity(Mark.GOTO_MOB, target)));
 						else if(dist < (minDist * minDist) && ((PathfinderMob)member).getNavigation().isInProgress())
 							board.setCommands(CommandStack.single(Mark.STOP_MOVING));
 				}
@@ -1296,7 +1296,7 @@ public abstract class GroupAction
 			{
 				BlockPos dest = getTrackedPos(entity).offset(lastPos.x, lastPos.y, lastPos.z);
 				dest = new BlockPos(dest.getX(), entity.blockPosition().getY(), dest.getZ());
-				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.GUARD_POS, dest));
+				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.atPos(Mark.GUARD_POS, dest)));
 			}
 		}
 		
@@ -1412,7 +1412,7 @@ public abstract class GroupAction
 			{
 				BlockPos dest = getTrackedPos(entity);
 				dest = new BlockPos(dest.getX(), entity.blockPosition().getY(), dest.getZ());
-				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.GUARD_POS, dest));
+				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.atPos(Mark.GUARD_POS, dest)));
 			}
 		}
 		
@@ -1571,7 +1571,7 @@ public abstract class GroupAction
 			{
 				BlockPos dest = getTrackedPos(entity);
 				dest = new BlockPos(dest.getX(), entity.blockPosition().getY(), dest.getZ());
-				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.GUARD_POS, dest));
+				Whiteboard.tryGetWhiteboard(entity).setCommands(CommandStack.single(Mark.atPos(Mark.GUARD_POS, dest)));
 			}
 		}
 		
@@ -1684,7 +1684,7 @@ public abstract class GroupAction
 				
 				if(bestTarget != null)
 				{
-					Whiteboard.tryGetWhiteboard(member).setCommands(CommandStack.single(Mark.ATTACK, bestTarget));
+					Whiteboard.tryGetWhiteboard(member).setCommands(CommandStack.single(Mark.onEntity(Mark.ATTACK, bestTarget)));
 					haveTarget.add(member);
 				}
 				else
@@ -1706,7 +1706,7 @@ public abstract class GroupAction
 						}
 					}
 					
-					Whiteboard.tryGetWhiteboard(member).setCommands(CommandStack.single(Mark.GOTO_MOB, bestMember));
+					Whiteboard.tryGetWhiteboard(member).setCommands(CommandStack.single(Mark.onEntity(Mark.GOTO_MOB, bestMember)));
 				}
 		}
 		
@@ -1828,7 +1828,7 @@ public abstract class GroupAction
 				
 				BlockPos dest = getTrackedPos(member);
 				dest = new BlockPos(dest.getX(), member.blockPosition().getY(), dest.getZ());
-				storage.setCommands(new CommandStack(Mark.CEASEFIRE.makeCommand(), Mark.GUARD_POS.makeCommand(dest)));
+				storage.setCommands(new CommandStack(Mark.CEASEFIRE.makeCommand(), Mark.atPos(Mark.GUARD_POS, dest)));
 			}
 			else if(storage.getEntity(MobWhiteboard.AI_TARGET) == null && random.nextInt(20) == 0)
 			{
@@ -1851,7 +1851,7 @@ public abstract class GroupAction
 				}
 				
 				if(bestTarget != null)
-					storage.setCommands(CommandStack.single(Mark.ATTACK, bestTarget));
+					storage.setCommands(CommandStack.single(Mark.onEntity(Mark.ATTACK, bestTarget)));
 			}
 		}
 		
@@ -2073,7 +2073,7 @@ public abstract class GroupAction
 				
 				if(closest != null)
 				{
-					Whiteboard.tryGetWhiteboard(closest).setCommands(CommandStack.single(Mark.PICK_UP, item));
+					Whiteboard.tryGetWhiteboard(closest).setCommands(CommandStack.single(Mark.onEntity(Mark.PICK_UP, item)));
 					available.remove(closest);
 				}
 			}

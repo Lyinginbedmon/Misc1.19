@@ -1,6 +1,8 @@
 package com.example.examplemod.entity.ai;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 
@@ -10,6 +12,8 @@ import com.example.examplemod.utility.MobCommanding.Mark;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.Level;
 
 public class CommandStack
 {
@@ -28,7 +32,6 @@ public class CommandStack
 			activeTasks.add(taskIn);
 		return this;
 	}
-	public CommandStack append(Mark markIn, Object... objectIn) { return append(markIn.makeCommand(objectIn)); }
 	
 	public CommandStack appendAll(CommandStack stackIn)
 	{
@@ -48,7 +51,6 @@ public class CommandStack
 		}
 		return this;
 	}
-	public CommandStack prepend(Mark markIn, Object... objectIn) { return prepend(markIn.makeCommand(objectIn)); }
 	
 	public CommandStack prependAll(CommandStack stackIn)
 	{
@@ -78,7 +80,8 @@ public class CommandStack
 	public int size() { return this.activeTasks.size(); }
 	
 	public static CommandStack single(MobCommand command) { return new CommandStack(command); }
-	public static CommandStack single(Mark markIn, Object... objectIn) { return single(markIn.makeCommand(objectIn)); }
+	public static CommandStack single(Mark markIn) { return single(markIn, new HashMap<String, Object>()); }
+	public static CommandStack single(Mark markIn, Map<String, Object> objectIn) { return single(markIn.makeCommand(objectIn)); }
 	
 	public CompoundTag saveToNbt(CompoundTag compound)
 	{
@@ -88,5 +91,19 @@ public class CommandStack
 		
 		compound.put("Stack", data);
 		return compound;
+	}
+	
+	public static CommandStack loadFromNbt(CompoundTag compound, Level world)
+	{
+		ListTag data = compound.getList("Stack", Tag.TAG_COMPOUND);
+		List<MobCommand> commands = Lists.newArrayList();
+		for(int i=0; i<data.size(); i++)
+		{
+			MobCommand command = MobCommand.loadFromNBT(data.getCompound(i), 16D, world);
+			if(command != null)
+				commands.add(command);
+		}
+		
+		return new CommandStack(commands.toArray(new MobCommand[0]));
 	}
 }

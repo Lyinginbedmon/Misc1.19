@@ -83,7 +83,7 @@ public class PacketMobCommand
 				else
 				{
 					// Find specific recipient
-					Entity targetByID = MobCommand.Utils.findEntityOfUUID(msg.targetID, player.blockPosition(), 16D, world);
+					Entity targetByID = MobCommand.findEntityOfUUID(msg.targetID, player.blockPosition(), 16D, world);
 					if(targetByID != null && LivingEntity.class.isAssignableFrom(targetByID.getClass()))
 					{
 						LivingEntity target = (LivingEntity)targetByID;

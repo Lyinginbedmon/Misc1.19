@@ -18,6 +18,7 @@ import com.google.common.collect.Lists;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.StringRepresentable;
@@ -28,6 +29,7 @@ import net.minecraft.world.entity.Saddleable;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -271,34 +273,30 @@ public class MobCommanding
 			if(options().length == 0)
 				return null;
 			
-			Object[] variables = null;
+			Map<String, Object> variableMap = new HashMap<>();
 			if(trace == null)
-				variables = new Object[] {player};
+				variableMap.put("Entity", player);
 			else
 				switch(trace.getType())
 				{
 					case BLOCK:
 						BlockHitResult blockHit = (BlockHitResult)trace;
-						variables = new Object[2];
-						
 						// Block position hit
-						variables[0] = blockHit.getBlockPos();
+						variableMap.put("Pos", blockHit.getBlockPos());
 						// Direction hit from
-						variables[1] = blockHit.getDirection().getOpposite();
+						variableMap.put("Facing", blockHit.getDirection().getOpposite());
 						break;
 					case ENTITY:
 						EntityHitResult entityHit = (EntityHitResult)trace;
-						variables = new Object[1];
-						
-						variables[0] = entityHit.getEntity();
+						variableMap.put("Entity", entityHit.getEntity());
 						break;
 					case MISS:
 					default:
-						variables = new Object[] {player};
+						variableMap.put("Entity", player);
 						break;
 				}
 			
-			return action() != Mark.CANCEL ?  new PacketMobCommand(action().makeCommand(player, variables)) : null;
+			return action() != Mark.CANCEL ?  new PacketMobCommand(action().makeCommand(player, variableMap)) : null;
 		}
 		
 		public boolean isLocked() { return lockProgress() >= 1F; }
@@ -471,8 +469,32 @@ public class MobCommanding
 			this.supplier = (player, variables) -> new MobCommand(this, variables);
 		}
 		
-		public MobCommand makeCommand(Object... variables) { return makeCommand(null, variables); }
-		public MobCommand makeCommand(Player player, Object... variables) { return supplier.apply(player, variables); }
+		public MobCommand makeCommand() { return makeCommand(new HashMap<String, Object>()); }
+		public MobCommand makeCommand(Map<String, Object> variables) { return makeCommand(null, variables); }
+		public MobCommand makeCommand(Player player, Map<String, Object> variables) { return supplier.apply(player, variables); }
+		
+		public static MobCommand atPos(Mark mark, BlockPos pos)
+		{
+			Map<String, Object> variables = new HashMap<>();
+			variables.put("Pos", pos);
+			return mark.makeCommand(variables);
+		}
+		
+		public static MobCommand onEntity(Mark mark, Entity ent)
+		{
+			Map<String, Object> variables = new HashMap<>();
+			variables.put("Entity", ent);
+			return mark.makeCommand(variables);
+		}
+		
+		public static MobCommand placeBlock(BlockPos pos, Direction facing, Block toPlace)
+		{
+			Map<String, Object> variables = new HashMap<>();
+			variables.put("Pos", pos);
+			variables.put("Facing", facing);
+			variables.put("Block", toPlace);
+			return Mark.PLACE_BLOCK.makeCommand(variables);
+		}
 		
 		public int iconIndex() { return this.iconIndex; }
 		
@@ -531,7 +553,7 @@ public class MobCommanding
 		@FunctionalInterface
 		public static interface CommandSupplier
 		{
-			public MobCommand apply(Player player, Object... variablesIn);
+			public MobCommand apply(Player player, Map<String, Object> variables);
 		}
 	}
 }
