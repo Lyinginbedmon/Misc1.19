@@ -2,13 +2,10 @@ package com.example.examplemod;
 
 import org.slf4j.Logger;
 
-import com.example.examplemod.client.ActionRenderManager;
-import com.example.examplemod.client.GroupRenderer;
-import com.example.examplemod.entity.ai.group.GroupType;
-import com.example.examplemod.entity.ai.group.action.ActionType;
-import com.example.examplemod.init.ExCommands;
-import com.example.examplemod.init.ExEntities;
+import com.example.examplemod.data.ExDataGenerators;
+import com.example.examplemod.deities.DeityRegistry;
 import com.example.examplemod.init.ExItems;
+import com.example.examplemod.init.ExRegisters;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.proxy.ClientProxy;
 import com.example.examplemod.proxy.CommonProxy;
@@ -25,6 +22,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -58,12 +56,11 @@ public class ExampleMod
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ClientBus::registerOverlayEvent);
+        modEventBus.addListener(ExDataGenerators::onGatherData);
         
-        ExEntities.ENTITIES.register(modEventBus);
         BLOCKS.register(modEventBus);
         ExItems.ITEMS.register(modEventBus);
-        GroupType.init();
-        ActionType.init();
+        ExRegisters.registerCustom(modEventBus);
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -86,7 +83,13 @@ public class ExampleMod
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event)
     {
-    	ExCommands.init(event);
+    	
+    }
+    
+    @SubscribeEvent
+    public void onReloadListenersEvent(AddReloadListenerEvent event)
+    {
+    	event.addListener(DeityRegistry.getInstance());
     }
     
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
@@ -98,8 +101,6 @@ public class ExampleMod
         public static void onClientSetup(FMLClientSetupEvent event)
         {
         	MinecraftForge.EVENT_BUS.register(ClientBus.class);
-        	MinecraftForge.EVENT_BUS.addListener(GroupRenderer::renderGroups);
-        	ActionRenderManager.init();
         	PROXY.clientInit();
             // Some client setup code
             LOG.info("HELLO FROM CLIENT SETUP");
