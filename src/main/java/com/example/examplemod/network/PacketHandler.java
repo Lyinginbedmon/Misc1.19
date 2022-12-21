@@ -27,11 +27,11 @@ public class PacketHandler
 	
 	private PacketHandler(){ }
 	
+	@SuppressWarnings("unused")
 	public static void init()
 	{
 		int id = 0;
-		HANDLER.registerMessage(id++, PacketMobCommand.class, PacketMobCommand::encode, PacketMobCommand::decode, PacketMobCommand::handle);
-		HANDLER.registerMessage(id++, PacketSyncGroups.class, PacketSyncGroups::encode, PacketSyncGroups::decode, PacketSyncGroups::handle);
+//		HANDLER.registerMessage(id++, PacketMobCommand.class, PacketMobCommand::encode, PacketMobCommand::decode, PacketMobCommand::handle);
 	}
 	
 	/**

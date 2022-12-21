@@ -1,12 +1,13 @@
-Try to take cover when using ranged combat
-	Single block barriers
-Shield use in melee combat
-	If we have a shield off-cooldown and aren't currently attacking, use it to block damage
-Axe use to disable attack target shield
-	If we have an axe and enemy has a shield, try to disable it
-Mounted combat
-	If target is far away and mounted, prioritise getting a mount
-	If target is close and not mounted, prioritise dismounting (unless mount can be weaponised)
-Handling for activated abilities
-	Selector that collates child branches from abilities using an event
-Vibration listening (investigate sounds)
+Domain registry to store available domains
+God registry to store configurable deities drawn from data pack
+Default data pack of deities
+
+ = BRIEF =  
+Server data pack determines available deities
+Player places altar -> Opens menu to choose deity (UI, player data)
+	Player randomly receives vague messages from deity describing their mood
+	Deity rewards player randomly with miracles
+	Miracles weighted to minimise observation (easily dismissed unless happening to you)
+	Miracles tagged with domains to determine available miracles per god
+Command to set player's god
+Command to cause miracle at position
