@@ -7,6 +7,9 @@ import java.util.Map;
 import org.apache.commons.compress.utils.Lists;
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.deities.personality.PersonalityModel;
+import com.example.examplemod.deities.personality.PersonalityTraits;
+import com.example.examplemod.init.MiracleTags;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -16,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.profiling.ProfilerFiller;
 
 public class DeityRegistry extends SimpleJsonResourceReloadListener
@@ -52,7 +56,17 @@ public class DeityRegistry extends SimpleJsonResourceReloadListener
             	Deity builder = Deity.fromJson(name.getPath(), json);
                 if(builder != null)
                 {
-                	ExampleMod.LOG.info(" -Loaded: "+builder.simpleName());
+                	String domains = " [";
+                	List<TagKey<Miracle>> domainList = builder.domains();
+                	for(int i=0; i<domainList.size(); i++)
+                	{
+                		domains += domainList.get(i).location().getPath();
+                		if(i < domainList.size() - 1)
+                			domains += ", ";
+                		else
+                			domains += "]";
+                	}
+                	ExampleMod.LOG.info(" -Loaded: "+builder.simpleName() + domains + "["+builder.miracles().size()+"]");
                     loaded.put(builder.simpleName(), builder);
                 }
             }
@@ -77,31 +91,42 @@ public class DeityRegistry extends SimpleJsonResourceReloadListener
 		loaded.forEach((name,deity) -> deities.put(name, deity));
 	}
 	
-	private static void addDefault(String simple, Component name, long seed, Domain... domains)
+	@SafeVarargs
+	private static void addDefault(String simple, Component name, PersonalityModel personality, long seed, TagKey<Miracle>... domainsIn)
 	{
-		DEFAULT_DEITIES.add(new Deity(simple, name, seed, domains));
+		List<TagKey<Miracle>> domains = Lists.newArrayList();
+		for(int i=0; i<domainsIn.length; i++)
+			domains.add(domainsIn[i]);
+		DEFAULT_DEITIES.add(new Deity(simple, name, personality, seed, domains));
 	}
 	
-	private static void addDefault(String simple, String name, long seed, Domain... domains)
+	@SafeVarargs
+	private static void addDefault(String simple, String name, PersonalityModel personality, long seed, TagKey<Miracle>... domains)
 	{
-		addDefault(simple, Component.literal(name), seed, domains);
+		addDefault(simple, Component.literal(name), personality, seed, domains);
+	}
+	
+	@SafeVarargs
+	private static void addDefault(String simple, String name, long seed, TagKey<Miracle>... domains)
+	{
+		addDefault(simple, Component.literal(name), new PersonalityModel(), seed, domains);
 	}
 	
 	public static List<Deity> getDefaultDeities() { return DEFAULT_DEITIES; }
 	
 	static
 	{
-		addDefault("acinum", "Acinum the Water Bringer", 46654, Domain.Water);
-		addDefault("aeneas", "Aeneas the Builder of Vessels", 5388, Domain.Travel, Domain.Crafting, Domain.Water);
-		addDefault("basilla", "Basilla the Firm", 5391, Domain.Protection, Domain.Crafting, Domain.Earth);
-		addDefault("erinus", "Erinus the Ever-Green", 66091, Domain.Animal, Domain.Plant);
-		addDefault("etronicus", "Etronicus of the Graven Mists", 34031, Domain.Death, Domain.Darkness);
-		addDefault("flying", "Flying of the Parallel", 17218, Domain.Law);
-		addDefault("moriboca", "Moriboca the Furious", 77384, Domain.Fire, Domain.War);
-		addDefault("philopos", "Philopos the All-Watching", 85134, Domain.Sun, Domain.Knowledge);
-		addDefault("phoenix", "Phoenix of the Bow", 19214, Domain.Air, Domain.Travel);
-		addDefault("placitos", "Placitos the Englightened", 66732, Domain.Magic, Domain.Knowledge);
-		addDefault("urlin", "Urlin of Cloven Feet", 2847, Domain.Animal, Domain.Chaos);
-		addDefault("lying", "The Lying Vision", 2847, Domain.Knowledge, Domain.Trickery);
+		addDefault("acinum", "Acinum the Water Bringer", new PersonalityModel(PersonalityTraits.ZOOLATER.get()), 46654, MiracleTags.WATER);
+		addDefault("aeneas", "Aeneas the Builder of Vessels", new PersonalityModel(PersonalityTraits.WANDERER.get()), 5388, MiracleTags.TRAVEL, MiracleTags.CREATION, MiracleTags.WATER);
+		addDefault("basilla", "Basilla the Firm", new PersonalityModel(PersonalityTraits.HOMEBODY.get()), 5391, MiracleTags.PROTECTION, MiracleTags.CREATION, MiracleTags.EARTH);
+		addDefault("erinus", "Erinus the Ever-Green", new PersonalityModel(PersonalityTraits.BRIGHT.get(), PersonalityTraits.ZOOLATER.get()), 66091, MiracleTags.ANIMAL, MiracleTags.PLANT);
+		addDefault("etronicus", "Etronicus of the Graven Mists", new PersonalityModel(PersonalityTraits.SHADOW.get(), PersonalityTraits.PESSIMIST.get()), 34031, MiracleTags.DEATH, MiracleTags.DARKNESS);
+		addDefault("flying", "Flying of the Parallel", 17218, MiracleTags.LAW);
+		addDefault("moriboca", "Moriboca the Furious", new PersonalityModel(PersonalityTraits.BRUTE.get()), 77384, MiracleTags.FIRE, MiracleTags.STRENGTH, MiracleTags.WAR);
+		addDefault("philopos", "Philopos the All-Watching", 85134, MiracleTags.LIGHT, MiracleTags.KNOWLEDGE);
+		addDefault("phoenix", "Phoenix of the Bow", 19214, MiracleTags.AIR, MiracleTags.TRAVEL);
+		addDefault("placitos", "Placitos the Englightened", 66732, MiracleTags.MAGIC, MiracleTags.KNOWLEDGE);
+		addDefault("urlin", "Urlin of Cloven Feet", 2847, MiracleTags.ANIMAL, MiracleTags.CHAOS);
+		addDefault("lying", "The Lying Vision", 2847, MiracleTags.KNOWLEDGE, MiracleTags.TRICKERY);
 	}
 }

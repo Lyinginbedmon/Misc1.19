@@ -1,8 +1,16 @@
 {
   "DisplayName": "{\"text\":\"Urlin of Cloven Feet\"}",
   "Domains": [
-    "animal",
-    "chaos"
+    "#examplemod:animal",
+    "#examplemod:chaos"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:pacifist",
+      "examplemod:bright",
+      "examplemod:claustrophobic",
+      "examplemod:zoolater"
+    ]
+  },
   "Seed": 2847
 }

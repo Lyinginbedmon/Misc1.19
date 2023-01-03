@@ -11,5 +11,7 @@ public class ExDataGenerators
 		DataGenerator generator = event.getGenerator();
 		ExistingFileHelper existingFileHelper = event.getExistingFileHelper();
 		generator.addProvider(event.includeServer(), new DeityProvider(generator, existingFileHelper));
+		generator.addProvider(event.includeServer(), new MiracleTagProvider(generator, existingFileHelper));
+		generator.addProvider(event.includeServer(), new ExItemTags(generator, existingFileHelper));
 	}
 }

@@ -1,13 +1,13 @@
-// 1.19	2022-12-21T00:01:28.368564	Example deities
-bfaefe44ab3358c42180d41d06f73c4268e54cbe data/examplemod/deities/acinum.json
-f2042349ebdf949c8f335c4ffc8bb5fca92ba5a3 data/examplemod/deities/aeneas.json
-1a657ba45a2775d42611068fffb1ac1c966ceea3 data/examplemod/deities/basilla.json
-1b0c11d78a0a58c8a02f8d1005d6f03007f5cae8 data/examplemod/deities/erinus.json
-35e7134ac3f8a50b4b283a59f26fad23676fff1c data/examplemod/deities/etronicus.json
-81360b58cf5e8749aef37561b842e05ae42d2496 data/examplemod/deities/flying.json
-0002fe2ef7709fc78527be232ce80e3342ccf255 data/examplemod/deities/lying.json
-ac9604fe29f79ed674542d346dac7b9d3cd7caa6 data/examplemod/deities/moriboca.json
-2ef94a4822354f4a41dde48dbbd20dd3e6966f51 data/examplemod/deities/philopos.json
-b9d8ef9f286ebed7d6e947123392c690177b14c1 data/examplemod/deities/phoenix.json
-cbc1acb42a93a126b0ba72bec00ad4f2a45db2a7 data/examplemod/deities/placitos.json
-457492efaec03c7915f7a4a1f825783e5f46a5f1 data/examplemod/deities/urlin.json
+// 1.19	2022-12-28T19:54:38.6946913	Example deities
+5575cf6717916294a30b0de27e666b640d9ea3f0 data/examplemod/deities/acinum.json
+d25c3c632839859033d271a3a4035ba0d6de5879 data/examplemod/deities/aeneas.json
+21af8fe09b7054a202a14aa89e1c01d615948a8e data/examplemod/deities/basilla.json
+a9a235c159d064b9d3c0e13fb1e361b90784561a data/examplemod/deities/erinus.json
+9576141d5b7809e62dd49442854b6578bf23e8df data/examplemod/deities/etronicus.json
+4121c2ce6ccf0409ecbfa09add98d8543a594f7a data/examplemod/deities/flying.json
+3ad687b3a06746362d1a213e81e47a256956e2c8 data/examplemod/deities/lying.json
+410399b4d2746944b428c57a5c06c5f272161381 data/examplemod/deities/moriboca.json
+017ae76884eb6692e51141ec1c0c83ddb7e44876 data/examplemod/deities/philopos.json
+89c018cc908fc590ece4ff73143939c9b148e110 data/examplemod/deities/phoenix.json
+4db6c29c77b7bc13650605396561c78a9d992bc6 data/examplemod/deities/placitos.json
+d01480e3f3dad298394d2ab2214e8674a16d1e04 data/examplemod/deities/urlin.json

@@ -1,9 +1,14 @@
 {
   "DisplayName": "{\"text\":\"Basilla the Firm\"}",
   "Domains": [
-    "protection",
-    "crafting",
-    "earth"
+    "#examplemod:protection",
+    "#examplemod:creation",
+    "#examplemod:earth"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:homebody"
+    ]
+  },
   "Seed": 5391
 }

@@ -1,7 +1,15 @@
 {
   "DisplayName": "{\"text\":\"Flying of the Parallel\"}",
   "Domains": [
-    "law"
+    "#examplemod:law"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:pacifist",
+      "examplemod:bright",
+      "examplemod:claustrophobic",
+      "examplemod:zoolater"
+    ]
+  },
   "Seed": 17218
 }

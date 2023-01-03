@@ -1,8 +1,14 @@
 {
   "DisplayName": "{\"text\":\"Erinus the Ever-Green\"}",
   "Domains": [
-    "animal",
-    "plant"
+    "#examplemod:animal",
+    "#examplemod:plant"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:bright",
+      "examplemod:zoolater"
+    ]
+  },
   "Seed": 66091
 }

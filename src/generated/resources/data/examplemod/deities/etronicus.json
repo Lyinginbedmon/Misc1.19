@@ -1,8 +1,14 @@
 {
   "DisplayName": "{\"text\":\"Etronicus of the Graven Mists\"}",
   "Domains": [
-    "death",
-    "darkness"
+    "#examplemod:death",
+    "#examplemod:darkness"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:shadow",
+      "examplemod:pessimist"
+    ]
+  },
   "Seed": 34031
 }

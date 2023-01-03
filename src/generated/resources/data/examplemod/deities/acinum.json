@@ -1,7 +1,12 @@
 {
   "DisplayName": "{\"text\":\"Acinum the Water Bringer\"}",
   "Domains": [
-    "water"
+    "#examplemod:water"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:zoolater"
+    ]
+  },
   "Seed": 46654
 }

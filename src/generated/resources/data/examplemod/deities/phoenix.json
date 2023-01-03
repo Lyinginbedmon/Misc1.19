@@ -1,8 +1,16 @@
 {
   "DisplayName": "{\"text\":\"Phoenix of the Bow\"}",
   "Domains": [
-    "air",
-    "travel"
+    "#examplemod:air",
+    "#examplemod:travel"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:pacifist",
+      "examplemod:bright",
+      "examplemod:claustrophobic",
+      "examplemod:zoolater"
+    ]
+  },
   "Seed": 19214
 }

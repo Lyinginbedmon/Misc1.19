@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import com.example.examplemod.data.ExDataGenerators;
 import com.example.examplemod.deities.DeityRegistry;
 import com.example.examplemod.init.ExItems;
-import com.example.examplemod.init.ExRegisters;
+import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.proxy.ClientProxy;
 import com.example.examplemod.proxy.CommonProxy;
@@ -60,7 +60,7 @@ public class ExampleMod
         
         BLOCKS.register(modEventBus);
         ExItems.ITEMS.register(modEventBus);
-        ExRegisters.registerCustom(modEventBus);
+        ExRegistries.registerCustom(modEventBus);
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }

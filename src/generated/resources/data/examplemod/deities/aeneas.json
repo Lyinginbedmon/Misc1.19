@@ -1,9 +1,14 @@
 {
   "DisplayName": "{\"text\":\"Aeneas the Builder of Vessels\"}",
   "Domains": [
-    "travel",
-    "crafting",
-    "water"
+    "#examplemod:travel",
+    "#examplemod:creation",
+    "#examplemod:water"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:wanderer"
+    ]
+  },
   "Seed": 5388
 }

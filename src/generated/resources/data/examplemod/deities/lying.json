@@ -1,8 +1,16 @@
 {
   "DisplayName": "{\"text\":\"The Lying Vision\"}",
   "Domains": [
-    "knowledge",
-    "trickery"
+    "#examplemod:knowledge",
+    "#examplemod:trickery"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:pacifist",
+      "examplemod:bright",
+      "examplemod:claustrophobic",
+      "examplemod:zoolater"
+    ]
+  },
   "Seed": 2847
 }

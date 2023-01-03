@@ -1,8 +1,14 @@
 {
   "DisplayName": "{\"text\":\"Moriboca the Furious\"}",
   "Domains": [
-    "fire",
-    "war"
+    "#examplemod:fire",
+    "#examplemod:strength",
+    "#examplemod:war"
   ],
+  "Personality": {
+    "Traits": [
+      "examplemod:brute"
+    ]
+  },
   "Seed": 77384
 }
