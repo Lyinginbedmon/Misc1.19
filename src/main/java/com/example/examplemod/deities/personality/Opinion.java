@@ -14,8 +14,8 @@ public class Opinion
 {
 	public static final ResourceKey<Registry<Opinion>> REGISTRY_KEY = ResourceKey.createRegistryKey(new ResourceLocation(Reference.ModInfo.MOD_ID, "traits"));
 	
-	double view = 0;
-	ResourceLocation quotientId;
+	private final double view;
+	private final ResourceLocation quotientId;
 	
 	public Opinion(double viewIn, ResourceLocation registryIn)
 	{
@@ -32,8 +32,15 @@ public class Opinion
 		return null;
 	}
 	
+	public double view() { return this.view; }
+	
 	public boolean equals(Opinion varB)
 	{
 		return this.view == varB.view && this.quotientId.equals(varB.quotientId);
+	}
+	
+	public double value(PersonalityContext contextIn)
+	{
+		return this.view * contextIn.getQuotient(quotientId);
 	}
 }

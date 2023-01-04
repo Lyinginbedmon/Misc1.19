@@ -1,4 +1,4 @@
-package com.example.examplemod.deities;
+package com.example.examplemod.deities.miracle;
 
 import java.util.Optional;
 

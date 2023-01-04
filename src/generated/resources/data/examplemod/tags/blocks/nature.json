@@ -1,0 +1,13 @@
+{
+  "values": [
+    "minecraft:lily_pad",
+    "minecraft:vine",
+    "#minecraft:logs",
+    "#minecraft:leaves",
+    "#minecraft:flowers",
+    "#minecraft:beehives",
+    "#minecraft:cave_vines",
+    "#minecraft:dirt",
+    "#minecraft:crops"
+  ]
+}

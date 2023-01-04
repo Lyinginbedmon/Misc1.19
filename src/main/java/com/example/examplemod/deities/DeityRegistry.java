@@ -3,10 +3,12 @@ package com.example.examplemod.deities;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.compress.utils.Lists;
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.deities.miracle.Miracle;
 import com.example.examplemod.deities.personality.PersonalityModel;
 import com.example.examplemod.deities.personality.PersonalityTraits;
 import com.example.examplemod.init.MiracleTags;
@@ -43,6 +45,8 @@ public class DeityRegistry extends SimpleJsonResourceReloadListener
 	private static final List<Deity> DEFAULT_DEITIES = Lists.newArrayList();
 	
 	private Map<String, Deity> deities = new HashMap<>();
+	
+	public Set<String> getDeityNames(){ return this.deities.keySet(); }
 	
 	public Deity getDeity(String simpleName) { return deities.getOrDefault(simpleName, null); }
 	
@@ -116,13 +120,13 @@ public class DeityRegistry extends SimpleJsonResourceReloadListener
 	
 	static
 	{
-		addDefault("acinum", "Acinum the Water Bringer", new PersonalityModel(PersonalityTraits.ZOOLATER.get()), 46654, MiracleTags.WATER);
-		addDefault("aeneas", "Aeneas the Builder of Vessels", new PersonalityModel(PersonalityTraits.WANDERER.get()), 5388, MiracleTags.TRAVEL, MiracleTags.CREATION, MiracleTags.WATER);
-		addDefault("basilla", "Basilla the Firm", new PersonalityModel(PersonalityTraits.HOMEBODY.get()), 5391, MiracleTags.PROTECTION, MiracleTags.CREATION, MiracleTags.EARTH);
-		addDefault("erinus", "Erinus the Ever-Green", new PersonalityModel(PersonalityTraits.BRIGHT.get(), PersonalityTraits.ZOOLATER.get()), 66091, MiracleTags.ANIMAL, MiracleTags.PLANT);
-		addDefault("etronicus", "Etronicus of the Graven Mists", new PersonalityModel(PersonalityTraits.SHADOW.get(), PersonalityTraits.PESSIMIST.get()), 34031, MiracleTags.DEATH, MiracleTags.DARKNESS);
+		addDefault("acinum", "Acinum the Water Bringer", new PersonalityModel(List.of(PersonalityTraits.ZOOLATER, PersonalityTraits.SEAFARER)), 46654, MiracleTags.WATER);
+		addDefault("aeneas", "Aeneas the Builder of Vessels", new PersonalityModel(List.of(PersonalityTraits.WANDERER, PersonalityTraits.INVENTOR)), 5388, MiracleTags.TRAVEL, MiracleTags.CREATION, MiracleTags.WATER);
+		addDefault("basilla", "Basilla the Firm", new PersonalityModel(List.of(PersonalityTraits.HOMEBODY, PersonalityTraits.AGRIPHOBIC, PersonalityTraits.INVENTOR)), 5391, MiracleTags.PROTECTION, MiracleTags.CREATION, MiracleTags.EARTH);
+		addDefault("erinus", "Erinus the Ever-Green", new PersonalityModel(List.of(PersonalityTraits.BRIGHT, PersonalityTraits.DRUID, PersonalityTraits.ZOOLATER)), 66091, MiracleTags.ANIMAL, MiracleTags.PLANT);
+		addDefault("etronicus", "Etronicus of the Graven Mists", new PersonalityModel(List.of(PersonalityTraits.SHADOW, PersonalityTraits.PESSIMIST)), 34031, MiracleTags.DEATH, MiracleTags.DARKNESS);
 		addDefault("flying", "Flying of the Parallel", 17218, MiracleTags.LAW);
-		addDefault("moriboca", "Moriboca the Furious", new PersonalityModel(PersonalityTraits.BRUTE.get()), 77384, MiracleTags.FIRE, MiracleTags.STRENGTH, MiracleTags.WAR);
+		addDefault("moriboca", "Moriboca the Furious", new PersonalityModel(List.of(PersonalityTraits.BRUTE)), 77384, MiracleTags.FIRE, MiracleTags.STRENGTH, MiracleTags.WAR);
 		addDefault("philopos", "Philopos the All-Watching", 85134, MiracleTags.LIGHT, MiracleTags.KNOWLEDGE);
 		addDefault("phoenix", "Phoenix of the Bow", 19214, MiracleTags.AIR, MiracleTags.TRAVEL);
 		addDefault("placitos", "Placitos the Englightened", 66732, MiracleTags.MAGIC, MiracleTags.KNOWLEDGE);

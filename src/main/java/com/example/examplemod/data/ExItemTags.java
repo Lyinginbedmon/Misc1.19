@@ -6,7 +6,6 @@ import com.example.examplemod.reference.Reference;
 
 import net.minecraft.core.Registry;
 import net.minecraft.data.DataGenerator;
-import net.minecraft.data.tags.BlockTagsProvider;
 import net.minecraft.data.tags.ItemTagsProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -26,7 +25,7 @@ public class ExItemTags extends ItemTagsProvider
     
 	public ExItemTags(DataGenerator dataGenerator, @Nullable ExistingFileHelper existingFileHelper)
 	{
-		super(dataGenerator, new BlockTagsProvider(dataGenerator, Reference.ModInfo.MOD_ID, existingFileHelper), Reference.ModInfo.MOD_ID, existingFileHelper);
+		super(dataGenerator, new ExBlockTags(dataGenerator, existingFileHelper), Reference.ModInfo.MOD_ID, existingFileHelper);
 	}
 	
 	public String getName() { return "ExampleMod item tags"; }

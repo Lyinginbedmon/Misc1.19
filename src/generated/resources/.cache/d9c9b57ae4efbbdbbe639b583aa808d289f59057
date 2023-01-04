@@ -1,4 +1,4 @@
-// 1.19	2022-12-22T00:02:43.689537	Tags for examplemod:miracles
+// 1.19	2023-01-03T23:51:21.8777956	ExampleMod miracle tags
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/air.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/animal.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/chaos.json
@@ -17,7 +17,7 @@
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/luck.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/magic.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/plant.json
-35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/protection.json
+1b1484780becc9e996781886d2d13b6fc1047f5d data/examplemod/tags/examplemod/miracles/protection.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/strength.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/travel.json
 35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/examplemod/tags/examplemod/miracles/trickery.json

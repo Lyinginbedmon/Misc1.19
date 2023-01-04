@@ -1,6 +1,6 @@
 package com.example.examplemod.init;
 
-import com.example.examplemod.deities.Miracle;
+import com.example.examplemod.deities.miracle.Miracle;
 import com.example.examplemod.reference.Reference;
 
 import net.minecraft.resources.ResourceLocation;

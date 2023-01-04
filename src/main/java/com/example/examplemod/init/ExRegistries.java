@@ -2,8 +2,8 @@ package com.example.examplemod.init;
 
 import java.util.function.Supplier;
 
-import com.example.examplemod.deities.Miracle;
-import com.example.examplemod.deities.Miracles;
+import com.example.examplemod.deities.miracle.Miracle;
+import com.example.examplemod.deities.miracle.Miracles;
 import com.example.examplemod.deities.personality.ContextQuotient;
 import com.example.examplemod.deities.personality.ContextQuotients;
 import com.example.examplemod.deities.personality.Opinion;

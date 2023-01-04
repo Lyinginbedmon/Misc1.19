@@ -1,0 +1,11 @@
+{
+  "values": [
+    "minecraft:guardian",
+    "minecraft:elder_guardian",
+    "minecraft:squid",
+    "minecraft:glow_squid",
+    "minecraft:dolphin",
+    "minecraft:turtle",
+    "#examplemod:fish"
+  ]
+}

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Random;
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.deities.miracle.Miracle;
 import com.example.examplemod.deities.personality.PersonalityModel;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.init.MiracleTags;
@@ -54,13 +55,13 @@ public class Deity
 	{
 		List<Miracle> miracles = Lists.newArrayList();
 		for(TagKey<Miracle> domain : domains())
-		{
 			for(RegistryObject<Miracle> miracle : ExRegistries.MIRACLES.getEntries())
 				if(miracle.isPresent() && miracle.get().is(domain) && !miracles.contains(miracle.get()))
 					miracles.add(miracle.get());
-		}
 		return miracles;
 	}
+	
+	public PersonalityModel getPersonality() { return this.personality; }
 	
 	public double opinionOf(Player playerIn) { return this.personality.currentOpinion(playerIn); }	
 	
@@ -73,9 +74,9 @@ public class Deity
 		JsonObject object = json.getAsJsonObject();
 		
 		Component displayName = Component.literal(name);
-		if(object.has("CustomName"))
+		if(object.has("DisplayName"))
 		{
-			String s = object.get("CustomName").getAsString();
+			String s = object.get("DisplayName").getAsString();
 			try
 			{
 				displayName = Component.Serializer.fromJson(s);

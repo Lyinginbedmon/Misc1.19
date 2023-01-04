@@ -2,7 +2,8 @@ package com.example.examplemod.data;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.example.examplemod.deities.Miracle;
+import com.example.examplemod.deities.miracle.Miracle;
+import com.example.examplemod.deities.miracle.Miracles;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.init.MiracleTags;
 import com.example.examplemod.reference.Reference;
@@ -11,13 +12,14 @@ import net.minecraft.data.DataGenerator;
 import net.minecraftforge.common.data.ExistingFileHelper;
 import net.minecraftforge.common.data.ForgeRegistryTagsProvider;
 
-public class MiracleTagProvider extends ForgeRegistryTagsProvider<Miracle>
+public class ExMiracleTags extends ForgeRegistryTagsProvider<Miracle>
 {
-	
-	public MiracleTagProvider(DataGenerator generator, @Nullable ExistingFileHelper existingFileHelper)
+	public ExMiracleTags(DataGenerator generator, @Nullable ExistingFileHelper existingFileHelper)
 	{
 		super(generator, ExRegistries.MIRACLES_REGISTRY.get(), Reference.ModInfo.MOD_ID, existingFileHelper);
 	}
+	
+	public String getName() { return "ExampleMod miracle tags"; }
 	
 	protected void addTags()
 	{
@@ -45,5 +47,8 @@ public class MiracleTagProvider extends ForgeRegistryTagsProvider<Miracle>
 		getOrCreateRawBuilder(MiracleTags.TRICKERY).build();
 		getOrCreateRawBuilder(MiracleTags.WAR).build();
 		getOrCreateRawBuilder(MiracleTags.WATER).build();
+		
+		tag(MiracleTags.PROTECTION)
+			.add(Miracles.SAFE_LANDING.get());
 	}
 }

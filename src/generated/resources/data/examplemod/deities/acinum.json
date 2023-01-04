@@ -5,7 +5,8 @@
   ],
   "Personality": {
     "Traits": [
-      "examplemod:zoolater"
+      "examplemod:zoolater",
+      "examplemod:seafarer"
     ]
   },
   "Seed": 46654

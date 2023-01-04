@@ -1,8 +1,8 @@
-// 1.19	2022-12-28T19:54:38.6946913	Example deities
-5575cf6717916294a30b0de27e666b640d9ea3f0 data/examplemod/deities/acinum.json
-d25c3c632839859033d271a3a4035ba0d6de5879 data/examplemod/deities/aeneas.json
-21af8fe09b7054a202a14aa89e1c01d615948a8e data/examplemod/deities/basilla.json
-a9a235c159d064b9d3c0e13fb1e361b90784561a data/examplemod/deities/erinus.json
+// 1.19	2023-01-03T02:28:03.7565392	Example deities
+e78ae9df84724e34e2b67dbfc86a1badff45bac8 data/examplemod/deities/acinum.json
+f311b3da6f8fbbd63e9bb4f6866584d60b3e09f3 data/examplemod/deities/aeneas.json
+08ddd5cd5bcaf7175151abd400e7da70bd70efad data/examplemod/deities/basilla.json
+4dd808920a508ab1e04d8602703ff81f2b6f6c87 data/examplemod/deities/erinus.json
 9576141d5b7809e62dd49442854b6578bf23e8df data/examplemod/deities/etronicus.json
 4121c2ce6ccf0409ecbfa09add98d8543a594f7a data/examplemod/deities/flying.json
 3ad687b3a06746362d1a213e81e47a256956e2c8 data/examplemod/deities/lying.json

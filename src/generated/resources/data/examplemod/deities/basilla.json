@@ -7,7 +7,9 @@
   ],
   "Personality": {
     "Traits": [
-      "examplemod:homebody"
+      "examplemod:homebody",
+      "examplemod:agriphobic",
+      "examplemod:inventor"
     ]
   },
   "Seed": 5391
