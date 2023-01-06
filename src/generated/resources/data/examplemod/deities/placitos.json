@@ -1,15 +1,13 @@
 {
-  "DisplayName": "{\"text\":\"Placitos the Englightened\"}",
+  "DisplayName": "{\"text\":\"Placitos the Enlightened\"}",
   "Domains": [
     "#examplemod:magic",
     "#examplemod:knowledge"
   ],
   "Personality": {
     "Traits": [
-      "examplemod:pacifist",
-      "examplemod:bright",
-      "examplemod:claustrophobic",
-      "examplemod:zoolater"
+      "examplemod:scholar",
+      "examplemod:homebody"
     ]
   },
   "Seed": 66732

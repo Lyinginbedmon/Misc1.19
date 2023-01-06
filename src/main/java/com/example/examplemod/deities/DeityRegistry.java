@@ -120,17 +120,17 @@ public class DeityRegistry extends SimpleJsonResourceReloadListener
 	
 	static
 	{
-		addDefault("acinum", "Acinum the Water Bringer", new PersonalityModel(List.of(PersonalityTraits.ZOOLATER, PersonalityTraits.SEAFARER)), 46654, MiracleTags.WATER);
+		addDefault("acinum", "Acinum the Water Bringer", new PersonalityModel(List.of(PersonalityTraits.ZOOLATER, PersonalityTraits.SEAFARER, PersonalityTraits.PESCETARIAN)), 46654, MiracleTags.WATER);
 		addDefault("aeneas", "Aeneas the Builder of Vessels", new PersonalityModel(List.of(PersonalityTraits.WANDERER, PersonalityTraits.INVENTOR)), 5388, MiracleTags.TRAVEL, MiracleTags.CREATION, MiracleTags.WATER);
 		addDefault("basilla", "Basilla the Firm", new PersonalityModel(List.of(PersonalityTraits.HOMEBODY, PersonalityTraits.AGRIPHOBIC, PersonalityTraits.INVENTOR)), 5391, MiracleTags.PROTECTION, MiracleTags.CREATION, MiracleTags.EARTH);
-		addDefault("erinus", "Erinus the Ever-Green", new PersonalityModel(List.of(PersonalityTraits.BRIGHT, PersonalityTraits.DRUID, PersonalityTraits.ZOOLATER)), 66091, MiracleTags.ANIMAL, MiracleTags.PLANT);
+		addDefault("erinus", "Erinus the Ever-Green", new PersonalityModel(List.of(PersonalityTraits.BRIGHT, PersonalityTraits.DRUID, PersonalityTraits.ZOOLATER, PersonalityTraits.VEGETARIAN)), 66091, MiracleTags.ANIMAL, MiracleTags.PLANT);
 		addDefault("etronicus", "Etronicus of the Graven Mists", new PersonalityModel(List.of(PersonalityTraits.SHADOW, PersonalityTraits.PESSIMIST)), 34031, MiracleTags.DEATH, MiracleTags.DARKNESS);
 		addDefault("flying", "Flying of the Parallel", 17218, MiracleTags.LAW);
-		addDefault("moriboca", "Moriboca the Furious", new PersonalityModel(List.of(PersonalityTraits.BRUTE)), 77384, MiracleTags.FIRE, MiracleTags.STRENGTH, MiracleTags.WAR);
-		addDefault("philopos", "Philopos the All-Watching", 85134, MiracleTags.LIGHT, MiracleTags.KNOWLEDGE);
-		addDefault("phoenix", "Phoenix of the Bow", 19214, MiracleTags.AIR, MiracleTags.TRAVEL);
-		addDefault("placitos", "Placitos the Englightened", 66732, MiracleTags.MAGIC, MiracleTags.KNOWLEDGE);
-		addDefault("urlin", "Urlin of Cloven Feet", 2847, MiracleTags.ANIMAL, MiracleTags.CHAOS);
-		addDefault("lying", "The Lying Vision", 2847, MiracleTags.KNOWLEDGE, MiracleTags.TRICKERY);
+		addDefault("moriboca", "Moriboca the Furious", new PersonalityModel(List.of(PersonalityTraits.BRUTE, PersonalityTraits.BLACKSMITH, PersonalityTraits.PYROMANIAC, PersonalityTraits.STEELSKIN)), 77384, MiracleTags.FIRE, MiracleTags.STRENGTH, MiracleTags.WAR);
+		addDefault("philopos", "Philopos the All-Watching", new PersonalityModel(List.of(PersonalityTraits.WANDERER, PersonalityTraits.SCHOLAR)), 85134, MiracleTags.LIGHT, MiracleTags.KNOWLEDGE);
+		addDefault("phoenix", "Phoenix of the Bow", new PersonalityModel(List.of(PersonalityTraits.ARCHER, PersonalityTraits.WANDERER, PersonalityTraits.CLOUDWATCHER)), 19214, MiracleTags.AIR, MiracleTags.TRAVEL);
+		addDefault("placitos", "Placitos the Enlightened", new PersonalityModel(List.of(PersonalityTraits.SCHOLAR, PersonalityTraits.HOMEBODY)), 66732, MiracleTags.MAGIC, MiracleTags.KNOWLEDGE);
+		addDefault("urlin", "Urlin of Cloven Feet", new PersonalityModel(List.of(PersonalityTraits.ZOOLATER, PersonalityTraits.MYCOLOGIST)), 2847, MiracleTags.ANIMAL, MiracleTags.CHAOS);
+		addDefault("lying", "The Lying Vision", new PersonalityModel(List.of(PersonalityTraits.SCHOLAR)), 2847, MiracleTags.KNOWLEDGE, MiracleTags.TRICKERY);
 	}
 }

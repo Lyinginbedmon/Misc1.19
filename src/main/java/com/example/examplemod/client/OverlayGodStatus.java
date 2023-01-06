@@ -48,18 +48,19 @@ public class OverlayGodStatus implements IGuiOverlay
 			if(i < domains.size() - 1)
 				domainList += ", ";
 		}
-		ForgeGui.drawString(poseStack, gui.getFont(), "Domains: "+domainList+" ("+god.miracles().size()+")", 5, yPos, textColor);
+		ForgeGui.drawString(poseStack, gui.getFont(), domainList+" ("+god.miracles().size()+")", 5, yPos, textColor);
 		yPos += gui.getFont().lineHeight;
 		
-		ForgeGui.drawString(poseStack, gui.getFont(), "Opinion: "+reducedString((int)(god.opinionOf(player) * 100))+"% ["+range.getA()+" / "+range.getB()+"]", 5, yPos, textColor);
+		ForgeGui.drawString(poseStack, gui.getFont(), "Opinion: "+reducedString((int)(data.getOpinion() * 100))+"% ["+range.getA()+" / "+range.getB()+"]", 5, yPos, textColor);
 		yPos += gui.getFont().lineHeight * 2;
 		
 		ForgeGui.drawString(poseStack, gui.getFont(), "Traits:", 5, yPos, textColor);
 		yPos += gui.getFont().lineHeight;
+		PersonalityContext context = new PersonalityContext(player);
 		for(RegistryObject<Opinion> trait : personality.getTraits())
 			if(trait.isPresent())
 			{
-				ForgeGui.drawString(poseStack, gui.getFont(), trait.getId().toString()+" {"+reducedString(trait.get().value(new PersonalityContext(player)))+"}", 15, yPos, textColor);
+				ForgeGui.drawString(poseStack, gui.getFont(), trait.getId().toString()+" {"+reducedString(trait.get().value(context))+"}", 15, yPos, textColor);
 				yPos += gui.getFont().lineHeight;
 			}
 		

@@ -6,10 +6,7 @@
   ],
   "Personality": {
     "Traits": [
-      "examplemod:pacifist",
-      "examplemod:bright",
-      "examplemod:claustrophobic",
-      "examplemod:zoolater"
+      "examplemod:scholar"
     ]
   },
   "Seed": 2847

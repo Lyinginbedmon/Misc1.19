@@ -53,16 +53,15 @@ public class PersonalityModel
 	{
 		double min = 0, max = 0;
 		for(RegistryObject<Opinion> opinion : this.opinions)
-		{
 			if(opinion.isPresent())
 			{
-				double view = opinion.get().view();
-				if(view < 0)
-					min += view;
-				else
-					max += view;
+				Tuple<Double,Double> range = opinion.get().range();
+				
+				double lowest = Math.min(range.getA(), range.getB());
+				double highest = Math.max(range.getA(), range.getB());
+				min += Math.min(lowest, 0);
+				max += Math.max(highest, 0);
 			}
-		}
 		
 		return new Tuple<Double,Double>(min, max);
 	}

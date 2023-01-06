@@ -11,19 +11,17 @@ import com.example.examplemod.api.event.MiracleEvent;
 import com.example.examplemod.capabilities.PlayerData;
 import com.example.examplemod.deities.Deity;
 import com.example.examplemod.deities.miracle.Miracle;
-import com.example.examplemod.deities.personality.ContextQuotients;
 import com.example.examplemod.reference.Reference;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -34,9 +32,30 @@ public class ServerBus
 	public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event)
 	{
 		if(event.getObject().getType() == EntityType.PLAYER)
-		{
 			event.addCapability(PlayerData.IDENTIFIER, new PlayerData((Player)event.getObject()));
-		}
+	}
+	
+	@SubscribeEvent
+	public static void onPlayerLogin(PlayerLoggedInEvent event)
+	{
+		PlayerData data = PlayerData.getCapability(event.getEntity());
+		if(data != null)
+			data.markDirty();
+	}
+	
+	@SubscribeEvent
+	public static void onPlayerRespawn(PlayerEvent.Clone event)
+	{
+		Player playerNew = event.getEntity();
+		Player playerOld = event.getOriginal();
+		playerOld.reviveCaps();
+		
+		PlayerData dataNew = PlayerData.getCapability(playerNew);
+		PlayerData dataOld = PlayerData.getCapability(playerOld);
+		if(dataNew != null && dataOld != null)
+			dataNew.deserializeNBT(dataOld.serializeNBT());
+		
+		playerOld.invalidateCaps();
 	}
 	
 	@SubscribeEvent
@@ -93,25 +112,6 @@ public class ServerBus
 				if(!MinecraftForge.EVENT_BUS.post(miracleEvent))
 					chosenMiracle.perform(player, player.getLevel());
 			}
-		}
-	}
-	
-	@SubscribeEvent(priority = EventPriority.LOWEST)
-	public static void onLivingDamage(LivingDamageEvent event)
-	{
-		LivingEntity victim = event.getEntity();
-		Entity assailant = event.getSource().getEntity();
-		
-		if(victim.getType() == EntityType.PLAYER)
-		{
-			PlayerData data = PlayerData.getCapability((Player)victim);
-			data.addQuotient(ContextQuotients.DAMAGE_TAKEN.getId(), event.getAmount());
-		}
-		
-		if(assailant != null && assailant.getType() == EntityType.PLAYER)
-		{
-			PlayerData data = PlayerData.getCapability((Player)assailant);
-			data.addQuotient(ContextQuotients.VIOLENCE.getId(), event.getAmount());
 		}
 	}
 }

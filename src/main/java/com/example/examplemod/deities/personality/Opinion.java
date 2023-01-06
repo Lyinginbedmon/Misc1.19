@@ -8,19 +8,25 @@ import com.example.examplemod.reference.Reference;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Tuple;
 import net.minecraftforge.registries.RegistryObject;
 
 public class Opinion
 {
 	public static final ResourceKey<Registry<Opinion>> REGISTRY_KEY = ResourceKey.createRegistryKey(new ResourceLocation(Reference.ModInfo.MOD_ID, "traits"));
 	
-	private final double view;
+	private final double a, b;
 	private final ResourceLocation quotientId;
 	
-	public Opinion(double viewIn, ResourceLocation registryIn)
+	public Opinion(double atZero, double atOne, ResourceLocation registryIn)
 	{
-		this.view = viewIn;
+		this.a = atZero;
+		this.b = atOne;
 		this.quotientId = registryIn;
+	}
+	public Opinion(double staticVal)
+	{
+		this(staticVal, staticVal, ContextQuotients.STATIC.getId());
 	}
 	
 	@Nullable
@@ -32,15 +38,21 @@ public class Opinion
 		return null;
 	}
 	
-	public double view() { return this.view; }
+	public ResourceLocation quotient() { return this.quotientId; }
+	
+	public Tuple<Double, Double> range(){ return new Tuple<Double,Double>(this.a, this.b); }
 	
 	public boolean equals(Opinion varB)
 	{
-		return this.view == varB.view && this.quotientId.equals(varB.quotientId);
+		return this.a == varB.a && this.b == varB.b && this.quotientId.equals(varB.quotientId);
 	}
 	
 	public double value(PersonalityContext contextIn)
 	{
-		return this.view * contextIn.getQuotient(quotientId);
+		if(this.a == this.b)
+			return this.a;
+		
+		double range = b - a;
+		return a + (contextIn.getQuotient(quotientId) * range);
 	}
 }
