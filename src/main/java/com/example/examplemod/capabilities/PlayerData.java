@@ -142,7 +142,6 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	
 	public void setQuotient(ResourceLocation quotientName, double value)
 	{
-		System.out.println("Set quotient "+quotientName+" to "+value);
 		this.quotients.put(quotientName, value);
 		markDirty();
 	}
