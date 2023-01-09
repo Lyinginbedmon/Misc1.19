@@ -12,10 +12,11 @@ import net.minecraftforge.registries.RegistryObject;
 public class PersonalityTraits
 {
 	public static final RegistryObject<Opinion> PACIFIST = register("pacifist", () -> new Opinion(5, -12, ContextQuotients.DAMAGE_GIVEN.getId()));
+	public static final RegistryObject<Opinion> WARMONGER = register("warmonger", () -> new Opinion(-12, 5, ContextQuotients.DAMAGE_GIVEN.getId()));
+	public static final RegistryObject<Opinion> REVOLUTIONARY = register("revolutionary", () -> new Opinion(-5, 12, ContextQuotients.DAMAGE_BOSS.getId()));
 	public static final RegistryObject<Opinion> BRUTE = register("brute", () -> new Opinion(0, 13, ContextQuotients.MELEE.getId()));
 	public static final RegistryObject<Opinion> ARCHER = register("archery", () -> new Opinion(0, 13, ContextQuotients.ARCHERY.getId()));
-	// Kingslayer
-	// Revolutionary
+	public static final RegistryObject<Opinion> KINGSLAYER = register("kingslayer", () -> new Opinion(-5, 12, ContextQuotients.KILL_BOSS.getId()));
 	public static final RegistryObject<Opinion> MASOCHIST = register("masochist", () -> new Opinion(0, 20, ContextQuotients.DAMAGE_TAKEN.getId()));
 	
 	public static final RegistryObject<Opinion> NUDIST = register("nudist", () -> new Opinion(-6, 20, ContextQuotients.NUDITY.getId()));

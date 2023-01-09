@@ -12,7 +12,8 @@ import net.minecraft.world.entity.player.Player;
 public interface ContextQuotient
 {
 	public static final ResourceKey<Registry<ContextQuotient>> REGISTRY_KEY = ResourceKey.createRegistryKey(new ResourceLocation(Reference.ModInfo.MOD_ID, "quotients"));
-	public static final double DEFAULT_DECAY = 0.01D;
+	/** Default rate at which quotients stored in player data decay per tick */
+	public static final double DEFAULT_DECAY = 1D / Reference.Values.TICKS_PER_MINUTE;
 	
 	/** The value of this quotient for the given player, between 0 and 1 */
 	public double get(Player playerIn);

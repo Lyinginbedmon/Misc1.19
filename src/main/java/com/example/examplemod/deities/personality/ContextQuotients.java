@@ -1,6 +1,8 @@
 package com.example.examplemod.deities.personality;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import javax.annotation.Nonnull;
@@ -10,6 +12,7 @@ import com.example.examplemod.data.ExBlockTags;
 import com.example.examplemod.data.ExEntityTags;
 import com.example.examplemod.data.ExItemTags;
 import com.example.examplemod.init.ExRegistries;
+import com.example.examplemod.reference.Reference;
 import com.google.common.base.Predicate;
 
 import net.minecraft.core.BlockPos;
@@ -19,6 +22,8 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -36,24 +41,28 @@ import net.minecraftforge.registries.RegistryObject;
 
 public class ContextQuotients
 {
+	private static final Map<MobEffect, RegistryObject<ContextQuotient>> POTION_TO_QUOTIENT = new HashMap<>();
 	public static RegistryObject<ContextQuotient> STATIC = register("static", () -> ContextQuotient.staticValue(1D));
 	
 	// Values populated by events and stored inside player data
-	public static RegistryObject<ContextQuotient> DAMAGE_GIVEN = register("damage_given", () -> playerValue(new ResourceLocation("examplemod:damage_given"), 100D));
-	public static RegistryObject<ContextQuotient> MELEE = register("melee", () -> playerValue(new ResourceLocation("examplemod:melee"), 100D));
-	public static RegistryObject<ContextQuotient> ARCHERY = register("archery", () -> playerValue(new ResourceLocation("examplemod:archery"), 100D));
-	public static RegistryObject<ContextQuotient> DAMAGE_TAKEN = register("damage_taken", () -> playerValue(new ResourceLocation("examplemod:damage_taken"), 100D));
-	public static RegistryObject<ContextQuotient> CRAFTING = register("crafting", () -> playerValue(new ResourceLocation("examplemod:crafting"), 100D));
-	public static RegistryObject<ContextQuotient> SMELTING = register("smelting", () -> playerValue(new ResourceLocation("examplemod:smelting"), 100D));
+	public static RegistryObject<ContextQuotient> DAMAGE_GIVEN = register("damage_given", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "damage_given"), 1000D));
+	public static RegistryObject<ContextQuotient> DAMAGE_BOSS = register("damage_boss", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "damage_boss"), 250D));
+	public static RegistryObject<ContextQuotient> KILL_BOSS = register("kill_boss", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "kill_boss"), 20D));
+	public static RegistryObject<ContextQuotient> MELEE = register("melee", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "melee"), 100D));
+	public static RegistryObject<ContextQuotient> ARCHERY = register("archery", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "archery"), 100D));
+	public static RegistryObject<ContextQuotient> DAMAGE_TAKEN = register("damage_taken", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "damage_taken"), 100D));
+	public static RegistryObject<ContextQuotient> CRAFTING = register("crafting", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "crafting"), 100D));
+	public static RegistryObject<ContextQuotient> SMELTING = register("smelting", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "smelting"), 100D));
+	public static RegistryObject<ContextQuotient> BREWING = register("brewing", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "brewing"), 100D));
 	public static RegistryObject<ContextQuotient> PRAYER = register("prayer", () -> ContextQuotient.staticValue(0D));	// TODO Action based on interaction with matching altar
 	public static RegistryObject<ContextQuotient> EAT_MEAT = register("eating_meat", () -> playerDiet(ExItemTags.MEAT));
 	public static RegistryObject<ContextQuotient> EAT_VEG = register("eating_veg", () -> playerDiet(ExItemTags.VEGETABLE));
 	public static RegistryObject<ContextQuotient> EAT_FISH = register("eating_fish", () -> playerDiet(ItemTags.FISHES));
-	public static RegistryObject<ContextQuotient> EAT_TABOO = register("eating_taboo", () -> playerValue(new ResourceLocation("examplemod:eating_taboo"), 12D));
-	public static RegistryObject<ContextQuotient> DRINK_POTION = register("drink_potion", () -> playerValue(new ResourceLocation("examplemod:drink_potion"), 12D));
-	public static RegistryObject<ContextQuotient> STATUS_STRENGTH = register("status_strength", () -> playerValue(new ResourceLocation("examplemod:status_strength"), 1000D));
-	public static RegistryObject<ContextQuotient> STATUS_RESISTANCE = register("status_resistance", () -> playerValue(new ResourceLocation("examplemod:status_resistance"), 100D));
-	public static RegistryObject<ContextQuotient> STATUS_POISON = register("status_poison", () -> playerValue(new ResourceLocation("examplemod:status_poison"), 100D));
+	public static RegistryObject<ContextQuotient> EAT_TABOO = register("eating_taboo", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "eating_taboo"), 12D));
+	public static RegistryObject<ContextQuotient> DRINK_POTION = register("drink_potion", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "drink_potion"), 12D));
+	public static RegistryObject<ContextQuotient> STATUS_STRENGTH = register("status_strength", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "status_strength"), 1000D));
+	public static RegistryObject<ContextQuotient> STATUS_RESISTANCE = register("status_resistance", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "status_resistance"), 100D));
+	public static RegistryObject<ContextQuotient> STATUS_POISON = register("status_poison", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "status_poison"), 100D));
 	
 	// Values calculated moment-to-moment
 	public static RegistryObject<ContextQuotient> LEVEL = register("level", () -> (playerIn) -> { return (double)playerIn.experienceLevel / 50D; });
@@ -187,5 +196,15 @@ public class ContextQuotients
 						}
 					}
 			return total > 0 ? water / total : 0D; });
+	}
+	
+	public static Map<MobEffect, RegistryObject<ContextQuotient>> getPotionQuotients() { return POTION_TO_QUOTIENT; }
+	
+	static
+	{
+		POTION_TO_QUOTIENT.put(MobEffects.DAMAGE_BOOST, ContextQuotients.STATUS_STRENGTH);
+		POTION_TO_QUOTIENT.put(MobEffects.DAMAGE_RESISTANCE, ContextQuotients.STATUS_RESISTANCE);
+		POTION_TO_QUOTIENT.put(MobEffects.POISON, ContextQuotients.STATUS_POISON);
+		POTION_TO_QUOTIENT.put(MobEffects.WITHER, ContextQuotients.STATUS_POISON);
 	}
 }

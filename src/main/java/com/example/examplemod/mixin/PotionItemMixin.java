@@ -6,7 +6,7 @@ import java.util.Map;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.example.examplemod.capabilities.PlayerData;
 import com.example.examplemod.deities.personality.ContextQuotient;
@@ -19,16 +19,17 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.PotionItem;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.registries.RegistryObject;
 
-@Mixin(LivingEntity.class)
-public class LivingEntityMixin
+@Mixin(PotionItem.class)
+public class PotionItemMixin
 {
 	private Map<MobEffect, MobEffectInstance> effectMap = new HashMap<>();
 	
-	@Inject(method = "addEatEffect(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)V", at = @At("HEAD"))
-	public void eatEffectStart(ItemStack stack, Level world, LivingEntity mob, final CallbackInfo ci)
+	@Inject(method = "finishUsingItem(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)V", at = @At("HEAD"))
+	public void finishUsingStart(ItemStack stack, Level world, LivingEntity mob, final CallbackInfoReturnable<ItemStack> ci)
 	{
 		if(mob.getType() != EntityType.PLAYER || world.isClientSide())
 			return;
@@ -41,8 +42,8 @@ public class LivingEntityMixin
 		}
 	}
 	
-	@Inject(method = "addEatEffect(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)V", at = @At("RETURN"))
-	public void eatEffectReturn(ItemStack stack, Level world, LivingEntity mob, final CallbackInfo ci)
+	@Inject(method = "finishUsingItem(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;)V", at = @At("RETURN"))
+	public void finishUsingReturn(ItemStack stack, Level world, LivingEntity mob, final CallbackInfoReturnable<ItemStack> ci)
 	{
 		if(mob.getType() != EntityType.PLAYER || world.isClientSide())
 			return;

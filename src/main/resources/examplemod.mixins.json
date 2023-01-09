@@ -3,7 +3,9 @@
 	"package": "com.example.examplemod.mixin",
 	"mixins":
 	[
-		"LivingEntityMixin"
+		"LivingEntityMixin",
+		"PotionItemMixin",
+		"BrewingStandBlockEntityMixin"
 	],
 	"client":
 	[

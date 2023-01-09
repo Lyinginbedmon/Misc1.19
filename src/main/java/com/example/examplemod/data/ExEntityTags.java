@@ -12,6 +12,7 @@ import net.minecraftforge.common.data.ExistingFileHelper;
 
 public class ExEntityTags extends EntityTypeTagsProvider
 {
+	public static final TagKey<EntityType<?>> BOSS = TagKey.create(Registry.ENTITY_TYPE_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "boss"));
 	public static final TagKey<EntityType<?>> ANIMAL = TagKey.create(Registry.ENTITY_TYPE_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "animal"));
     public static final TagKey<EntityType<?>> FISH = TagKey.create(Registry.ENTITY_TYPE_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "fish"));
 	public static final TagKey<EntityType<?>> PEOPLE = TagKey.create(Registry.ENTITY_TYPE_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "people"));
@@ -26,6 +27,11 @@ public class ExEntityTags extends EntityTypeTagsProvider
 	
 	protected void addTags()
 	{
+		tag(BOSS)
+			.add(EntityType.WITHER)
+			.add(EntityType.ENDER_DRAGON)
+			.add(EntityType.WARDEN)
+			.add(EntityType.ELDER_GUARDIAN);
 		tag(FISH)
 			.add(EntityType.COD)
 			.add(EntityType.PUFFERFISH)
