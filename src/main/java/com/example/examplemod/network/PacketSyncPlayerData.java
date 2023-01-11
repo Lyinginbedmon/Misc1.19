@@ -65,19 +65,8 @@ public class PacketSyncPlayerData
 		else
 		{
 			Player localPlayer = ((CommonProxy)ExampleMod.PROXY).getPlayerEntity(context);
-			Player target = null;
 			if(localPlayer != null)
-				if(localPlayer.getUUID().equals(msg.playerID))
-					target = localPlayer;
-				else
-					target = localPlayer.getLevel().getPlayerByUUID(msg.playerID);
-			
-			if(target != null)
-			{
-				PlayerData data = PlayerData.getCapability(target);
-				if(data != null)
-					data.deserializeNBT(msg.dataNBT);
-			}
+				PlayerData.getCapability(localPlayer).deserializeNBT(msg.dataNBT);
 		}
 	}
 }

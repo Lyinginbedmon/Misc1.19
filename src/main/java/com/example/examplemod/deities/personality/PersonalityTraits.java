@@ -25,11 +25,11 @@ public class PersonalityTraits
 	public static final RegistryObject<Opinion> STEELSKIN = register("steelskin", () -> new Opinion(-6, 20, ContextQuotients.WEAR_METAL.getId()));
 	public static final RegistryObject<Opinion> ENCHANTED = register("enchanted", () -> new Opinion(-6, 20, ContextQuotients.EQUIP_MAGIC.getId()));
 	public static final RegistryObject<Opinion> SUBLUNARY = register("sublunary", () -> new Opinion(20, -6, ContextQuotients.EQUIP_MAGIC.getId()));
-	// Potion Addict
-	// Teetotal
-	// Tank
-	// Gymrat
-	// Badblood
+	// Potion Addict - Lots of potions
+	// Teetotal - No potions
+	// Tank - Resistance
+	// Gymrat - Strength
+	// Badblood - Poison
 	
 	public static final RegistryObject<Opinion> SANGUINE = register("sanguine", () -> new Opinion(12));
 	public static final RegistryObject<Opinion> OPTIMIST = register("optimist", () -> new Opinion(6));
@@ -64,7 +64,7 @@ public class PersonalityTraits
 	
 	public static final RegistryObject<Opinion> INVENTOR = register("inventor", () -> new Opinion(-4, 10, ContextQuotients.CRAFTING.getId()));
 	public static final RegistryObject<Opinion> BLACKSMITH = register("blacksmith", () -> new Opinion(-4, 10, ContextQuotients.SMELTING.getId()));
-	// Alchemist
+	// Alchemist - Brew potions
 	public static final RegistryObject<Opinion> SCHOLAR = register("scholar", () -> new Opinion(0, 8, ContextQuotients.LEVEL.getId()));
 	
 	private static RegistryObject<Opinion> register(String nameIn, Supplier<Opinion> opinionIn)

@@ -48,7 +48,17 @@ public class ExMiracleTags extends ForgeRegistryTagsProvider<Miracle>
 		getOrCreateRawBuilder(MiracleTags.WAR).build();
 		getOrCreateRawBuilder(MiracleTags.WATER).build();
 		
-		tag(MiracleTags.PROTECTION)
+		tag(MiracleTags.DEATH)
+			.add(Miracles.JUGGERNAUT.get());
+		tag(MiracleTags.LUCK)
 			.add(Miracles.SAFE_LANDING.get());
+		tag(MiracleTags.PROTECTION)
+			.add(Miracles.SAFE_LANDING.get())
+			.add(Miracles.INDOMITABLE.get())
+			.add(Miracles.JUGGERNAUT.get());
+		tag(MiracleTags.TRAVEL)
+			.add(Miracles.SAFE_LANDING.get());
+		tag(MiracleTags.WAR)
+			.add(Miracles.JUGGERNAUT.get());
 	}
 }

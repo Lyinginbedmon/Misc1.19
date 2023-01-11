@@ -1,5 +1,6 @@
 package com.example.examplemod.utility.bus;
 
+import com.example.examplemod.ExampleMod;
 import com.example.examplemod.client.OverlayGodStatus;
 
 import net.minecraft.client.Minecraft;
@@ -14,6 +15,7 @@ public class ClientBus
 	
 	public static void registerOverlayEvent(RegisterGuiOverlaysEvent event)
 	{
+		ExampleMod.LOG.info("Registering overlays");
 		event.registerAboveAll("god_status", new OverlayGodStatus());
 	}
 }

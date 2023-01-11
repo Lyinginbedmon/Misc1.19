@@ -4,8 +4,7 @@
 	"mixins":
 	[
 		"LivingEntityMixin",
-		"PotionItemMixin",
-		"BrewingStandBlockEntityMixin"
+		"PotionItemMixin"
 	],
 	"client":
 	[

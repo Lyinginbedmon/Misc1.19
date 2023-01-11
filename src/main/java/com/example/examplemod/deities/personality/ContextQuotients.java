@@ -53,7 +53,7 @@ public class ContextQuotients
 	public static RegistryObject<ContextQuotient> DAMAGE_TAKEN = register("damage_taken", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "damage_taken"), 100D));
 	public static RegistryObject<ContextQuotient> CRAFTING = register("crafting", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "crafting"), 100D));
 	public static RegistryObject<ContextQuotient> SMELTING = register("smelting", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "smelting"), 100D));
-	public static RegistryObject<ContextQuotient> BREWING = register("brewing", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "brewing"), 100D));
+	public static RegistryObject<ContextQuotient> BREWING = register("brewing", () -> playerValue(new ResourceLocation(Reference.ModInfo.MOD_ID, "brewing"), 100D));	// FIXME Needs reworking
 	public static RegistryObject<ContextQuotient> PRAYER = register("prayer", () -> ContextQuotient.staticValue(0D));	// TODO Action based on interaction with matching altar
 	public static RegistryObject<ContextQuotient> EAT_MEAT = register("eating_meat", () -> playerDiet(ExItemTags.MEAT));
 	public static RegistryObject<ContextQuotient> EAT_VEG = register("eating_veg", () -> playerDiet(ExItemTags.VEGETABLE));

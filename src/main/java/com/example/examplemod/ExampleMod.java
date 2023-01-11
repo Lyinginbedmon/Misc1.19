@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import com.example.examplemod.commands.CommandDeity;
 import com.example.examplemod.data.ExDataGenerators;
 import com.example.examplemod.deities.DeityRegistry;
+import com.example.examplemod.deities.miracle.Miracles;
 import com.example.examplemod.init.ExItems;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.network.PacketHandler;
@@ -32,6 +33,7 @@ import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -47,21 +49,22 @@ public class ExampleMod
     @SuppressWarnings("deprecation")
 	public static CommonProxy PROXY = DistExecutor.runForDist(() -> ClientProxy::new, () -> ServerProxy::new);
     
+    public static final IEventBus EVENT_BUS = FMLJavaModLoadingContext.get().getModEventBus();
+    
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, Reference.ModInfo.MOD_ID);
     public static final RegistryObject<Block> EXAMPLE_BLOCK = BLOCKS.register("example_block", () -> new Block(BlockBehaviour.Properties.of(Material.STONE)));
     
     public ExampleMod()
     {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-        
         // Register the commonSetup method for modloading
-        modEventBus.addListener(this::commonSetup);
-        modEventBus.addListener(ClientBus::registerOverlayEvent);
-        modEventBus.addListener(ExDataGenerators::onGatherData);
+        EVENT_BUS.addListener(this::commonSetup);
+        EVENT_BUS.addListener(this::completeSetup);
+        EVENT_BUS.addListener(ClientBus::registerOverlayEvent);
+        EVENT_BUS.addListener(ExDataGenerators::onGatherData);
         
-        BLOCKS.register(modEventBus);
-        ExItems.ITEMS.register(modEventBus);
-        ExRegistries.registerCustom(modEventBus);
+        BLOCKS.register(EVENT_BUS);
+        ExItems.ITEMS.register(EVENT_BUS);
+        ExRegistries.registerCustom(EVENT_BUS);
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -71,6 +74,11 @@ public class ExampleMod
         // Some common setup code
         LOG.info("HELLO FROM COMMON SETUP");
         PacketHandler.init();
+    }
+    
+    private void completeSetup(final FMLLoadCompleteEvent event)
+    {
+    	Miracles.registerMiracleListeners();
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call

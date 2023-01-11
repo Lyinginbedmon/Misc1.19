@@ -5,6 +5,7 @@ import java.util.Random;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.deities.miracle.Miracle;
+import com.example.examplemod.deities.miracle.Miracles;
 import com.example.examplemod.deities.personality.PersonalityModel;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.init.MiracleTags;
@@ -50,6 +51,18 @@ public class Deity
 	public Component displayName() { return this.displayName; }
 	
 	public List<TagKey<Miracle>> domains() { return this.domains; }
+	
+	public boolean hasMiracle(Miracle miracleIn) { return hasMiracle(Miracles.getRegistryName(miracleIn)); }
+	
+	public boolean hasMiracle(RegistryObject<Miracle> miracleIn)
+	{
+		if(miracleIn != null)
+			for(TagKey<Miracle> domain : domains())
+				for(RegistryObject<Miracle> miracle : ExRegistries.MIRACLES.getEntries())
+					if(miracle.isPresent() && miracle.get().is(domain) && miracle == miracleIn)
+						return true;
+		return false;
+	}
 	
 	public List<Miracle> miracles()
 	{

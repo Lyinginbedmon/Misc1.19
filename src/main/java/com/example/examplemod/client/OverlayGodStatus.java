@@ -29,42 +29,50 @@ public class OverlayGodStatus implements IGuiOverlay
 		Player player = mc.player;
 		PlayerData data = PlayerData.getCapability(player);
 		Deity god = data.getDeity();
-		if(god == null)
-			return;
 		
 		int textColor = -1;
-		PersonalityModel personality = god.getPersonality();
-		Tuple<Double, Double> range = personality.range();
-
 		int yPos = 5;
-		ForgeGui.drawString(poseStack, gui.getFont(), "Current deity: "+god.displayName().getString(), 5, yPos, textColor);
-		yPos += gui.getFont().lineHeight;
-		
-		List<TagKey<Miracle>> domains = god.domains();
-		String domainList = "Domains: ";
-		for(int i=0; i<domains.size(); i++)
+		if(god == null)
 		{
-			domainList += domains.get(i).location().getPath().toString();
-			if(i < domains.size() - 1)
-				domainList += ", ";
+			ForgeGui.drawString(poseStack, gui.getFont(), "Current deity: NULL", 5, 5, -1);
+			return;
 		}
-		ForgeGui.drawString(poseStack, gui.getFont(), domainList+" ("+god.miracles().size()+")", 5, yPos, textColor);
-		yPos += gui.getFont().lineHeight;
-		
-		ForgeGui.drawString(poseStack, gui.getFont(), "Opinion: "+reducedString((int)(data.getOpinion() * 100))+"% ["+range.getA()+" / "+range.getB()+"]", 5, yPos, textColor);
-		yPos += gui.getFont().lineHeight * 2;
-		
-		ForgeGui.drawString(poseStack, gui.getFont(), "Traits:", 5, yPos, textColor);
-		yPos += gui.getFont().lineHeight;
-		PersonalityContext context = new PersonalityContext(player);
-		for(RegistryObject<Opinion> trait : personality.getTraits())
-			if(trait.isPresent())
+		else
+		{
+			PersonalityModel personality = god.getPersonality();
+			Tuple<Double, Double> range = personality.range();
+			
+			ForgeGui.drawString(poseStack, gui.getFont(), "Current deity: "+god.displayName().getString(), 5, yPos, textColor);
+			yPos += gui.getFont().lineHeight;
+			
+			List<TagKey<Miracle>> domains = god.domains();
+			String domainList = "Domains: ";
+			for(int i=0; i<domains.size(); i++)
 			{
-				ForgeGui.drawString(poseStack, gui.getFont(), trait.getId().toString()+" {"+reducedString(trait.get().value(context))+"}", 15, yPos, textColor);
-				yPos += gui.getFont().lineHeight;
+				domainList += domains.get(i).location().getPath().toString();
+				if(i < domains.size() - 1)
+					domainList += ", ";
 			}
+			ForgeGui.drawString(poseStack, gui.getFont(), domainList+" ("+god.miracles().size()+")", 5, yPos, textColor);
+			yPos += gui.getFont().lineHeight;
+			
+			ForgeGui.drawString(poseStack, gui.getFont(), "Opinion: "+reducedString((int)(data.getOpinion() * 100))+"% ["+range.getA()+" / "+range.getB()+"]", 5, yPos, textColor);
+			yPos += gui.getFont().lineHeight * 2;
+			
+			ForgeGui.drawString(poseStack, gui.getFont(), "Traits:", 5, yPos, textColor);
+			yPos += gui.getFont().lineHeight;
+			PersonalityContext context = new PersonalityContext(player);
+			for(RegistryObject<Opinion> trait : personality.getTraits())
+				if(trait.isPresent())
+				{
+					ForgeGui.drawString(poseStack, gui.getFont(), trait.getId().toString()+" {"+reducedString(trait.get().value(context))+"}", 15, yPos, textColor);
+					yPos += gui.getFont().lineHeight;
+				}
+			yPos += gui.getFont().lineHeight * 2;
+		}
 		
-		yPos += gui.getFont().lineHeight * 2;
+		ForgeGui.drawString(poseStack, gui.getFont(), "Miracles: "+data.canHaveMiracle(), 5, yPos, textColor);
+		yPos += gui.getFont().lineHeight;
 		if(!data.getQuotients().isEmpty())
 		{
 			ForgeGui.drawString(poseStack, gui.getFont(), "Player quotients:", 5, yPos, textColor);

@@ -9,6 +9,7 @@ import org.apache.commons.compress.utils.Lists;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.example.examplemod.ExampleMod;
 import com.example.examplemod.deities.Deity;
 import com.example.examplemod.deities.DeityRegistry;
 import com.example.examplemod.deities.personality.ContextQuotient;
@@ -16,6 +17,7 @@ import com.example.examplemod.deities.personality.ContextQuotients;
 import com.example.examplemod.init.ExCapabilities;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.network.PacketSyncPlayerData;
+import com.example.examplemod.proxy.CommonProxy;
 import com.example.examplemod.reference.Reference;
 
 import net.minecraft.core.Direction;
@@ -48,12 +50,16 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	private double prevOpinion, currentOpinion;
 	private long ticksSinceOpinion = 0;
 	
+	private int ticksToMiracle = 0;
+	
 	private boolean isDirty = true;
 	
 	public PlayerData(Player playerIn)
 	{
 		this.thePlayer = playerIn;
 	}
+	
+	public void setPlayer(Player playerIn) { this.thePlayer = playerIn; }
 	
 	public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side)
 	{
@@ -64,6 +70,9 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	{
 		if(player == null)
 			return null;
+		else if(player.getLevel().isClientSide())
+			return ((CommonProxy)ExampleMod.PROXY).getPlayerData(player);
+		
 		PlayerData data = player.getCapability(ExCapabilities.PLAYER_DATA).orElse(new PlayerData(player));
 		data.thePlayer = player;
 		return data;
@@ -76,6 +85,7 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		data.putDouble("OpinionPrev", this.prevOpinion);
 		data.putDouble("OpinionNow", this.currentOpinion);
 		data.putLong("CheckTime", this.ticksSinceOpinion);
+		data.putInt("Cooldown", this.ticksToMiracle);
 		
 		ListTag quotients = new ListTag();
 		for(Entry<ResourceLocation, Double> entry : this.quotients.entrySet())
@@ -104,6 +114,7 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		this.prevOpinion = nbt.getDouble("OpinionPrev");
 		this.currentOpinion = nbt.getDouble("OpinionNow");
 		this.ticksSinceOpinion = nbt.getLong("CheckTime");
+		this.ticksToMiracle = nbt.getInt("Cooldown");
 		
 		this.quotients.clear();
 		ListTag quotients = nbt.getList("Values", Tag.TAG_COMPOUND);
@@ -175,7 +186,7 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	public void tick()
 	{
 		Deity god = getDeity();
-		if(god == null || thePlayer.getLevel().isClientSide())
+		if(god == null || thePlayer == null || thePlayer.getLevel().isClientSide())
 			return;
 		
 		if(!this.quotients.isEmpty())
@@ -202,13 +213,24 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 			markDirty();
 		}
 		
-		if(isDirty)
+		if(this.ticksToMiracle > 0)
 		{
-			if(this.thePlayer != null && !this.thePlayer.getLevel().isClientSide())
-				PacketHandler.sendTo((ServerPlayer)this.thePlayer, new PacketSyncPlayerData(this.thePlayer.getUUID(), this));
-			
+			--this.ticksToMiracle;
+			markDirty();
+		}
+		
+		if(isDirty && !this.thePlayer.getLevel().isClientSide())
+		{
+			PacketHandler.sendTo((ServerPlayer)this.thePlayer, new PacketSyncPlayerData(this.thePlayer.getUUID(), this));
 			this.isDirty = false;
 		}
+	}
+	
+	public boolean canHaveMiracle() { return this.ticksToMiracle <= 0; }
+	public void setMiracleCooldown(int par1Int)
+	{
+		this.ticksToMiracle = par1Int;
+		markDirty();
 	}
 	
 	public void markDirty() { this.isDirty = true; }

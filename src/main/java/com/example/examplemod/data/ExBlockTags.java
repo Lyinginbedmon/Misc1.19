@@ -63,7 +63,8 @@ public class ExBlockTags extends BlockTagsProvider
 			.add(Blocks.MAGMA_BLOCK)
 			.add(Blocks.FURNACE, Blocks.SMOKER, Blocks.BLAST_FURNACE)
 			.addTag(BlockTags.CAMPFIRES)
-			.addTag(BlockTags.FIRE);
+			.addTag(BlockTags.FIRE)
+			.addTag(BlockTags.CANDLES);
 		tag(MUSHROOM)
 			.add(Blocks.RED_MUSHROOM, Blocks.RED_MUSHROOM_BLOCK)
 			.add(Blocks.POTTED_BROWN_MUSHROOM, Blocks.POTTED_RED_MUSHROOM)
