@@ -10,14 +10,14 @@ import net.minecraftforge.eventbus.api.IEventBus;
 
 public class MiracleSafeLanding extends Miracle
 {
+	public MiracleSafeLanding() { super(Power.MINOR); }
+	
 	public float getUtility(Player playerIn, Level worldIn)
 	{
 		if(isPlayerImmortal(playerIn) || playerIn.getEffect(MobEffects.SLOW_FALLING) != null)
 			return 0F;
 		
-		float fallDamage = Math.max(0F, playerIn.fallDistance - 3F);
-		float health = playerIn.getHealth();
-		return (float)Math.pow(fallDamage / health, 7);
+		return (float)Math.pow(Math.max(0F, playerIn.fallDistance - 3F) / playerIn.getHealth(), 7);
 	}
 	
 	public void addListeners(IEventBus bus)

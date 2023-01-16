@@ -14,9 +14,11 @@ public class MiracleJuggernaut extends Miracle
 {
 	private float nextDamage = 0F;
 	
+	public MiracleJuggernaut() { super(Power.MAJOR); }
+	
 	public float getUtility(Player playerIn, Level worldIn)
 	{
-		return isPlayerImmortal(playerIn) ? 0F : nextDamage / playerIn.getHealth();
+		return isPlayerImmortal(playerIn) ? 0F : (float)Math.pow(nextDamage / playerIn.getHealth(), 10);
 	}
 	
 	public void addListeners(IEventBus bus)

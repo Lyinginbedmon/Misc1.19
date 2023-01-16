@@ -1,5 +1,7 @@
 package com.example.examplemod.utility.bus;
 
+import com.example.examplemod.api.event.LivingConsumableEvent.Drink;
+import com.example.examplemod.api.event.LivingConsumableEvent.Eat;
 import com.example.examplemod.capabilities.PlayerData;
 import com.example.examplemod.data.ExEntityTags;
 import com.example.examplemod.data.ExItemTags;
@@ -16,9 +18,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionUtils;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -104,29 +106,38 @@ public class ContextBus
 		data.addQuotient(ContextQuotients.SMELTING.getId(), event.getSmelting().getCount());
 	}
 	
-	@SubscribeEvent
-	public static void onItemUseFinish(LivingEntityUseItemEvent.Finish event)
+	@SubscribeEvent(priority = EventPriority.LOW)
+	public static void onFoodEat(Eat event)
 	{
-		ItemStack item = event.getItem();
-		if(event.getEntity().getType() == EntityType.PLAYER && !event.getEntity().getLevel().isClientSide())
+		if(!event.isCanceled() && event.getEntity().getType() == EntityType.PLAYER && !event.getEntity().getLevel().isClientSide())
+			addDietTags((Player)event.getEntity(), event.getItem());
+	}
+	
+	@SubscribeEvent(priority = EventPriority.LOW)
+	public static void onPotionDrink(Drink event)
+	{
+		if(!event.isCanceled() && event.getEntity().getType() == EntityType.PLAYER && !event.getEntity().getLevel().isClientSide())
 		{
 			Player player = (Player)event.getEntity();
-			PlayerData data = PlayerData.getCapability(player);
+			ItemStack item = event.getItem();
+			addDietTags(player, item);
 			
-			if(item.isEdible())
-			{
-				if(item.is(ExItemTags.TABOO))
-					data.addQuotient(ContextQuotients.EAT_TABOO.getId(), 1);
-				
-				for(TagKey<Item> tag : ExItemTags.DIET_TAGS)
-					if(item.is(tag))
-					{
-						data.addTagToDiet(tag);
-						break;
-					}
-			}
-			else if(item.getItem() == Items.POTION)
-				data.addQuotient(ContextQuotients.DRINK_POTION.getId(), 1);
+			if(item.getItem() == Items.POTION && !PotionUtils.getMobEffects(item).isEmpty())
+				PlayerData.getCapability(player).addQuotient(ContextQuotients.DRINK_POTION.getId(), 1);
 		}
+	}
+	
+	public static void addDietTags(Player player, ItemStack item)
+	{
+		PlayerData data = PlayerData.getCapability(player);
+		if(item.is(ExItemTags.TABOO))
+			data.addQuotient(ContextQuotients.EAT_TABOO.getId(), 1);
+		
+		for(TagKey<Item> tag : ExItemTags.DIET_TAGS)
+			if(item.is(tag))
+			{
+				data.addTagToDiet(tag);
+				break;
+			}
 	}
 }

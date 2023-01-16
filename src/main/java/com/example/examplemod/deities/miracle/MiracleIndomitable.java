@@ -10,9 +10,11 @@ public class MiracleIndomitable extends Miracle
 {
 	private float nextDamage = 0F;
 	
+	public MiracleIndomitable() { super(Power.MINOR); }
+	
 	public float getUtility(Player playerIn, Level worldIn)
 	{
-		return isPlayerImmortal(playerIn) ? 0F : nextDamage / playerIn.getHealth();
+		return isPlayerImmortal(playerIn) ? 0F : (float)Math.pow(Math.sin((nextDamage / playerIn.getHealth()) * 2.2F), 3);
 	}
 	
 	public void addListeners(IEventBus bus)

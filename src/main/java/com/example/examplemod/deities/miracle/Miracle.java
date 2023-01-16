@@ -1,7 +1,6 @@
 package com.example.examplemod.deities.miracle;
 
 import java.util.Optional;
-import java.util.Random;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.api.event.MiracleEvent.CheckMiracleEvent;
@@ -27,9 +26,24 @@ public abstract class Miracle
 {
 	public static final ResourceKey<Registry<Miracle>> REGISTRY_KEY = ResourceKey.createRegistryKey(new ResourceLocation(Reference.ModInfo.MOD_ID, "miracles"));
 	
+	private final Power level;
+	
+	protected Miracle(Power levelIn)
+	{
+		this.level = levelIn;
+	}
+	
+	public final Power level() { return this.level; }
+	
 	public void addListeners(IEventBus bus) { }
 	
+	/** 
+	 * The value of this miracle at the present moment.<br>
+	 * Miracles that fire from the same event should always have different utility!
+	 */
 	public abstract float getUtility(Player playerIn, Level worldIn);
+	
+	public Pair<Integer, Integer> cooldownRange() { return Pair.of(Reference.Values.TICKS_PER_MINUTE, Reference.Values.TICKS_PER_MINUTE * 5); }
 	
 	public final boolean is(TagKey<Miracle> keyIn)
 	{
@@ -38,8 +52,6 @@ public abstract class Miracle
 	}
 	
 	public final RegistryObject<Miracle> getRegistryName(){ return Miracles.getRegistryName(this); }
-	
-	public Pair<Integer, Integer> cooldownRange() { return Pair.of(Reference.Values.TICKS_PER_MINUTE, Reference.Values.TICKS_PER_MINUTE * 5); }
 	
 	public static boolean isPlayerImmortal(Player playerIn)
 	{
@@ -54,7 +66,7 @@ public abstract class Miracle
 		Deity god = miracleEvent.godResponsible();
 		if(god == null || !god.hasMiracle(miracleIn))
 		{
-			ExampleMod.LOG.info("Miracle denied! No deity or does not have "+miracleIn.getRegistryName().getId());
+			ExampleMod.LOG.info("Miracle denied! No deity or deity does not have "+miracleIn.getRegistryName().getId());
 			miracleEvent.setResult(Result.DENY);
 		}
 		else if(!data.canHaveMiracle())
@@ -65,10 +77,14 @@ public abstract class Miracle
 		else
 		{
 			double opinion = data.getOpinion();
-			Random rng = god.getRandom();
-			if(opinion < rng.nextFloat())
+			if(opinion < miracleIn.level().minimumOpinion())
 			{
-				ExampleMod.LOG.info("Miracle denied! Bad odds/opinion");
+				ExampleMod.LOG.info("Miracle denied! Opinion too low");
+				miracleEvent.setResult(Result.DENY);
+			}
+			else if(opinion < god.getRandom().nextFloat())
+			{
+				ExampleMod.LOG.info("Miracle denied! Bad luck");
 				miracleEvent.setResult(Result.DENY);
 			}
 		}
@@ -86,5 +102,20 @@ public abstract class Miracle
 		data.setMiracleCooldown(cooldown.first + (int)((cooldown.second - cooldown.first) * god.getRandom().nextDouble()));
 		
 		ExampleMod.EVENT_BUS.post(new PerformMiracleEvent(playerIn, PlayerData.getCapability(playerIn).getDeity(), miracleIn));
+	}
+	
+	public static enum Power
+	{
+		MINOR(0.3F),
+		MAJOR(0.75F);
+		
+		private final float minOpinion;
+		
+		private Power(float opIn)
+		{
+			this.minOpinion = opIn;
+		}
+		
+		public float minimumOpinion() { return this.minOpinion; }
 	}
 }
