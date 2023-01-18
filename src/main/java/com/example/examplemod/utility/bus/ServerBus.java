@@ -2,14 +2,21 @@ package com.example.examplemod.utility.bus;
 
 import com.example.examplemod.capabilities.PlayerData;
 import com.example.examplemod.reference.Reference;
+import com.example.examplemod.utility.savedata.BrewingStandWatcher;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.eventbus.api.Event.Result;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -51,5 +58,16 @@ public class ServerBus
 	{
 		if(event.getEntity().getType() == EntityType.PLAYER)
 			PlayerData.getCapability((Player)event.getEntity()).tick();
+	}
+	
+	@SubscribeEvent(priority = EventPriority.LOWEST)
+	public static void onRightClickBrewingStand(PlayerInteractEvent.RightClickBlock event)
+	{
+		Level world = event.getLevel();
+		BlockPos pos = event.getPos();
+		if(world.getBlockState(pos).getBlock() != Blocks.BREWING_STAND || event.getUseBlock() == Result.DENY)
+			return;
+		
+		BrewingStandWatcher.setLastTouched(event.getEntity().getUUID(), pos);
 	}
 }

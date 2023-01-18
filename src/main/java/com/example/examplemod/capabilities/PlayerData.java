@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Consumer;
 
 import org.apache.commons.compress.utils.Lists;
 import org.jetbrains.annotations.NotNull;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.deities.Deity;
 import com.example.examplemod.deities.DeityRegistry;
+import com.example.examplemod.deities.miracle.BindingContract;
 import com.example.examplemod.deities.personality.ContextQuotient;
 import com.example.examplemod.deities.personality.ContextQuotients;
 import com.example.examplemod.init.ExCapabilities;
@@ -51,6 +53,10 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	private long ticksSinceOpinion = 0;
 	
 	private int ticksToMiracle = 0;
+	private ResourceLocation forcedMiracle = null;
+	
+	private List<Consumer<Player>> queuedEvents = Lists.newArrayList();
+	private List<BindingContract> bindingContracts = Lists.newArrayList();
 	
 	private boolean isDirty = true;
 	
@@ -87,6 +93,9 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		data.putLong("CheckTime", this.ticksSinceOpinion);
 		data.putInt("Cooldown", this.ticksToMiracle);
 		
+		if(this.forcedMiracle != null)
+			data.putString("Forced", this.forcedMiracle.toString());
+		
 		ListTag quotients = new ListTag();
 		for(Entry<ResourceLocation, Double> entry : this.quotients.entrySet())
 		{
@@ -116,6 +125,8 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		this.ticksSinceOpinion = nbt.getLong("CheckTime");
 		this.ticksToMiracle = nbt.getInt("Cooldown");
 		
+		this.forcedMiracle = nbt.contains("Forced", Tag.TAG_STRING) ? new ResourceLocation(nbt.getString("Forced")) : null;
+		
 		this.quotients.clear();
 		ListTag quotients = nbt.getList("Values", Tag.TAG_COMPOUND);
 		for(int i=0; i<quotients.size(); i++)
@@ -134,6 +145,20 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 				recentDiet.add(dietary);
 		}
 	}
+	
+	public void queueEvent(Consumer<Player> eventIn) { this.queuedEvents.add(eventIn); }
+	public void addContract(BindingContract contractIn)
+	{
+		contractIn.start(thePlayer, thePlayer.getLevel());
+		this.bindingContracts.add(contractIn);
+		markDirty();
+	}
+	
+	public boolean hasForcedMiracle() { return this.forcedMiracle != null; }
+	@Nullable
+	public ResourceLocation forcedMiracle() { return this.forcedMiracle; }
+	public void setForceMiracle(@Nullable ResourceLocation nameIn) { this.forcedMiracle = nameIn; markDirty(); }
+	public void clearForceMiracle() { setForceMiracle(null); }
 	
 	public String getDeityName() { return this.deityName; }
 	@Nullable
@@ -188,6 +213,26 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		Deity god = getDeity();
 		if(god == null || thePlayer == null || thePlayer.getLevel().isClientSide())
 			return;
+		
+		if(!this.queuedEvents.isEmpty())
+		{
+			for(Consumer<Player> event : this.queuedEvents)
+				event.accept(thePlayer);
+			
+			this.queuedEvents.clear();
+		}
+		
+		if(!this.bindingContracts.isEmpty())
+		{
+			this.bindingContracts.forEach((contract) -> 
+			{
+				contract.tick(thePlayer, thePlayer.getLevel());
+				if(contract.isComplete())
+					contract.cleanup(thePlayer, thePlayer.getLevel());
+			});
+			
+			this.bindingContracts.removeIf((contract) -> contract.isComplete());
+		}
 		
 		if(!this.quotients.isEmpty())
 		{

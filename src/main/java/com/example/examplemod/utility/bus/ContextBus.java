@@ -2,12 +2,15 @@ package com.example.examplemod.utility.bus;
 
 import com.example.examplemod.api.event.LivingConsumableEvent.Drink;
 import com.example.examplemod.api.event.LivingConsumableEvent.Eat;
+import com.example.examplemod.api.event.PlayerEnchantItemEvent;
 import com.example.examplemod.capabilities.PlayerData;
 import com.example.examplemod.data.ExEntityTags;
 import com.example.examplemod.data.ExItemTags;
 import com.example.examplemod.deities.personality.ContextQuotients;
 import com.example.examplemod.reference.Reference;
+import com.example.examplemod.utility.savedata.BrewingStandWatcher;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -19,8 +22,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraftforge.event.brewing.PlayerBrewedPotionEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.player.AnvilRepairEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -139,5 +144,32 @@ public class ContextBus
 				data.addTagToDiet(tag);
 				break;
 			}
+	}
+	
+	@SubscribeEvent
+	public static void onPlayerEnchantItem(PlayerEnchantItemEvent event)
+	{
+		PlayerData data = PlayerData.getCapability(event.getEntity());
+		data.addQuotient(ContextQuotients.ENCHANTING.getId(), event.getLevel());
+	}
+	
+	@SubscribeEvent
+	public static void onPlayerRepairItem(AnvilRepairEvent event)
+	{
+		PlayerData data = PlayerData.getCapability(event.getEntity());
+		if(event.getRight().getItem() == Items.ENCHANTED_BOOK)
+			data.addQuotient(ContextQuotients.ENCHANTING.getId(), 1);
+	}
+	
+	@SubscribeEvent
+	public static void onPlayerBrewPotion(PlayerBrewedPotionEvent event)
+	{
+		BlockPos pos = BrewingStandWatcher.lastTouched(event.getEntity().getUUID());
+		if(pos == null)
+			return;
+		
+		int value = BrewingStandWatcher.extractStack(pos, event.getStack());
+		if(value > 0)
+			PlayerData.getCapability(event.getEntity()).addQuotient(ContextQuotients.BREWING.getId(), value);
 	}
 }

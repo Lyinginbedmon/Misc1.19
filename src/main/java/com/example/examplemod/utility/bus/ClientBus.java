@@ -16,6 +16,6 @@ public class ClientBus
 	public static void registerOverlayEvent(RegisterGuiOverlaysEvent event)
 	{
 		ExampleMod.LOG.info("Registering overlays");
-		event.registerAboveAll("god_status", new OverlayGodStatus());
+//		event.registerAboveAll("god_status", new OverlayGodStatus());
 	}
 }

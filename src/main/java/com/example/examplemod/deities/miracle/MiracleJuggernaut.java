@@ -31,7 +31,7 @@ public class MiracleJuggernaut extends Miracle
 		if(!event.isCanceled() && event.getSource().getEntity() != null && event.getEntity().getType() == EntityType.PLAYER)
 		{
 			Player player = (Player)event.getEntity();
-			MiracleJuggernaut miracle = (MiracleJuggernaut)Miracles.INDOMITABLE.get();
+			MiracleJuggernaut miracle = (MiracleJuggernaut)Miracles.JUGGERNAUT.get();
 			miracle.nextDamage = event.getAmount();
 			
 			if(!checkMiracle(player, miracle))

@@ -3,10 +3,14 @@
 	"package": "com.example.examplemod.mixin",
 	"mixins":
 	[
+		"AccessorBrewingStandBlockEntity",
 		"LivingEntityMixin",
+		"PlayerMixin",
 		"BowItemMixin",
 		"CrossbowItemMixin",
-		"ItemStackMixin"
+		"ItemStackMixin",
+		"EnchantedItemTriggerMixin",
+		"BrewingStandBlockEntityMixin"
 	],
 	"client":
 	[

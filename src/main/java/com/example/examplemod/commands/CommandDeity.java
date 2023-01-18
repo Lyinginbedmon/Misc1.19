@@ -16,13 +16,11 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.synchronization.SuggestionProviders;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 
 public class CommandDeity
 {
- 	public static final SuggestionProvider<CommandSourceStack> DEITY_NAMES = SuggestionProviders.register(new ResourceLocation("creature_supertypes"), (context, builder) -> {
+ 	public static final SuggestionProvider<CommandSourceStack> DEITY_NAMES = SuggestionProviders.register(new ResourceLocation("deity_names"), (context, builder) -> {
  		return SharedSuggestionProvider.suggest(DeityRegistry.getInstance().getDeityNames(), builder);
  		});
 	private static final String translationSlug = "command."+Reference.ModInfo.MOD_ID+".deity.";
@@ -35,8 +33,8 @@ public class CommandDeity
 		LiteralArgumentBuilder<CommandSourceStack> literal = Commands.literal("deity").requires((source) -> { return source.hasPermission(2); } )
 				.then(Commands.argument(GOD, StringArgumentType.word()).suggests(DEITY_NAMES)
 					.executes((source) -> { return worshipSelf(StringArgumentType.getString(source, GOD), source.getSource()); })
-						.then(Commands.argument(ENTITY, EntityArgument.entity())
-							.executes((source) -> { return worshipTarget(StringArgumentType.getString(source, GOD), source.getSource(), EntityArgument.getEntity(source, ENTITY)); })));
+						.then(Commands.argument(ENTITY, EntityArgument.player())
+							.executes((source) -> { return worshipTarget(StringArgumentType.getString(source, GOD), source.getSource(), EntityArgument.getPlayer(source, ENTITY)); })));
 		
 		dispatcher.register(literal);
 	}
@@ -46,16 +44,16 @@ public class CommandDeity
 		return worshipTarget(godName, source, source.getPlayer());
 	}
 	
-	private static int worshipTarget(String godName, CommandSourceStack source, Entity entity)
+	private static int worshipTarget(String godName, CommandSourceStack source, ServerPlayer entity)
 	{
 		if(entity == null)
 		{
 			source.sendFailure(Component.translatable(translationSlug+"invalid"));
 			return 0;
 		}
-		else if(entity.getType() == EntityType.PLAYER)
+		else
 		{
-			PlayerData data = PlayerData.getCapability((Player)entity);
+			PlayerData data = PlayerData.getCapability(entity);
 			Deity god = DeityRegistry.getInstance().getDeity(godName);
 			
 			if(data != null && god != null)

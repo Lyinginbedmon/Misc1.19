@@ -65,6 +65,7 @@ public class PersonalityTraits
 	public static final RegistryObject<Opinion> INVENTOR = register("inventor", () -> new Opinion(-4, 10, ContextQuotients.CRAFTING.getId()));
 	public static final RegistryObject<Opinion> BLACKSMITH = register("blacksmith", () -> new Opinion(-4, 10, ContextQuotients.SMELTING.getId()));
 	// Alchemist - Brew potions
+	public static final RegistryObject<Opinion> ENCHANTER = register("enchanter", () -> new Opinion(-4, 10, ContextQuotients.ENCHANTING.getId()));
 	public static final RegistryObject<Opinion> SCHOLAR = register("scholar", () -> new Opinion(0, 8, ContextQuotients.LEVEL.getId()));
 	
 	private static RegistryObject<Opinion> register(String nameIn, Supplier<Opinion> opinionIn)

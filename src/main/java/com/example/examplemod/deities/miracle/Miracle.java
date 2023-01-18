@@ -63,33 +63,45 @@ public abstract class Miracle
 		CheckMiracleEvent miracleEvent = new CheckMiracleEvent(playerIn, PlayerData.getCapability(playerIn).getDeity(), miracleIn);
 		
 		PlayerData data = PlayerData.getCapability(playerIn);
-		Deity god = miracleEvent.godResponsible();
-		if(god == null || !god.hasMiracle(miracleIn))
+		boolean shouldClearForced = false;
+		if(data.hasForcedMiracle() && data.forcedMiracle().equals(miracleIn.getRegistryName().getId()))
 		{
-			ExampleMod.LOG.info("Miracle denied! No deity or deity does not have "+miracleIn.getRegistryName().getId());
-			miracleEvent.setResult(Result.DENY);
-		}
-		else if(!data.canHaveMiracle())
-		{
-			ExampleMod.LOG.info("Miracle denied! On cooldown");
-			miracleEvent.setResult(Result.DENY);
+			miracleEvent.setResult(Result.ALLOW);
+			shouldClearForced = true;
 		}
 		else
 		{
-			double opinion = data.getOpinion();
-			if(opinion < miracleIn.level().minimumOpinion())
+			Deity god = miracleEvent.godResponsible();
+			if(god == null || !god.hasMiracle(miracleIn))
 			{
-				ExampleMod.LOG.info("Miracle denied! Opinion too low");
+				ExampleMod.LOG.info("Miracle denied! No deity or deity does not have "+miracleIn.getRegistryName().getId());
 				miracleEvent.setResult(Result.DENY);
 			}
-			else if(opinion < god.getRandom().nextFloat())
+			else if(!data.canHaveMiracle())
 			{
-				ExampleMod.LOG.info("Miracle denied! Bad luck");
+				ExampleMod.LOG.info("Miracle denied! On cooldown");
 				miracleEvent.setResult(Result.DENY);
+			}
+			else
+			{
+				double opinion = data.getOpinion();
+				if(opinion < miracleIn.level().minimumOpinion())
+				{
+					ExampleMod.LOG.info("Miracle denied! Opinion too low");
+					miracleEvent.setResult(Result.DENY);
+				}
+				else if(opinion < god.getRandom().nextFloat())
+				{
+					ExampleMod.LOG.info("Miracle denied! Bad luck");
+					miracleEvent.setResult(Result.DENY);
+				}
 			}
 		}
 		
 		ExampleMod.EVENT_BUS.post(miracleEvent);
+		if(miracleEvent.getResult() != Result.DENY && shouldClearForced)
+			data.clearForceMiracle();
+		
 		return miracleEvent.getResult() != Result.DENY;
 	}
 	
@@ -99,9 +111,9 @@ public abstract class Miracle
 		PlayerData data = PlayerData.getCapability(playerIn);
 		Deity god = data.getDeity();
 		Pair<Integer, Integer> cooldown = miracleIn.cooldownRange();
-		data.setMiracleCooldown(cooldown.first + (int)((cooldown.second - cooldown.first) * god.getRandom().nextDouble()));
+		data.setMiracleCooldown(cooldown.first + (int)((cooldown.second - cooldown.first) * (god == null ? playerIn.getRandom().nextDouble() : god.getRandom().nextDouble())));
 		
-		ExampleMod.EVENT_BUS.post(new PerformMiracleEvent(playerIn, PlayerData.getCapability(playerIn).getDeity(), miracleIn));
+		ExampleMod.EVENT_BUS.post(new PerformMiracleEvent(playerIn, god, miracleIn));
 	}
 	
 	public static enum Power

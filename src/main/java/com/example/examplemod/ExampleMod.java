@@ -3,6 +3,7 @@ package com.example.examplemod;
 import org.slf4j.Logger;
 
 import com.example.examplemod.commands.CommandDeity;
+import com.example.examplemod.commands.CommandMiracle;
 import com.example.examplemod.data.ExDataGenerators;
 import com.example.examplemod.deities.DeityRegistry;
 import com.example.examplemod.deities.miracle.Miracles;
@@ -93,6 +94,7 @@ public class ExampleMod
     public void onRegisterCommands(RegisterCommandsEvent event)
     {
     	CommandDeity.register(event.getDispatcher());
+    	CommandMiracle.register(event.getDispatcher());
     }
     
     @SubscribeEvent
