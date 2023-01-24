@@ -164,11 +164,12 @@ public class ContextBus
 	@SubscribeEvent
 	public static void onPlayerBrewPotion(PlayerBrewedPotionEvent event)
 	{
-		BlockPos pos = BrewingStandWatcher.lastTouched(event.getEntity().getUUID());
+		BrewingStandWatcher watcher = BrewingStandWatcher.instance(event.getEntity().getLevel());
+		BlockPos pos = watcher.lastTouched(event.getEntity().getUUID());
 		if(pos == null)
 			return;
 		
-		int value = BrewingStandWatcher.extractStack(pos, event.getStack());
+		int value = watcher.extractStack(pos, event.getStack());
 		if(value > 0)
 			PlayerData.getCapability(event.getEntity()).addQuotient(ContextQuotients.BREWING.getId(), value);
 	}

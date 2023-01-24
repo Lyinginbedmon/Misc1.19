@@ -55,8 +55,9 @@ public class Miracles
 		ExRegistries.MIRACLES.getEntries().forEach((entry) -> 
 		{
 			entry.get().addListeners(MinecraftForge.EVENT_BUS);
-			ExampleMod.LOG.info("# Added "+entry.getId());
+			ExampleMod.LOG.info("# * Added "+entry.getId());
 		});
+		ExampleMod.LOG.info("# "+ExRegistries.MIRACLES.getEntries().size()+" total miracles #");
 	}
 	
 	@Nullable

@@ -42,11 +42,12 @@ public class BrewingStandBlockEntityMixin
 			 */
 			isBrewFinish = true;
 			
+			BrewingStandWatcher watcher = BrewingStandWatcher.instance(world);
 			for(int i=0; i<3; i++)
 			{
 				itemsBeforeBrew.set(i, contents.get(i));
 				if(contents.get(i).isEmpty())
-					BrewingStandWatcher.emptySlot(pos, i);
+					watcher.emptySlot(pos, i);
 			}
 		}
 	}
@@ -63,10 +64,11 @@ public class BrewingStandBlockEntityMixin
 			 * Compare contents before tick to now and mark changed contents as brewed
 			 */
 			
+			BrewingStandWatcher watcher = BrewingStandWatcher.instance(world);
 			for(int i=0; i<3; i++)
 			{
 				if(!contents.get(i).equals(itemsBeforeBrew.get(i), false))
-					BrewingStandWatcher.cycleSlot(pos, i, contents.get(i));
+					watcher.cycleSlot(pos, i, contents.get(i));
 			}
 			
 			isBrewFinish = false;

@@ -68,6 +68,6 @@ public class ServerBus
 		if(world.getBlockState(pos).getBlock() != Blocks.BREWING_STAND || event.getUseBlock() == Result.DENY)
 			return;
 		
-		BrewingStandWatcher.setLastTouched(event.getEntity().getUUID(), pos);
+		BrewingStandWatcher.instance(world).setLastTouched(event.getEntity().getUUID(), pos);
 	}
 }

@@ -10,7 +10,8 @@
 		"CrossbowItemMixin",
 		"ItemStackMixin",
 		"EnchantedItemTriggerMixin",
-		"BrewingStandBlockEntityMixin"
+		"BrewingStandBlockEntityMixin",
+		"ApplyBonusCountMixin"
 	],
 	"client":
 	[
