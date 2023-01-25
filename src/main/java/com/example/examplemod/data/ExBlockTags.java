@@ -19,6 +19,8 @@ public class ExBlockTags extends BlockTagsProvider
     public static final TagKey<Block> NATURE = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "nature"));
     public static final TagKey<Block> FIRE = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "fire"));
     public static final TagKey<Block> MUSHROOM = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "mushroom"));
+    public static final TagKey<Block> CROP_BLOCKS = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "crop_blocks"));
+    public static final TagKey<Block> ORE_BLOCKS = TagKey.create(Registry.BLOCK_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "ore_blocks"));
 	
 	public ExBlockTags(DataGenerator p_126511_, @Nullable ExistingFileHelper existingFileHelper)
 	{
@@ -56,6 +58,20 @@ public class ExBlockTags extends BlockTagsProvider
 			.addTag(BlockTags.CORALS)
 			.addTag(BlockTags.WALL_CORALS)
 			.addTag(BlockTags.NYLIUM);
+		tag(CROP_BLOCKS)
+			.add(Blocks.SUGAR_CANE, Blocks.SWEET_BERRY_BUSH)
+			.add(Blocks.MELON, Blocks.PUMPKIN)
+			.add(Blocks.WHEAT, Blocks.BEETROOTS, Blocks.CARROTS, Blocks.POTATOES);
+		tag(ORE_BLOCKS)
+			.add(Blocks.ANCIENT_DEBRIS)
+			.addTag(BlockTags.COAL_ORES)
+			.addTag(BlockTags.IRON_ORES)
+			.addTag(BlockTags.GOLD_ORES)
+			.addTag(BlockTags.EMERALD_ORES)
+			.addTag(BlockTags.DIAMOND_ORES)
+			.addTag(BlockTags.REDSTONE_ORES)
+			.addTag(BlockTags.LAPIS_ORES)
+			.addTag(BlockTags.COPPER_ORES);
 		tag(FIRE)
 			.add(Blocks.TORCH, Blocks.REDSTONE_TORCH, Blocks.SOUL_TORCH, Blocks.WALL_TORCH, Blocks.REDSTONE_WALL_TORCH, Blocks.SOUL_WALL_TORCH)
 			.add(Blocks.LANTERN, Blocks.SOUL_LANTERN)

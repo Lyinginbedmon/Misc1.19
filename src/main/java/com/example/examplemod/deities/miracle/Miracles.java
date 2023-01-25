@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.compress.utils.Lists;
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.deities.miracle.MiracleBountiful.*;
 import com.example.examplemod.init.ExRegistries;
 
 import net.minecraft.resources.ResourceLocation;
@@ -20,16 +21,16 @@ public class Miracles
 	public static final RegistryObject<Miracle> SAFE_LANDING = register("safe_landing", () -> new MiracleSafeLanding());
 	public static final RegistryObject<Miracle> INDOMITABLE = register("indomitable", () -> new MiracleIndomitable());
 	public static final RegistryObject<Miracle> JUGGERNAUT = register("juggernaut", () -> new MiracleJuggernaut());
-	// Reaper's Bag - Inventory preserved in safe position on death
+	public static final RegistryObject<Miracle> REAPERS_BAG = register("reapers_bag", () -> new MiracleReapersBag());
 	public static final RegistryObject<Miracle> LAST_ARROW = register("last_arrow", () -> new MiracleLastArrow());
 	// Redirect - Projectile that hits you misses or strikes nearby hostile mob instead
 	// Mining Contract - Pick unable to break until ore vein depleted (or moved away from)
+	public static final RegistryObject<Miracle> CONTRACT_MINE = register("mining_contract", () -> new MiracleContractMine());
 	// Warrior Contract - Sword/axe breaks only on the last hit against the boss
 	public static final RegistryObject<Miracle> LIGHTNING = register("lightning", () -> new MiracleLightning());
 	public static final RegistryObject<Miracle> ANIMAL_FRIEND = register("animal_friend", () -> new MiracleAnimalFriend());
-	// Bountiful Harvest - Harvesting crops treated as Fortune V
 	public static final RegistryObject<Miracle> BOUNTIFUL_HARVEST = register("bountiful_harvest", () -> new MiracleBountifulHarvest());
-	// Bountiful Mine - Breaking ores treated as Fortune V
+	public static final RegistryObject<Miracle> BOUNTIFUL_MINE = register("bountiful_mine", () -> new MiracleBountifulMine());
 	// Fertile Soil - Bonemealing crops affects all similar crops within a 5x5x5 area
 	// Full Stomach - Eating the last food item in a stack fills your entire hunger bar
 	// Holy Sacrament - Eating/drinking a food item heals you

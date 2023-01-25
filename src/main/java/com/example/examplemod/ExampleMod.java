@@ -7,6 +7,7 @@ import com.example.examplemod.commands.CommandMiracle;
 import com.example.examplemod.data.ExDataGenerators;
 import com.example.examplemod.deities.DeityRegistry;
 import com.example.examplemod.deities.miracle.Miracles;
+import com.example.examplemod.init.ExEnchantments;
 import com.example.examplemod.init.ExItems;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.network.PacketHandler;
@@ -66,6 +67,7 @@ public class ExampleMod
         BLOCKS.register(EVENT_BUS);
         ExItems.ITEMS.register(EVENT_BUS);
         ExRegistries.registerCustom(EVENT_BUS);
+        ExEnchantments.ENCHANTMENTS.register(EVENT_BUS);
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }
