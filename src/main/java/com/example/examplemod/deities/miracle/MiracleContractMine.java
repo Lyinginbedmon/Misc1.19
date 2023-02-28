@@ -3,12 +3,11 @@ package com.example.examplemod.deities.miracle;
 import com.example.examplemod.api.event.PlayerBreakItemEvent;
 import com.example.examplemod.capabilities.PlayerData;
 import com.example.examplemod.data.ExBlockTags;
+import com.example.examplemod.deities.miracle.BindingContract.IInventoryContract;
 import com.example.examplemod.init.ExEnchantments;
 import com.example.examplemod.utility.ExUtils;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PickaxeItem;
@@ -35,7 +34,7 @@ public class MiracleContractMine extends Miracle
 	
 	public void onPickaxeBreak(PlayerBreakItemEvent event)
 	{
-		if(event.getItem().getEnchantmentLevel(ExEnchantments.CONTRACT_TOOL.get()) > 0)
+		if(event.getItem().getEnchantmentLevel(ExEnchantments.CONTRACT_ITEM.get()) > 0)
 		{
 			event.setCanceled(true);
 			return;
@@ -53,7 +52,7 @@ public class MiracleContractMine extends Miracle
 		}
 	}
 	
-	private static class ContractMining extends BindingContract
+	public static class ContractMining extends BindingContract implements IInventoryContract
 	{
 		private static final double RANGE = 8D;
 		
@@ -69,7 +68,7 @@ public class MiracleContractMine extends Miracle
 		
 		public void start(Player player, Level world)
 		{
-			this.stack.enchant(ExEnchantments.CONTRACT_TOOL.get(), 1);
+			this.stack.enchant(ExEnchantments.CONTRACT_ITEM.get(), 1);
 		}
 		
 		public void doEffect(int ticksRemaining, Player player, Level world)
@@ -87,11 +86,6 @@ public class MiracleContractMine extends Miracle
 			return ExUtils.searchAreaFor(core, worldIn, (int)RANGE, (pos, world) -> world.getBlockState(pos).is(ExBlockTags.ORE_BLOCKS)) != null;
 		}
 		
-		public void cleanup(Player player, Level world)
-		{
-			ServerPlayer serverPlayer = (ServerPlayer)player;
-			serverPlayer.broadcastBreakEvent(InteractionHand.MAIN_HAND);
-			serverPlayer.getInventory().removeItem(this.stack);
-		}
+		public boolean targets(ItemStack stack) { return stack.equals(this.stack, false); }
 	}
 }

@@ -31,7 +31,8 @@ public class ExEntityTags extends EntityTypeTagsProvider
 			.add(EntityType.WITHER)
 			.add(EntityType.ENDER_DRAGON)
 			.add(EntityType.WARDEN)
-			.add(EntityType.ELDER_GUARDIAN);
+			.add(EntityType.ELDER_GUARDIAN)
+			.add(EntityType.CHICKEN);
 		tag(FISH)
 			.add(EntityType.COD)
 			.add(EntityType.PUFFERFISH)

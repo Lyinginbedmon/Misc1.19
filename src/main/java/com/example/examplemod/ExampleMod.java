@@ -7,7 +7,9 @@ import com.example.examplemod.commands.CommandMiracle;
 import com.example.examplemod.data.ExDataGenerators;
 import com.example.examplemod.deities.DeityRegistry;
 import com.example.examplemod.deities.miracle.Miracles;
+import com.example.examplemod.init.ExBlocks;
 import com.example.examplemod.init.ExEnchantments;
+import com.example.examplemod.init.ExEntities;
 import com.example.examplemod.init.ExItems;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.network.PacketHandler;
@@ -19,9 +21,6 @@ import com.example.examplemod.utility.bus.ClientBus;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.material.Material;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -37,9 +36,6 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(Reference.ModInfo.MOD_ID)
@@ -53,9 +49,6 @@ public class ExampleMod
     
     public static final IEventBus EVENT_BUS = FMLJavaModLoadingContext.get().getModEventBus();
     
-    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, Reference.ModInfo.MOD_ID);
-    public static final RegistryObject<Block> EXAMPLE_BLOCK = BLOCKS.register("example_block", () -> new Block(BlockBehaviour.Properties.of(Material.STONE)));
-    
     public ExampleMod()
     {
         // Register the commonSetup method for modloading
@@ -64,7 +57,8 @@ public class ExampleMod
         EVENT_BUS.addListener(ClientBus::registerOverlayEvent);
         EVENT_BUS.addListener(ExDataGenerators::onGatherData);
         
-        BLOCKS.register(EVENT_BUS);
+        ExEntities.ENTITIES.register(EVENT_BUS);
+        ExBlocks.BLOCKS.register(EVENT_BUS);
         ExItems.ITEMS.register(EVENT_BUS);
         ExRegistries.registerCustom(EVENT_BUS);
         ExEnchantments.ENCHANTMENTS.register(EVENT_BUS);

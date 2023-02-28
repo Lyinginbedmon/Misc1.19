@@ -23,10 +23,9 @@ public class Miracles
 	public static final RegistryObject<Miracle> JUGGERNAUT = register("juggernaut", () -> new MiracleJuggernaut());
 	public static final RegistryObject<Miracle> REAPERS_BAG = register("reapers_bag", () -> new MiracleReapersBag());
 	public static final RegistryObject<Miracle> LAST_ARROW = register("last_arrow", () -> new MiracleLastArrow());
-	// Redirect - Projectile that hits you misses or strikes nearby hostile mob instead
-	// Mining Contract - Pick unable to break until ore vein depleted (or moved away from)
+	public static final RegistryObject<Miracle> REDIRECT = register("redirect", () -> new MiracleRedirect());
 	public static final RegistryObject<Miracle> CONTRACT_MINE = register("mining_contract", () -> new MiracleContractMine());
-	// Warrior Contract - Sword/axe breaks only on the last hit against the boss
+	public static final RegistryObject<Miracle> CONTRACT_PALADIN = register("paladin_contract", () -> new MiracleContractPaladin());
 	public static final RegistryObject<Miracle> LIGHTNING = register("lightning", () -> new MiracleLightning());
 	public static final RegistryObject<Miracle> ANIMAL_FRIEND = register("animal_friend", () -> new MiracleAnimalFriend());
 	public static final RegistryObject<Miracle> BOUNTIFUL_HARVEST = register("bountiful_harvest", () -> new MiracleBountifulHarvest());
@@ -39,9 +38,11 @@ public class Miracles
 	public static final RegistryObject<Miracle> STRONG_BREW = register("strong_brew", () -> new MiracleStrongBrew());
 	// By God's Light - Damages hostile undead in an area around you
 	// Deathguard - Spawns a group of temporary friendly zombies and skeletons to protect you
+	public static final RegistryObject<Miracle> DEATHGUARD = register("deathguard", () -> new MiracleSummon.DeathGuard());
 	// Momma Bear - Spawns a group of temporary friendly regional animals to protect you
 	// Adder's Nest - Spawns a group of temporary friendly snakes to protect you
 	// Hearth Light - Spawns a will o' wisp that paths towards your spawn point
+	public static final RegistryObject<Miracle> HEARTH_LIGHT = register("hearth_light", () -> new MiracleSummon.HearthLight());
 	
 	private static RegistryObject<Miracle> register(String nameIn, Supplier<Miracle> miracleIn)
 	{

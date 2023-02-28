@@ -22,6 +22,7 @@ public class ExItemTags extends ItemTagsProvider
 {
     public static final TagKey<Item> LEATHER_ARMOUR = TagKey.create(Registry.ITEM_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "leather_armour"));
     public static final TagKey<Item> METAL_ARMOUR = TagKey.create(Registry.ITEM_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "metal_armour"));
+    public static final TagKey<Item> WEAPON = TagKey.create(Registry.ITEM_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "weapon"));
     public static final TagKey<Item> VEGETABLE = TagKey.create(Registry.ITEM_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "vegetable"));
     public static final TagKey<Item> MEAT = TagKey.create(Registry.ITEM_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "meat"));
     public static final TagKey<Item> TABOO = TagKey.create(Registry.ITEM_REGISTRY, new ResourceLocation(Reference.ModInfo.MOD_ID, "taboo_food"));
@@ -56,6 +57,20 @@ public class ExItemTags extends ItemTagsProvider
 				Items.GOLDEN_CHESTPLATE,
 				Items.GOLDEN_HELMET,
 				Items.GOLDEN_LEGGINGS);
+		tag(WEAPON).add(
+				Items.TRIDENT,
+				Items.WOODEN_SWORD,
+				Items.WOODEN_AXE,
+				Items.STONE_SWORD,
+				Items.STONE_AXE,
+				Items.IRON_SWORD,
+				Items.IRON_AXE,
+				Items.GOLDEN_SWORD,
+				Items.GOLDEN_AXE,
+				Items.DIAMOND_SWORD,
+				Items.DIAMOND_AXE,
+				Items.NETHERITE_SWORD,
+				Items.NETHERITE_AXE);
 		tag(MEAT).add(
 				Items.PORKCHOP,
 				Items.MUTTON,

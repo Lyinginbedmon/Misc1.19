@@ -3,5 +3,7 @@
 	"command.examplemod.miracle.failed": "Could set forced miracle of %s",
 	"command.examplemod.miracle.invalid": "Could not set forced miracle of target entity",
 	"command.examplemod.miracle.clear.success": "Cleared forced miracle of %s",
-	"command.examplemod.miracle.clear.failed": "%s has no forced miracle"
+	"command.examplemod.miracle.clear.failed": "%s has no forced miracle",
+	"block.examplemod.stone_altar": "Stone Altar",
+	"enchantment.examplemod.contract_item": "Binding Contract"
 }

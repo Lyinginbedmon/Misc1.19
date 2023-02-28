@@ -1,6 +1,9 @@
 package com.example.examplemod.deities.miracle;
 
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public abstract class BindingContract
@@ -35,4 +38,23 @@ public abstract class BindingContract
 	
 	/** Used to tidy up when this contract is cancelled or completed early */
 	public void cleanup(Player player, Level world) { }
+	
+	/**
+	 * Defines a contract targeting a specific item in inventory (usually via {@link ExEnchantments#hasContractEnchantment})<br>
+	 * Such items are destroyed if the player holding them has no companion contract of this type.
+	 * @author Remem
+	 */
+	public interface IInventoryContract
+	{
+		public boolean targets(ItemStack stack);
+		
+		public static void destroyItem(ItemStack item, Player player)
+		{
+			if(player.getLevel().isClientSide()) return;
+			
+			ServerPlayer serverPlayer = (ServerPlayer)player;
+			serverPlayer.broadcastBreakEvent(InteractionHand.MAIN_HAND);
+			serverPlayer.getInventory().removeItem(item);
+		}
+	}
 }

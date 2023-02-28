@@ -1,13 +1,22 @@
 package com.example.examplemod.utility.bus;
 
+import java.util.List;
+
+import org.apache.commons.compress.utils.Lists;
+
 import com.example.examplemod.capabilities.PlayerData;
+import com.example.examplemod.deities.miracle.BindingContract;
+import com.example.examplemod.deities.miracle.BindingContract.IInventoryContract;
+import com.example.examplemod.init.ExEnchantments;
 import com.example.examplemod.reference.Reference;
 import com.example.examplemod.utility.savedata.BrewingStandWatcher;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
@@ -57,7 +66,41 @@ public class ServerBus
 	public static void onPlayerTick(LivingTickEvent event)
 	{
 		if(event.getEntity().getType() == EntityType.PLAYER)
-			PlayerData.getCapability((Player)event.getEntity()).tick();
+		{
+			Player player = (Player)event.getEntity();
+			PlayerData data = PlayerData.getCapability(player);
+			data.tick();
+			
+			if(!player.getLevel().isClientSide())
+			{
+				List<BindingContract> contracts = data.contracts();
+				contracts.removeIf((contract) -> !(contract instanceof IInventoryContract));
+				
+				searchAndDestroyContractItems(player, contracts, player.getInventory());
+				searchAndDestroyContractItems(player, contracts, player.getEnderChestInventory());
+			}
+		}
+	}
+	
+	private static void searchAndDestroyContractItems(Player player, List<BindingContract> contracts, Container inv)
+	{
+		List<ItemStack> toRemove = Lists.newArrayList();
+		for(int i=0; i<inv.getContainerSize(); i++)
+		{
+			ItemStack item = inv.getItem(i);
+			if(!item.isEmpty() && ExEnchantments.hasContractEnchantment(item))
+			{
+				boolean hasMatch = false;
+				for(BindingContract contract : contracts)
+					if(hasMatch = contract instanceof IInventoryContract && ((IInventoryContract)contract).targets(item))
+						break;
+				
+				if(!hasMatch)
+					toRemove.add(item);
+			}
+		}
+		
+		toRemove.forEach((item) -> IInventoryContract.destroyItem(item, player));
 	}
 	
 	@SubscribeEvent(priority = EventPriority.LOWEST)

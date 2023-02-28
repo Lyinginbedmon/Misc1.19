@@ -58,6 +58,12 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	private List<Consumer<Player>> queuedEvents = Lists.newArrayList();
 	private List<BindingContract> bindingContracts = Lists.newArrayList();
 	
+	/**
+	 * TODO Implement breadcrumb trail handling
+	 * Detect when player passes threshold point (exits portal, goes underground, etc.)
+	 * Add positions every 16 blocks, link together by pathable proximity (ref: HearthLightPathfinder)
+	 */
+	
 	private boolean isDirty = true;
 	
 	public PlayerData(Player playerIn)
@@ -87,9 +93,9 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	public CompoundTag serializeNBT()
 	{
 		CompoundTag data = new CompoundTag();
-		data.putString("Deity", this.deityName);
-		data.putDouble("OpinionPrev", this.prevOpinion);
-		data.putDouble("OpinionNow", this.currentOpinion);
+		data.putString("Deity", hasDeity() ? this.deityName : "");
+		data.putDouble("OpinionPrev", hasDeity() ? this.prevOpinion : 0);
+		data.putDouble("OpinionNow", hasDeity() ? this.currentOpinion : 0);
 		data.putLong("CheckTime", this.ticksSinceOpinion);
 		data.putInt("Cooldown", this.ticksToMiracle);
 		
@@ -154,12 +160,20 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		markDirty();
 	}
 	
+	public List<BindingContract> contracts()
+	{
+		List<BindingContract> clone = Lists.newArrayList();
+		clone.addAll(bindingContracts);
+		return clone;
+	}
+	
 	public boolean hasForcedMiracle() { return this.forcedMiracle != null; }
 	@Nullable
 	public ResourceLocation forcedMiracle() { return this.forcedMiracle; }
 	public void setForceMiracle(@Nullable ResourceLocation nameIn) { this.forcedMiracle = nameIn; markDirty(); }
 	public void clearForceMiracle() { setForceMiracle(null); }
 	
+	public boolean hasDeity() { return this.deityName != null && this.deityName.length() > 0; }
 	public String getDeityName() { return this.deityName; }
 	@Nullable
 	public Deity getDeity() { return DeityRegistry.getInstance().getDeity(this.deityName); }
