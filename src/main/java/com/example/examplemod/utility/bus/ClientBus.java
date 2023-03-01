@@ -1,14 +1,11 @@
 package com.example.examplemod.utility.bus;
 
 import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.tuple.Pair;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.entities.EntityHearthLight;
+import com.example.examplemod.utility.AbstractPathingSearch;
 import com.example.examplemod.utility.HearthLightPathfinder;
-import com.example.examplemod.utility.PathingSearch;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Matrix3f;
@@ -52,7 +49,8 @@ public class ClientBus
 			if(pathfinder == null)
 				continue;
 			
-			if(pathfinder.searchCompleted() && entity.hasPathToShow())
+			// Visualise completed path
+			if(pathfinder.searchCompleted() && pathfinder.hasPath())
 			{
 				List<BlockPos> path = entity.getPathfinder().getPath();
 				for(int i=0; i<path.size() - 1; i++)
@@ -75,12 +73,12 @@ public class ClientBus
 					matrixStack.popPose();
 				}
 			}
+			// Visualise pathing in progress
 			else
 			{
-				PathingSearch search = pathfinder.currentSearch();
-				for(Pair<BlockPos, BlockPos> evaluate : search.nodesToEvaluate)
+				AbstractPathingSearch search = pathfinder.currentSearch();
+				for(BlockPos pos : search.getEvaluatingList())
 				{
-					BlockPos pos = evaluate.getKey();
 					Vec3 min = new Vec3(pos.getX(), pos.getY(), pos.getZ()).subtract(offset);
 					Vec3 max = min.add(1, 0, 1);
 					
@@ -102,10 +100,11 @@ public class ClientBus
 					matrixStack.popPose();
 				}
 				
-				for(Map.Entry<BlockPos, BlockPos> node : search.nodeGraph.entrySet())
+				List<BlockPos> latestPath = search.getLatestPath();
+				for(int i=0; i<latestPath.size() - 1; i++)
 				{
-					BlockPos node1 = node.getKey();
-					BlockPos node2 = node.getValue();
+					BlockPos node1 = latestPath.get(i);
+					BlockPos node2 = latestPath.get(i + 1);
 					
 					matrixStack.pushPose();
 						Vec3 p1 = new Vec3(node1.getX() + 0.5D, node1.getY(), node1.getZ() + 0.5D).subtract(offset);

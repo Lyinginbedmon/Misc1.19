@@ -36,9 +36,9 @@ public class EntityHearthLight extends LivingEntity
 	public final AnimationState lanternHandIdle = new AnimationState();
 	private int ticksUnseen = 0;
 	
-	private static final int PATH_RATE = Reference.Values.TICKS_PER_SECOND / 2;
+	private static final int PATH_RATE = 1;
 	private static final int RECALC_TIME = Reference.Values.TICKS_PER_SECOND * 15;
-	private int repathTimer = 0;
+	private int repathTimer = RECALC_TIME;
 	private HearthLightPathfinder pathfinder;
 	
 	public EntityHearthLight(EntityType<? extends EntityHearthLight> p_19870_, Level p_19871_)

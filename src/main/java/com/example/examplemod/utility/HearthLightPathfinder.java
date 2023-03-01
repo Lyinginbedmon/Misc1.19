@@ -32,7 +32,7 @@ public class HearthLightPathfinder
 	private final Player owner;
 	
 	private List<BlockPos> currentPath = Lists.newArrayList();
-	private PathingSearch currentSearch;
+	private AbstractPathingSearch currentSearch;
 	
 	public HearthLightPathfinder(Player player)
 	{
@@ -68,14 +68,14 @@ public class HearthLightPathfinder
 		}
 	}
 	
-	public PathingSearch currentSearch() { return this.currentSearch; }
+	public AbstractPathingSearch currentSearch() { return this.currentSearch; }
 	
 	public void start() { this.currentSearch = new PathingSearch(getPos(), getDestination()); }
 	
 	public List<BlockPos> findPathBetween(BlockPos position, BlockPos destination, Level world)
 	{
 		ExampleMod.LOG.info("Hearth Light pathfinder attempting path between "+position.toShortString()+" and "+destination.toShortString()+" (distance "+(int)Mth.sqrt((float)position.distSqr(destination))+")");
-		currentSearch = new PathingSearch(position, destination);
+		start();
 		while(!currentSearch.finished())
 			currentSearch.evaluateNextNode(world);
 		ExampleMod.LOG.info("Hearth Light pathfinder completed search at "+currentSearch.nodesSearched()+" nodes "+(currentSearch.successful() ? "SUCCESS" : "FAILED"));
