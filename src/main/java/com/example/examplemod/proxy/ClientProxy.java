@@ -1,8 +1,11 @@
 package com.example.examplemod.proxy;
 
 import com.example.examplemod.capabilities.PlayerData;
+import com.example.examplemod.client.gui.screen.ScreenAltar;
+import com.example.examplemod.init.ExMenus;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -23,7 +26,7 @@ public class ClientProxy extends CommonProxy
 	
 	public void clientInit()
 	{
-		
+		MenuScreens.register(ExMenus.ALTAR_MENU.get(), ScreenAltar::new);
 	}
 	
 	public void registerHandlers()

@@ -8,7 +8,7 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 
 import com.example.examplemod.reference.Reference;
-import com.example.examplemod.utility.HearthLightPathfinder;
+import com.example.examplemod.utility.pathfinding.HearthLightPathfinder;
 
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;

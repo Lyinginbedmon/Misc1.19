@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "examplemod:block/altar_hourglass"
+    },
+    "facing=south": {
+      "model": "examplemod:block/altar_hourglass"
+    },
+    "facing=east": {
+      "model": "examplemod:block/altar_hourglass",
+      "y": 90
+    },
+    "facing=west": {
+      "model": "examplemod:block/altar_hourglass",
+      "y": 90
+    }
+  }
+}

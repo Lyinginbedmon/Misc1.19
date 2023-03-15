@@ -5,5 +5,11 @@
 	"command.examplemod.miracle.clear.success": "Cleared forced miracle of %s",
 	"command.examplemod.miracle.clear.failed": "%s has no forced miracle",
 	"block.examplemod.stone_altar": "Stone Altar",
-	"enchantment.examplemod.contract_item": "Binding Contract"
+	"block.examplemod.hourglass_altar": "Hourglass Altar",
+	"block.examplemod.golden_altar": "Golden Altar",
+	"block.examplemod.bone_altar": "Bone Altar",
+	"enchantment.examplemod.contract_item": "Binding Contract",
+	"container.examplemod.altar": "Altar",
+	"container.examplemod.altar.pray": "Pray",
+	"container.examplemod.altar.choose_god": "Choose Your Deity"
 }

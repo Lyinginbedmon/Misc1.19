@@ -1,4 +1,4 @@
-package com.example.examplemod.utility;
+package com.example.examplemod.utility.pathfinding;
 
 import java.util.List;
 
@@ -63,14 +63,14 @@ public class HearthLightPathfinder
 		currentSearch.evaluateNextNode(world);
 		if(currentSearch.finished())
 		{
-			currentPath = currentSearch.successful() ? cleanPath(currentSearch.createPath()) : Lists.newArrayList();
 			ExampleMod.LOG.info("Hearth Light pathfinder completed search at "+currentSearch.nodesSearched()+" nodes "+(currentSearch.successful() ? "SUCCESS" : "FAILED"));
+			currentPath = currentSearch.successful() ? currentSearch.createPath() : Lists.newArrayList();
 		}
 	}
 	
 	public AbstractPathingSearch currentSearch() { return this.currentSearch; }
 	
-	public void start() { this.currentSearch = new PathingSearch(getPos(), getDestination()); }
+	public void start() { this.currentSearch = new ComplexPathingSearch(getPos(), getDestination()); }
 	
 	public List<BlockPos> findPathBetween(BlockPos position, BlockPos destination, Level world)
 	{
@@ -79,7 +79,7 @@ public class HearthLightPathfinder
 		while(!currentSearch.finished())
 			currentSearch.evaluateNextNode(world);
 		ExampleMod.LOG.info("Hearth Light pathfinder completed search at "+currentSearch.nodesSearched()+" nodes "+(currentSearch.successful() ? "SUCCESS" : "FAILED"));
-		return currentSearch.successful() ? cleanPath(currentSearch.createPath()) : Lists.newArrayList();
+		return currentSearch.successful() ? currentSearch.createPath() : Lists.newArrayList();
 	}
 	
 	/** Reduces the given path to the minimum number of nodes necessary */

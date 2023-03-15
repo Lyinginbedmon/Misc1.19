@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "examplemod:block/altar_golden"
+    },
+    "facing=south": {
+      "model": "examplemod:block/altar_golden"
+    },
+    "facing=east": {
+      "model": "examplemod:block/altar_golden",
+      "y": 90
+    },
+    "facing=west": {
+      "model": "examplemod:block/altar_golden",
+      "y": 90
+    }
+  }
+}

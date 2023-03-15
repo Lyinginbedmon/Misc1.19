@@ -14,6 +14,8 @@ import net.minecraft.world.phys.Vec3;
 
 public class ExUtils
 {
+	public static Vec3 posToVec(BlockPos pos) { return new Vec3(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D); }
+	
 	@Nullable
 	public static BlockPos searchAreaFor(BlockPos pos, Level worldIn, int radiusIn, BiPredicate<BlockPos, Level> predicateIn)
 	{

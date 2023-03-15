@@ -11,6 +11,7 @@ import com.example.examplemod.init.ExBlocks;
 import com.example.examplemod.init.ExEnchantments;
 import com.example.examplemod.init.ExEntities;
 import com.example.examplemod.init.ExItems;
+import com.example.examplemod.init.ExMenus;
 import com.example.examplemod.init.ExRegistries;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.proxy.ClientProxy;
@@ -21,6 +22,8 @@ import com.example.examplemod.utility.bus.ClientBus;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -62,6 +65,7 @@ public class ExampleMod
         ExItems.ITEMS.register(EVENT_BUS);
         ExRegistries.registerCustom(EVENT_BUS);
         ExEnchantments.ENCHANTMENTS.register(EVENT_BUS);
+		ExMenus.MENUS.register(EVENT_BUS);
         PROXY.init();
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -103,10 +107,14 @@ public class ExampleMod
     @Mod.EventBusSubscriber(modid = Reference.ModInfo.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static class ClientModEvents
     {
-    	@OnlyIn(Dist.CLIENT)
+    	@SuppressWarnings("removal")
+		@OnlyIn(Dist.CLIENT)
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event)
         {
+    		ItemBlockRenderTypes.setRenderLayer(ExBlocks.HOURGLASS_ALTAR.get(), RenderType.cutout());
+    		ItemBlockRenderTypes.setRenderLayer(ExBlocks.BONE_ALTAR.get(), RenderType.cutout());
+    		
         	MinecraftForge.EVENT_BUS.register(ClientBus.class);
         	PROXY.clientInit();
             // Some client setup code

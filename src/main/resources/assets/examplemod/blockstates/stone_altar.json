@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "examplemod:block/stone_altar"
+      "model": "examplemod:block/altar_stone"
     }
   }
 }

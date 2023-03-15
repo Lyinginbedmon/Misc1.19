@@ -55,6 +55,9 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	private int ticksToMiracle = 0;
 	private ResourceLocation forcedMiracle = null;
 	
+	private int prayingTicks = 0;
+	private int prayingCooldown = 0;
+	
 	private List<Consumer<Player>> queuedEvents = Lists.newArrayList();
 	private List<BindingContract> bindingContracts = Lists.newArrayList();
 	
@@ -99,6 +102,9 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		data.putLong("CheckTime", this.ticksSinceOpinion);
 		data.putInt("Cooldown", this.ticksToMiracle);
 		
+		data.putInt("Praying", this.prayingTicks);
+		data.putInt("PrayingCooldown", this.prayingCooldown);
+		
 		if(this.forcedMiracle != null)
 			data.putString("Forced", this.forcedMiracle.toString());
 		
@@ -130,6 +136,9 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		this.currentOpinion = nbt.getDouble("OpinionNow");
 		this.ticksSinceOpinion = nbt.getLong("CheckTime");
 		this.ticksToMiracle = nbt.getInt("Cooldown");
+		
+		this.prayingTicks = nbt.getInt("Praying");
+		this.prayingCooldown = nbt.getInt("PrayingCooldown");
 		
 		this.forcedMiracle = nbt.contains("Forced", Tag.TAG_STRING) ? new ResourceLocation(nbt.getString("Forced")) : null;
 		
@@ -228,6 +237,15 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 		if(god == null || thePlayer == null || thePlayer.getLevel().isClientSide())
 			return;
 		
+		if(this.prayingTicks > 0 && --this.prayingTicks == 0)
+		{
+			addQuotient(ContextQuotients.PRAYER.getId(), 1);
+			this.prayingCooldown = Reference.Values.TICKS_PER_MINUTE * 5;
+		}
+		
+		if(this.prayingCooldown > 0)
+			--this.prayingCooldown;
+		
 		if(!this.queuedEvents.isEmpty())
 		{
 			for(Consumer<Player> event : this.queuedEvents)
@@ -289,6 +307,18 @@ public class PlayerData implements ICapabilitySerializable<CompoundTag>
 	public void setMiracleCooldown(int par1Int)
 	{
 		this.ticksToMiracle = par1Int;
+		markDirty();
+	}
+	
+	public boolean canPray() { return this.prayingCooldown == 0; }
+	public boolean isPraying() { return this.prayingTicks > 0; }
+	
+	public void setPraying(boolean start)
+	{
+		if(start)
+			this.prayingTicks = Reference.Values.TICKS_PER_SECOND * 5;
+		else
+			this.prayingTicks = 0;
 		markDirty();
 	}
 	
