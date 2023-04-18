@@ -1,7 +1,7 @@
 package com.lying.misc19.magic.component;
 
 import com.lying.misc19.magic.ISpellComponent;
-import com.lying.misc19.magic.variable.Bool;
+import com.lying.misc19.magic.variable.VarBool;
 import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VariableSet;
 
@@ -25,10 +25,10 @@ public abstract class ComparisonGlyph extends ComponentBase
 				{
 					IVariable value = getVariable(i, variablesIn);
 					if(!value.equals(target))
-						return setOutputs(variablesIn, Bool.FALSE);
+						return setOutputs(variablesIn, VarBool.FALSE);
 				}
 			}
-			return setOutputs(variablesIn, Bool.TRUE);
+			return setOutputs(variablesIn, VarBool.TRUE);
 		}
 	}
 	
@@ -44,12 +44,12 @@ public abstract class ComparisonGlyph extends ComponentBase
 				{
 					IVariable value = getVariable(i, variablesIn);
 					if(!value.greater(target))
-						return setOutputs(variablesIn, Bool.FALSE);
+						return setOutputs(variablesIn, VarBool.FALSE);
 					target = value;
 				}
 			}
 			
-			return setOutputs(variablesIn, Bool.TRUE);
+			return setOutputs(variablesIn, VarBool.TRUE);
 		}
 	}
 	
@@ -65,12 +65,12 @@ public abstract class ComparisonGlyph extends ComponentBase
 				{
 					IVariable value = getVariable(i, variablesIn);
 					if(!value.less(target))
-						return setOutputs(variablesIn, Bool.FALSE);
+						return setOutputs(variablesIn, VarBool.FALSE);
 					target = value;
 				}
 			}
 			
-			return setOutputs(variablesIn, Bool.TRUE);
+			return setOutputs(variablesIn, VarBool.TRUE);
 		}
 	}
 	
@@ -81,8 +81,8 @@ public abstract class ComparisonGlyph extends ComponentBase
 		{
 			for(int i=0; i<inputs().size(); i++)
 				if(!getVariable(i, variablesIn).asBoolean())
-					return setOutputs(variablesIn, Bool.FALSE);
-			return setOutputs(variablesIn, Bool.TRUE);
+					return setOutputs(variablesIn, VarBool.FALSE);
+			return setOutputs(variablesIn, VarBool.TRUE);
 		}
 	}
 	
@@ -93,8 +93,8 @@ public abstract class ComparisonGlyph extends ComponentBase
 		{
 			for(int i=0; i<inputs().size(); i++)
 				if(getVariable(i, variablesIn).asBoolean())
-					return setOutputs(variablesIn, Bool.FALSE);
-			return setOutputs(variablesIn, Bool.TRUE);
+					return setOutputs(variablesIn, VarBool.FALSE);
+			return setOutputs(variablesIn, VarBool.TRUE);
 		}
 	}
 	
@@ -105,8 +105,8 @@ public abstract class ComparisonGlyph extends ComponentBase
 		{
 			for(int i=0; i<inputs().size(); i++)
 				if(getVariable(i, variablesIn).asBoolean())
-					return setOutputs(variablesIn, Bool.TRUE);
-			return setOutputs(variablesIn, Bool.FALSE);
+					return setOutputs(variablesIn, VarBool.TRUE);
+			return setOutputs(variablesIn, VarBool.FALSE);
 		}
 	}
 	
@@ -121,11 +121,11 @@ public abstract class ComparisonGlyph extends ComponentBase
 				IVariable value = getVariable(i, variablesIn);
 				if(value.asBoolean())
 					if(foundTrue)
-						return setOutputs(variablesIn, Bool.FALSE);
+						return setOutputs(variablesIn, VarBool.FALSE);
 					else
 						foundTrue = true;
 			}
-			return setOutputs(variablesIn, foundTrue ? Bool.TRUE : Bool.FALSE);
+			return setOutputs(variablesIn, foundTrue ? VarBool.TRUE : VarBool.FALSE);
 		}
 	}
 }

@@ -3,10 +3,10 @@ package com.lying.misc19.magic.component;
 import javax.annotation.Nullable;
 
 import com.lying.misc19.magic.ComponentGlyph;
-import com.lying.misc19.magic.variable.Double;
 import com.lying.misc19.magic.variable.IVariable;
+import com.lying.misc19.magic.variable.VarDouble;
+import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
-import com.lying.misc19.magic.variable.Vec;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.Vec3;
@@ -32,9 +32,9 @@ public abstract class VariableGlyph extends ComponentGlyph
 		
 		public VariableSet set(VariableSet variablesIn, @Nullable IVariable value) { return variablesIn; }
 		
-		public static Constant doubleConst(double varIn) { return new Constant(new Double(varIn)); }
-		public static Constant dirConst(Direction varIn) { return new Constant(new Vec(new Vec3(varIn.getNormal().getX(), varIn.getNormal().getY(), varIn.getNormal().getZ()))); }
-		public static Constant vecConst(Vec3 varIn) { return new Constant(new Vec(varIn)); }
+		public static Constant doubleConst(double varIn) { return new Constant(new VarDouble(varIn)); }
+		public static Constant dirConst(Direction varIn) { return new Constant(new VarVec(new Vec3(varIn.getNormal().getX(), varIn.getNormal().getY(), varIn.getNormal().getZ()))); }
+		public static Constant vecConst(Vec3 varIn) { return new Constant(new VarVec(varIn)); }
 	}
 	
 	/** Local variables can be set and retrieved by arrangements */
@@ -48,16 +48,9 @@ public abstract class VariableGlyph extends ComponentGlyph
 		
 		public VariableSet set(VariableSet variablesIn, @Nullable IVariable value)
 		{
-			variablesIn.set(this.slot, value);
+			if(slot.isPlayerAssignable())
+				variablesIn.set(this.slot, value);
 			return variablesIn;
 		}
-	}
-	
-	/** Index is a special variable used by circles that cannot be assigned by arrangements */
-	public static class Index extends Local
-	{
-		public Index() { super(VariableSet.Slot.INDEX); }
-		
-		public VariableSet set(VariableSet variablesIn, @Nullable IVariable value) { return variablesIn; }
 	}
 }

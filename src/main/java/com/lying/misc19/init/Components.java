@@ -14,14 +14,15 @@ import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.ISpellComponentBuilder;
 import com.lying.misc19.magic.component.ComparisonGlyph;
 import com.lying.misc19.magic.component.OperationGlyph;
+import com.lying.misc19.magic.component.RootGlyph;
 import com.lying.misc19.magic.component.VariableGlyph;
 import com.lying.misc19.magic.component.VectorGlyph;
-import com.lying.misc19.magic.variable.Bool;
 import com.lying.misc19.magic.variable.IVariable;
-import com.lying.misc19.magic.variable.Stack;
+import com.lying.misc19.magic.variable.VarBool;
+import com.lying.misc19.magic.variable.VarStack;
+import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
-import com.lying.misc19.magic.variable.Vec;
 import com.lying.misc19.reference.Reference;
 
 import net.minecraft.core.Direction;
@@ -44,10 +45,22 @@ public class Components
 	public static final DeferredRegister<ISpellComponentBuilder> COMPONENTS					= DeferredRegister.create(REGISTRY_KEY, Reference.ModInfo.MOD_ID);
 	public static final Supplier<IForgeRegistry<ISpellComponentBuilder>> COMPONENTS_REGISTRY	= COMPONENTS.makeRegistry(() -> (new RegistryBuilder<ISpellComponentBuilder>()).hasTags());
 	
+	/**
+	 * Every arrangement starts at a ROOT glyph<br>
+	 * The ROOT populates the variables with specific constant values, according to its type.<br>
+	 * The ROOT is then surrounded by a CIRCLE, which contains other GLYPHS and CIRCLES to perform functions.<br>
+	 * The ROOT is what is called by spell objects during execution, and extracts the needed mana from the caster.<br>
+	 * Arrangements have a hard limit on how many glyphs can be executed per execution call, after which no more glyphs will be run.<br>
+	 */
+	
+	public static final ResourceLocation ROOT_DUMMY = make("dummy_root");
+	public static final ResourceLocation ROOT_CASTER = make("caster_root");
+	public static final ResourceLocation ROOT_TARGET = make("target_root");
+	public static final ResourceLocation ROOT_POSITION = make("position_root");
+	
 	public static final ResourceLocation CIRCLE_BASIC = make("basic_circle");
 	public static final ResourceLocation CIRCLE_STEP = make("step_circle");
 	
-	public static final ResourceLocation GLYPH_INDEX = make("index_glyph");
 	public static final ResourceLocation GLYPH_FALSE = make("false_glyph");
 	public static final ResourceLocation GLYPH_TRUE = make("true_glyph");
 	public static final ResourceLocation GLYPH_2 = make("two_glyph");
@@ -82,12 +95,16 @@ public class Components
 	
 	static
 	{
+		register(ROOT_DUMMY, () -> () -> new RootGlyph.Dummy());
+		register(ROOT_CASTER, () -> () -> new RootGlyph.Self());
+		register(ROOT_TARGET, () -> () -> new RootGlyph.Target());
+		register(ROOT_POSITION, () -> () -> new RootGlyph.Position());
+		
 		register(CIRCLE_BASIC, () -> () -> new ComponentCircle.Basic());
 		register(CIRCLE_STEP, () -> () -> new ComponentCircle.Step());
 		
-		register(GLYPH_INDEX, () -> () -> new VariableGlyph.Index());
-		register(GLYPH_FALSE, () -> () -> new VariableGlyph.Constant(Bool.FALSE));
-		register(GLYPH_TRUE, () -> () -> new VariableGlyph.Constant(Bool.TRUE));
+		register(GLYPH_FALSE, () -> () -> new VariableGlyph.Constant(VarBool.FALSE));
+		register(GLYPH_TRUE, () -> () -> new VariableGlyph.Constant(VarBool.TRUE));
 		register(GLYPH_2, () -> () -> VariableGlyph.Constant.doubleConst(2D));
 		register(GLYPH_4, () -> () -> VariableGlyph.Constant.doubleConst(4D));
 		register(GLYPH_8, () -> () -> VariableGlyph.Constant.doubleConst(8D));
@@ -134,8 +151,7 @@ public class Components
 	private static void registerLocalVariables()
 	{
 		for(VariableSet.Slot slot : VariableSet.Slot.values())
-			if(slot.isPlayerAssignable())
-				register(slot.glyph(), () -> () -> new VariableGlyph.Local(slot));
+			register(slot.glyph(), () -> () -> Slot.makeGlyph(slot));
 	}
 	
 	private static void registerVectorConstants()
@@ -144,12 +160,12 @@ public class Components
 		for(Direction dir : Direction.values())
 		{
 			Vec3i normal = dir.getNormal();
-			IVariable dirVar = new Vec(new Vec3(normal.getX(), normal.getY(), normal.getZ()));
+			IVariable dirVar = new VarVec(new Vec3(normal.getX(), normal.getY(), normal.getZ()));
 			register(make(dir.getSerializedName()+"_glyph"), () -> () -> new VariableGlyph.Constant(dirVar));
 			dirVariables.add(dirVar);
 		}
 		
-		register(GLYPH_XYZ, () -> () -> new VariableGlyph.Constant(new Stack(dirVariables.toArray(new IVariable[0]))));
+		register(GLYPH_XYZ, () -> () -> new VariableGlyph.Constant(new VarStack(dirVariables.toArray(new IVariable[0]))));
 	}
 	
 	public static ISpellComponent create(ResourceLocation registryName)
@@ -171,7 +187,7 @@ public class Components
 			COMPONENTS.getEntries().forEach((entry) ->  Misc19.LOG.info("# * Added "+entry.getId()));
 		Misc19.LOG.info("# "+COMPONENTS.getEntries().size()+" total components #");
 		
-		ISpellComponent testIndex = create(CIRCLE_BASIC).addInputs(create(GLYPH_XYZ)).addOutputs(create(GLYPH_SET).addInputs(create(GLYPH_INDEX)).addOutputs(create(Slot.BAST.glyph())));
+		ISpellComponent testIndex = create(CIRCLE_BASIC).addInputs(create(GLYPH_XYZ)).addOutputs(create(GLYPH_SET).addInputs(create(Slot.INDEX.glyph())).addOutputs(create(Slot.BAST.glyph())));
 		Misc19.LOG.info("Circle index test: "+((VariableGlyph)create(GLYPH_XYZ)).get(null).asDouble()+" runs = index "+testIndex.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
 		runArithmeticTests();
@@ -206,7 +222,7 @@ public class Components
 	
 	private static void runAdderTest(ResourceLocation bit0, ResourceLocation bit1, ResourceLocation bit2)
 	{
-		ISpellComponent circle = create(CIRCLE_BASIC).addOutputs(
+		ISpellComponent circle = create(ROOT_DUMMY).addOutputs(create(CIRCLE_BASIC).addOutputs(
 				create(GLYPH_SET).addInputs(create(bit0)).addOutputs(create(Slot.BAST.glyph())),
 				create(GLYPH_SET).addInputs(create(bit1)).addOutputs(create(Slot.THOTH.glyph())),
 				create(GLYPH_SET).addInputs(create(bit2)).addOutputs(create(Slot.SUTEKH.glyph())),
@@ -214,7 +230,7 @@ public class Components
 				create(GLYPH_AND).addInputs(create(Slot.ANUBIS.glyph()), create(Slot.SUTEKH.glyph())).addOutputs(create(Slot.HORUS.glyph())),
 				create(GLYPH_AND).addInputs(create(Slot.BAST.glyph()), create(Slot.THOTH.glyph())).addOutputs(create(Slot.ISIS.glyph())),
 				create(GLYPH_OR).addInputs(create(Slot.HORUS.glyph()), create(Slot.ISIS.glyph())).addOutputs(create(Slot.RA.glyph())),
-				create(GLYPH_XOR).addInputs(create(Slot.ANUBIS.glyph()), create(Slot.SUTEKH.glyph())).addOutputs(create(Slot.OSIRIS.glyph())));
+				create(GLYPH_XOR).addInputs(create(Slot.ANUBIS.glyph()), create(Slot.SUTEKH.glyph())).addOutputs(create(Slot.OSIRIS.glyph()))));
 		
 		CompoundTag circleData = ISpellComponent.saveToNBT(circle);
 		ISpellComponent circle2 = readFromNBT(circleData);

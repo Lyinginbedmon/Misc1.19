@@ -4,7 +4,7 @@ import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
-import com.lying.misc19.magic.variable.Vec;
+import com.lying.misc19.magic.variable.VarVec;
 
 import net.minecraft.world.phys.Vec3;
 
@@ -21,12 +21,12 @@ public abstract class VectorGlyph extends OperationGlyph
 		IVariable var2 = ((VariableGlyph)inputs().get(1)).get(variablesIn);
 		
 		if(var1.type() == VariableType.VECTOR && var2.type() == VariableType.VECTOR)
-			return setOutputs(variablesIn, getResult((Vec)var1, (Vec)var2));
+			return setOutputs(variablesIn, getResult((VarVec)var1, (VarVec)var2));
 		
 		return setOutputs(variablesIn, VariableSet.DEFAULT);
 	}
 	
-	protected abstract IVariable getResult(Vec var1, Vec var2);
+	protected abstract IVariable getResult(VarVec var1, VarVec var2);
 	
 	public static class Normalise extends OperationGlyph
 	{
@@ -39,7 +39,7 @@ public abstract class VectorGlyph extends OperationGlyph
 			
 			IVariable var1 = ((VariableGlyph)inputs().get(0)).get(variablesIn);
 			if(var1.type() == VariableType.VECTOR)
-				return setOutputs(variablesIn, ((Vec)var1).normalise());
+				return setOutputs(variablesIn, ((VarVec)var1).normalise());
 			
 			return setOutputs(variablesIn, VariableSet.DEFAULT);
 		}
@@ -57,7 +57,7 @@ public abstract class VectorGlyph extends OperationGlyph
 			IVariable var1 = ((VariableGlyph)inputs().get(0)).get(variablesIn);
 			IVariable result = VariableSet.DEFAULT;
 			if(var1.type() == VariableType.VECTOR)
-				result = ((Vec)var1).length();
+				result = ((VarVec)var1).length();
 			
 			return setOutputs(variablesIn, result);
 		}
@@ -88,17 +88,17 @@ public abstract class VectorGlyph extends OperationGlyph
 					break;
 			}
 			
-			return setOutputs(variablesIn, new Vec(new Vec3(x, y, z)));
+			return setOutputs(variablesIn, new VarVec(new Vec3(x, y, z)));
 		}
 	}
 	
 	public static class Dot extends VectorGlyph
 	{
-		protected IVariable getResult(Vec var1, Vec var2) { return var1.dot(var2); }
+		protected IVariable getResult(VarVec var1, VarVec var2) { return var1.dot(var2); }
 	}
 	
 	public static class Cross extends VectorGlyph
 	{
-		protected IVariable getResult(Vec var1, Vec var2) { return var1.cross(var2); }
+		protected IVariable getResult(VarVec var1, VarVec var2) { return var1.cross(var2); }
 	}
 }

@@ -24,6 +24,8 @@ public interface ISpellComponent
 	
 	public Type type();
 	
+	public default int castingCost() { return 1; }
+	
 	public VariableSet execute(VariableSet variablesIn);
 	
 	public default boolean isValidInput(ISpellComponent component) { return false; }

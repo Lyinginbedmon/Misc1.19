@@ -6,11 +6,11 @@ import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
-public class Stack implements IVariable
+public class VarStack implements IVariable
 {
 	private List<IVariable> variables = Lists.newArrayList();
 	
-	public Stack(IVariable... variablesIn)
+	public VarStack(IVariable... variablesIn)
 	{
 		for(int i=0; i<variablesIn.length; i++)
 			this.variables.add((variablesIn[i]));
@@ -18,7 +18,7 @@ public class Stack implements IVariable
 	
 	public VariableType type() { return VariableType.STACK; }
 	
-	public Stack asStack() { return this; }
+	public VarStack asStack() { return this; }
 	
 	public boolean asBoolean() { return variables.isEmpty() ? false : variables.get(0).asBoolean(); }
 	
@@ -26,7 +26,7 @@ public class Stack implements IVariable
 	
 	public boolean greater(IVariable var2)
 	{
-		return var2.type() == VariableType.STACK ? variables.size() > ((Stack)var2).variables.size() :  false;
+		return var2.type() == VariableType.STACK ? variables.size() > ((VarStack)var2).variables.size() :  false;
 	}
 	
 	public IVariable add(IVariable var2) { return this; }
@@ -38,9 +38,9 @@ public class Stack implements IVariable
 	public IVariable addToStack(IVariable var2)
 	{
 		if(asDouble() == 0D)
-			return new Stack(var2);
+			return new VarStack(var2);
 		
-		Stack stack = new Stack();
+		VarStack stack = new VarStack();
 		stack.variables.addAll(this.variables);
 		if(getFromStack(0).type() != var2.type())
 			return stack;

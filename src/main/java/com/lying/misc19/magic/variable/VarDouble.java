@@ -4,11 +4,11 @@ import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
 import net.minecraft.world.phys.Vec3;
 
-public class Double implements IVariable
+public class VarDouble implements IVariable
 {
 	protected double value;
 	
-	public Double(double valueIn) { this.value = valueIn; }
+	public VarDouble(double valueIn) { this.value = valueIn; }
 	
 	public VariableType type() { return VariableType.DOUBLE; }
 	
@@ -36,12 +36,12 @@ public class Double implements IVariable
 		switch(var2.type())
 		{
 			case DOUBLE:
-				return new Double(this.value + var2.asDouble());
+				return new VarDouble(this.value + var2.asDouble());
 			case VECTOR:
-				return new Vec(var2.asVec().add(value, value, value));
+				return new VarVec(var2.asVec().add(value, value, value));
 			case ENTITY:
 			default:
-				return new Double(this.value);
+				return new VarDouble(this.value);
 		}
 	}
 	
@@ -50,12 +50,12 @@ public class Double implements IVariable
 		switch(var2.type())
 		{
 			case DOUBLE:
-				return new Double(this.value * var2.asDouble());
+				return new VarDouble(this.value * var2.asDouble());
 			case VECTOR:
-				return new Vec(var2.asVec().scale(value));
+				return new VarVec(var2.asVec().scale(value));
 			case ENTITY:
 			default:
-				return new Double(this.value);
+				return new VarDouble(this.value);
 		}
 	}
 	
@@ -64,13 +64,13 @@ public class Double implements IVariable
 		switch(var2.type())
 		{
 			case DOUBLE:
-				return multiply(new Double(1 / var2.asDouble()));
+				return multiply(new VarDouble(1 / var2.asDouble()));
 			case VECTOR:
 				Vec3 vecVal = var2.asVec();
-				return multiply(new Vec(new Vec3(1 / vecVal.x, 1 / vecVal.y, 1 / vecVal.z)));
+				return multiply(new VarVec(new Vec3(1 / vecVal.x, 1 / vecVal.y, 1 / vecVal.z)));
 			case ENTITY:
 			default:
-				return new Double(this.value);
+				return new VarDouble(this.value);
 		}
 	}
 }

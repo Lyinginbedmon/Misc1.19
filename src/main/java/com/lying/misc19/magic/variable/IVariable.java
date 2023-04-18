@@ -16,13 +16,13 @@ public interface IVariable
 	public boolean asBoolean();
 	public default Vec3 asVec() { return Vec3.ZERO; }
 	public default Entity asEntity() { return null; }
-	public default Stack asStack() { return new Stack(this); }
+	public default VarStack asStack() { return new VarStack(this); }
 	
 	public default boolean equals(@Nonnull IVariable var2) { return this.equals(var2); }
 	public boolean greater(@Nonnull IVariable var2);
 	public default boolean less(@Nonnull IVariable var2) { return !(equals(var2) || greater(var2)); }
 	public IVariable add(@Nonnull IVariable var2);
-	public default IVariable subtract(@Nonnull IVariable var2) { return add(var2.multiply(new Double(-1D))); }
+	public default IVariable subtract(@Nonnull IVariable var2) { return add(var2.multiply(new VarDouble(-1D))); }
 	public IVariable multiply(@Nonnull IVariable var2);
 	public IVariable divide(@Nonnull IVariable var2);
 }

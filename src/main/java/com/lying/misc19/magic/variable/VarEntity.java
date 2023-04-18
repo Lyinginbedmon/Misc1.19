@@ -6,11 +6,11 @@ import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
 import net.minecraft.world.entity.Entity;
 
-public class Ent implements IVariable
+public class VarEntity implements IVariable
 {
 	private Entity value;
 	
-	public Ent(Entity vecIn) { this.value = vecIn; }
+	public VarEntity(@Nonnull Entity vecIn) { this.value = vecIn; }
 	
 	public VariableType type() { return VariableType.ENTITY; }
 	
@@ -22,11 +22,11 @@ public class Ent implements IVariable
 	
 	public boolean greater(IVariable var2) { return false; }
 	
-	public IVariable add(@Nonnull IVariable var2) { return new Ent(value); }
+	public IVariable add(@Nonnull IVariable var2) { return new VarEntity(value); }
 	
-	public IVariable subtract(@Nonnull IVariable var2) { return new Ent(value); }
+	public IVariable subtract(@Nonnull IVariable var2) { return new VarEntity(value); }
 	
-	public IVariable multiply(@Nonnull IVariable var2) { return new Ent(value); }
+	public IVariable multiply(@Nonnull IVariable var2) { return new VarEntity(value); }
 	
-	public IVariable divide(@Nonnull IVariable var2) { return new Ent(value); }
+	public IVariable divide(@Nonnull IVariable var2) { return new VarEntity(value); }
 }

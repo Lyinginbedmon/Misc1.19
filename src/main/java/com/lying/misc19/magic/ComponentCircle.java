@@ -27,20 +27,23 @@ public abstract class ComponentCircle extends ComponentBase
 	public VariableSet execute(VariableSet variablesIn)
 	{
 		for(int i=0; i<calculateRuns(variablesIn); i++)
-			variablesIn = doRun(variablesIn.set(Slot.INDEX, new com.lying.misc19.magic.variable.Double(i)));
+			if(!variablesIn.executionLimited())
+				variablesIn = doRun(variablesIn.set(Slot.INDEX, new com.lying.misc19.magic.variable.VarDouble(i)));
 		return variablesIn.set(Slot.INDEX, VariableSet.DEFAULT);
 	}
 	
+	/** Sequentially executes all child glyphs per execution call */
 	public static class Basic extends ComponentCircle
 	{
 		public VariableSet doRun(VariableSet variablesIn)
 		{
 			for(ISpellComponent child : this.outputs())
-				variablesIn = child.execute(variablesIn);
+				variablesIn = child.execute(variablesIn).glyphExecuted(child.castingCost());
 			return variablesIn;
 		}
 	}
 	
+	/** Executes only one glyph per call, useful for high-cost arrangements */
 	public static class Step extends ComponentCircle
 	{
 		private int index = 0;
@@ -58,7 +61,10 @@ public abstract class ComponentCircle extends ComponentBase
 		
 		public VariableSet doRun(VariableSet variablesIn)
 		{
-			return outputs().get(index++ % outputs().size()).execute(variablesIn);
+			if(variablesIn.executionLimited())
+				return variablesIn;
+			ISpellComponent current = outputs().get(index++ % outputs().size());
+			return current.execute(variablesIn).glyphExecuted(current.castingCost());
 		}
 		
 		public void serialiseNBT(CompoundTag nbt)
