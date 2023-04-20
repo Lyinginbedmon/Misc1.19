@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.apache.commons.compress.utils.Lists;
 
+import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.variable.VariableSet;
 
 import net.minecraft.nbt.CompoundTag;
@@ -29,6 +30,8 @@ public interface ISpellComponent
 	public VariableSet execute(VariableSet variablesIn);
 	
 	public default boolean isValidInput(ISpellComponent component) { return false; }
+	
+	public static boolean canBeInput(ISpellComponent component) { return component.type() == Type.VARIABLE || component instanceof OperationGlyph; }
 	
 	public default ISpellComponent addInputs(ISpellComponent... components)
 	{

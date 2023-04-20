@@ -10,56 +10,49 @@ import net.minecraft.world.phys.Vec3;
 
 public abstract class VectorGlyph extends OperationGlyph
 {
-	public boolean isValidInput(ISpellComponent componentIn) { return componentIn.type() == Type.VARIABLE && inputs().size() < 2; }
+	public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn) && inputs().size() < 2; }
 	
-	public VariableSet execute(VariableSet variablesIn)
+	protected abstract IVariable applyTo(VarVec var1, VarVec var2);
+	
+	public IVariable getResult(VariableSet variablesIn)
 	{
 		if(inputs().size() < 2)
-			return variablesIn;
+			return VariableSet.DEFAULT;
 		
-		IVariable var1 = ((VariableGlyph)inputs().get(0)).get(variablesIn);
-		IVariable var2 = ((VariableGlyph)inputs().get(1)).get(variablesIn);
+		IVariable var1 = getVariable(0, variablesIn);
+		IVariable var2 = getVariable(1, variablesIn);
 		
 		if(var1.type() == VariableType.VECTOR && var2.type() == VariableType.VECTOR)
-			return setOutputs(variablesIn, getResult((VarVec)var1, (VarVec)var2));
+			return applyTo((VarVec)var1, (VarVec)var2);
 		
-		return setOutputs(variablesIn, VariableSet.DEFAULT);
+		return VariableSet.DEFAULT;
 	}
-	
-	protected abstract IVariable getResult(VarVec var1, VarVec var2);
 	
 	public static class Normalise extends OperationGlyph
 	{
-		public boolean isValidInput(ISpellComponent componentIn) { return componentIn.type() == Type.VARIABLE && inputs().isEmpty(); }
+		public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn) && inputs().isEmpty(); }
 		
-		public VariableSet execute(VariableSet variablesIn)
+		public IVariable getResult(VariableSet variablesIn)
 		{
-			if(inputs().size() != 1)
-				return variablesIn;
-			
-			IVariable var1 = ((VariableGlyph)inputs().get(0)).get(variablesIn);
+			IVariable var1 = getVariable(0, variablesIn);
 			if(var1.type() == VariableType.VECTOR)
-				return setOutputs(variablesIn, ((VarVec)var1).normalise());
+				return ((VarVec)var1).normalise();
 			
-			return setOutputs(variablesIn, VariableSet.DEFAULT);
+			return VariableSet.DEFAULT;
 		}
 	}
 	
 	public static class Length extends OperationGlyph
 	{
-		public boolean isValidInput(ISpellComponent componentIn) { return componentIn.type() == Type.VARIABLE && inputs().isEmpty(); }
+		public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn) && inputs().isEmpty(); }
 		
-		public VariableSet execute(VariableSet variablesIn)
+		public IVariable getResult(VariableSet variablesIn)
 		{
-			if(inputs().size() != 1)
-				return variablesIn;
-			
-			IVariable var1 = ((VariableGlyph)inputs().get(0)).get(variablesIn);
-			IVariable result = VariableSet.DEFAULT;
+			IVariable var1 = getVariable(0, variablesIn);
 			if(var1.type() == VariableType.VECTOR)
-				result = ((VarVec)var1).length();
+				return ((VarVec)var1).length();
 			
-			return setOutputs(variablesIn, result);
+			return VariableSet.DEFAULT;
 		}
 	}
 	
@@ -67,7 +60,7 @@ public abstract class VectorGlyph extends OperationGlyph
 	{
 		public boolean isValidInput(ISpellComponent componentIn) { return componentIn.type() == Type.VARIABLE && inputs().size() < 3; }
 		
-		public VariableSet execute(VariableSet variablesIn)
+		public IVariable getResult(VariableSet variablesIn)
 		{
 			double x = 0D, y = 0D, z = 0D;
 			switch(inputs().size())
@@ -88,17 +81,17 @@ public abstract class VectorGlyph extends OperationGlyph
 					break;
 			}
 			
-			return setOutputs(variablesIn, new VarVec(new Vec3(x, y, z)));
+			return new VarVec(new Vec3(x, y, z));
 		}
 	}
 	
 	public static class Dot extends VectorGlyph
 	{
-		protected IVariable getResult(VarVec var1, VarVec var2) { return var1.dot(var2); }
+		protected IVariable applyTo(VarVec var1, VarVec var2) { return var1.dot(var2); }
 	}
 	
 	public static class Cross extends VectorGlyph
 	{
-		protected IVariable getResult(VarVec var1, VarVec var2) { return var1.cross(var2); }
+		protected IVariable applyTo(VarVec var1, VarVec var2) { return var1.cross(var2); }
 	}
 }

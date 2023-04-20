@@ -43,7 +43,12 @@ public abstract class ComponentBase implements ISpellComponent
 			return VariableSet.DEFAULT;
 		
 		ISpellComponent input = this.inputGlyphs.get(index);
-		return input.type() == Type.VARIABLE ? ((VariableGlyph)inputs().get(index)).get(variablesIn) : VariableSet.DEFAULT;
+		if(input.type() == Type.VARIABLE)
+			return ((VariableGlyph)input).get(variablesIn);
+		else if(input instanceof OperationGlyph)
+			return ((OperationGlyph)input).getResult(variablesIn);
+		else
+			return VariableSet.DEFAULT;
 	}
 	
 	/** Sets all output variable glyphs to the given variable */

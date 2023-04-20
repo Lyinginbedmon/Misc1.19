@@ -10,7 +10,7 @@ public abstract class ComponentCircle extends ComponentBase
 {
 	public Type type() { return Type.CIRCLE; }
 	
-	public boolean isValidInput(ISpellComponent component) { return component.type() == Type.VARIABLE && this.inputGlyphs.isEmpty(); }
+	public boolean isValidInput(ISpellComponent component) { return ISpellComponent.canBeInput(component) && this.inputGlyphs.isEmpty(); }
 	
 	public boolean isValidOutput(ISpellComponent component) { return component.type() == Type.GLYPH && this.outputGlyphs.size() < 8; }
 	

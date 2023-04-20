@@ -15,6 +15,7 @@ import com.lying.misc19.magic.ISpellComponentBuilder;
 import com.lying.misc19.magic.component.ComparisonGlyph;
 import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.component.RootGlyph;
+import com.lying.misc19.magic.component.StackGlyph;
 import com.lying.misc19.magic.component.VariableGlyph;
 import com.lying.misc19.magic.component.VectorGlyph;
 import com.lying.misc19.magic.variable.IVariable;
@@ -53,14 +54,17 @@ public class Components
 	 * Arrangements have a hard limit on how many glyphs can be executed per execution call, after which no more glyphs will be run.<br>
 	 */
 	
+	// Root glyphs
 	public static final ResourceLocation ROOT_DUMMY = make("dummy_root");
 	public static final ResourceLocation ROOT_CASTER = make("caster_root");
 	public static final ResourceLocation ROOT_TARGET = make("target_root");
 	public static final ResourceLocation ROOT_POSITION = make("position_root");
 	
+	// Circles
 	public static final ResourceLocation CIRCLE_BASIC = make("basic_circle");
 	public static final ResourceLocation CIRCLE_STEP = make("step_circle");
 	
+	// Constants
 	public static final ResourceLocation GLYPH_FALSE = make("false_glyph");
 	public static final ResourceLocation GLYPH_TRUE = make("true_glyph");
 	public static final ResourceLocation GLYPH_2 = make("two_glyph");
@@ -71,12 +75,15 @@ public class Components
 	public static final ResourceLocation GLYPH_XYZ = make("xyz_glyph");
 	
 	public static final ResourceLocation GLYPH_DUMMY = make("dummy_glyph");
+	
+	// Arithmetic operations
 	public static final ResourceLocation GLYPH_SET = make("set_glyph");
 	public static final ResourceLocation GLYPH_ADD = make("add_glyph");
 	public static final ResourceLocation GLYPH_SUB = make("sub_glyph");
 	public static final ResourceLocation GLYPH_MUL = make("mul_glyph");
 	public static final ResourceLocation GLYPH_DIV = make("div_glyph");
 	
+	// Boolean operations
 	public static final ResourceLocation GLYPH_EQU = make("equals_glyph");
 	public static final ResourceLocation GLYPH_AND = make("and_glyph");
 	public static final ResourceLocation GLYPH_OR = make("or_glyph");
@@ -85,11 +92,18 @@ public class Components
 	public static final ResourceLocation GLYPH_GRE = make("greater_glyph");
 	public static final ResourceLocation GLYPH_LES = make("less_glyph");
 	
+	// Vector operations
 	public static final ResourceLocation GLYPH_MAKEVEC = make("make_vec_glyph");
 	public static final ResourceLocation GLYPH_DOT = make("dot_glyph");
 	public static final ResourceLocation GLYPH_CROSS = make("cross_glyph");
 	public static final ResourceLocation GLYPH_NORMALISE = make("normalize_glyph");
 	public static final ResourceLocation GLYPH_LENGTH = make("length_glyph");
+	// TODO Operation to rotate vectors
+	
+	// Stack operations
+	public static final ResourceLocation GLYPH_STACK_GET = make("stack_get_glyph");
+	public static final ResourceLocation GLYPH_STACK_ADD = make("stack_add_glyph");
+	public static final ResourceLocation GLYPH_STACK_SUB = make("stack_sub_glyph");
 	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
@@ -115,14 +129,12 @@ public class Components
 		
 		register(GLYPH_DUMMY, () -> () -> new ComponentGlyph.Dummy());
 		
-		// Arithmetic operations
 		register(GLYPH_SET, () -> () -> new OperationGlyph.Set());
 		register(GLYPH_ADD, () -> () -> new OperationGlyph.Add());
 		register(GLYPH_SUB, () -> () -> new OperationGlyph.Subtract());
 		register(GLYPH_MUL, () -> () -> new OperationGlyph.Multiply());
 		register(GLYPH_DIV, () -> () -> new OperationGlyph.Divide());
 		
-		// Boolean operations
 		register(GLYPH_EQU, () -> () -> new ComparisonGlyph.Equals());
 		register(GLYPH_GRE, () -> () -> new ComparisonGlyph.Greater());
 		register(GLYPH_LES, () -> () -> new ComparisonGlyph.Less());
@@ -131,16 +143,15 @@ public class Components
 		register(GLYPH_NAND, () -> () -> new ComparisonGlyph.NAnd());
 		register(GLYPH_XOR, () -> () -> new ComparisonGlyph.XOR());
 		
-		// Vector operations
 		register(GLYPH_MAKEVEC, () -> () -> new VectorGlyph.Compose());
 		register(GLYPH_DOT, () -> () -> new VectorGlyph.Dot());
 		register(GLYPH_CROSS, () -> () -> new VectorGlyph.Cross());
 		register(GLYPH_NORMALISE, () -> () -> new VectorGlyph.Normalise());
 		register(GLYPH_LENGTH, () -> () -> new VectorGlyph.Length());
-		// TODO Operation to rotate vectors
 		
-		// Stack operations
-		// TODO Operations to add, remove, and retrieve variables from a stack
+		register(GLYPH_STACK_GET, () -> () -> new StackGlyph.StackGet());
+		register(GLYPH_STACK_ADD, () -> () -> new StackGlyph.StackAdd());
+		register(GLYPH_STACK_SUB, () -> () -> new StackGlyph.StackSub());
 	}
 	
 	private static RegistryObject<ISpellComponentBuilder> register(ResourceLocation nameIn, Supplier<ISpellComponentBuilder> miracleIn)

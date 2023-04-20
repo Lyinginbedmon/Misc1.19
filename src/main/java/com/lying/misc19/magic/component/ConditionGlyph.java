@@ -7,7 +7,7 @@ public class ConditionGlyph extends ComponentBase
 {
 	public Type type() { return Type.GLYPH; }
 	
-	public boolean isValidInput(ISpellComponent component) { return component.type() == Type.VARIABLE && this.inputGlyphs.isEmpty(); }
+	public boolean isValidInput(ISpellComponent component) { return ISpellComponent.canBeInput(component) && this.inputGlyphs.isEmpty(); }
 	
 	public boolean isValidOutput(ISpellComponent component) { return component.type() != Type.VARIABLE && this.outputGlyphs.isEmpty(); }
 	
