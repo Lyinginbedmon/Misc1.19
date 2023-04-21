@@ -23,6 +23,8 @@ public class VariableSet
 	
 	private Map<Slot, IVariable> values = new HashMap<>();
 	
+	public boolean isUsing(Slot name) { return values.containsKey(name); }
+	
 	public IVariable get(Slot name) { return values.getOrDefault(name, DEFAULT); }
 	public VariableSet set(Slot name, @Nullable IVariable value)
 	{
@@ -53,6 +55,7 @@ public class VariableSet
 	
 	public boolean executionLimited() { return this.glyphsExecuted > EXECUTION_LIMIT; }
 	public VariableSet glyphExecuted(int costIn) { this.glyphsExecuted++; this.accruedCost += costIn; return this; }
+	public int totalGlyphs() { return this.glyphsExecuted; }
 	public void resetExecutions()
 	{
 		this.glyphsExecuted = 0;

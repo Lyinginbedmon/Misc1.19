@@ -13,6 +13,7 @@ import com.lying.misc19.magic.ComponentGlyph;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.ISpellComponentBuilder;
 import com.lying.misc19.magic.component.ComparisonGlyph;
+import com.lying.misc19.magic.component.FunctionGlyph;
 import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.component.RootGlyph;
 import com.lying.misc19.magic.component.StackGlyph;
@@ -105,6 +106,9 @@ public class Components
 	public static final ResourceLocation GLYPH_STACK_ADD = make("stack_add_glyph");
 	public static final ResourceLocation GLYPH_STACK_SUB = make("stack_sub_glyph");
 	
+	// Functions
+	public static final ResourceLocation GLYPH_DEBUG = make("debug_glyph");
+	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
 	static
@@ -152,6 +156,8 @@ public class Components
 		register(GLYPH_STACK_GET, () -> () -> new StackGlyph.StackGet());
 		register(GLYPH_STACK_ADD, () -> () -> new StackGlyph.StackAdd());
 		register(GLYPH_STACK_SUB, () -> () -> new StackGlyph.StackSub());
+		
+		register(GLYPH_DEBUG, () -> () -> new FunctionGlyph.Debug());
 	}
 	
 	private static RegistryObject<ISpellComponentBuilder> register(ResourceLocation nameIn, Supplier<ISpellComponentBuilder> miracleIn)
