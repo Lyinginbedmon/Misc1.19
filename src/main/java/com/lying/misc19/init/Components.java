@@ -11,6 +11,7 @@ import com.lying.misc19.Misc19;
 import com.lying.misc19.magic.ComponentCircle;
 import com.lying.misc19.magic.ComponentGlyph;
 import com.lying.misc19.magic.ISpellComponent;
+import com.lying.misc19.magic.ISpellComponent.Category;
 import com.lying.misc19.magic.ISpellComponentBuilder;
 import com.lying.misc19.magic.component.ComparisonGlyph;
 import com.lying.misc19.magic.component.FunctionGlyph;
@@ -201,8 +202,27 @@ public class Components
 	public static void reportInit(final FMLLoadCompleteEvent event)
 	{
 		Misc19.LOG.info("# Reporting registered spell components #");
-			COMPONENTS.getEntries().forEach((entry) ->  Misc19.LOG.info("# * Added "+entry.getId()));
+			for(Category cat : Category.values())
+			{
+				List<ResourceLocation> components = Lists.newArrayList();
+				for(RegistryObject<ISpellComponentBuilder> entry : COMPONENTS.getEntries())
+					if(entry.get().create().category() == cat)
+						components.add(entry.getId());
+				
+				if(!components.isEmpty())
+				{
+					Misc19.LOG.info("# Added "+components.size()+" "+cat.name());
+					components.forEach((id) -> Misc19.LOG.info("# * "+id.toString()));
+				}
+			}
 		Misc19.LOG.info("# "+COMPONENTS.getEntries().size()+" total components #");
+		
+		runComponentTests();
+	}
+	
+	private static void runComponentTests()
+	{
+		Misc19.LOG.info("Running component tests");
 		
 		ISpellComponent testIndex = create(CIRCLE_BASIC).addInputs(create(GLYPH_XYZ)).addOutputs(create(GLYPH_SET).addInputs(create(Slot.INDEX.glyph())).addOutputs(create(Slot.BAST.glyph())));
 		Misc19.LOG.info("Circle index test: "+((VariableGlyph)create(GLYPH_XYZ)).get(null).asDouble()+" runs = index "+testIndex.execute(new VariableSet()).get(Slot.BAST).asDouble());

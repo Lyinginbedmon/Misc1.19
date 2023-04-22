@@ -13,6 +13,8 @@ import net.minecraft.world.level.Level;
 
 public abstract class RootGlyph extends ComponentBase
 {
+	public Category category() { return Category.ROOT; }
+	
 	public Type type() { return Type.ROOT; }
 	
 	public boolean isValidInput(ISpellComponent component) { return false; }

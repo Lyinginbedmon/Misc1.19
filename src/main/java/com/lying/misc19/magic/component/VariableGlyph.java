@@ -13,6 +13,8 @@ import net.minecraft.world.phys.Vec3;
 
 public abstract class VariableGlyph extends ComponentGlyph
 {
+	public Category category() { return Category.VARIABLE; }
+	
 	public Type type() { return Type.VARIABLE; }
 	
 	public abstract IVariable get(VariableSet variablesIn);
@@ -27,6 +29,8 @@ public abstract class VariableGlyph extends ComponentGlyph
 		private final IVariable value;
 		
 		public Constant(IVariable varIn) { this.value = varIn; }
+		
+		public Category category() { return Category.CONSTANT; }
 		
 		public IVariable get(VariableSet variablesIn) { return this.value; }
 		

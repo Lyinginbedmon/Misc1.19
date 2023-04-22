@@ -42,7 +42,11 @@ public abstract class ComponentBase implements ISpellComponent
 		if(inputGlyphs.isEmpty() || index >= inputGlyphs.size())
 			return VariableSet.DEFAULT;
 		
-		ISpellComponent input = this.inputGlyphs.get(index);
+		return getVariable(this.inputGlyphs.get(index), variablesIn);
+	}
+	
+	protected IVariable getVariable(ISpellComponent input, VariableSet variablesIn)
+	{
 		if(input.type() == Type.VARIABLE)
 			return ((VariableGlyph)input).get(variablesIn);
 		else if(input instanceof OperationGlyph)

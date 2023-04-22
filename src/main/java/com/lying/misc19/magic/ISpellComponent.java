@@ -23,6 +23,8 @@ public interface ISpellComponent
 	
 	public ResourceLocation getRegistryName();
 	
+	public Category category();
+	
 	public Type type();
 	
 	public default int castingCost() { return 1; }
@@ -102,6 +104,16 @@ public interface ISpellComponent
 	public default void serialiseNBT(CompoundTag nbt) { }
 	
 	public default void deserialiseNBT(CompoundTag nbt) { }
+	
+	public static enum Category
+	{
+		CONSTANT,
+		VARIABLE,
+		OPERATION,
+		FUNCTION,
+		CIRCLE,
+		ROOT;
+	}
 	
 	public static enum Type
 	{

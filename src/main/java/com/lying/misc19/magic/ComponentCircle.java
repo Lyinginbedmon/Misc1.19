@@ -8,6 +8,8 @@ import net.minecraft.nbt.CompoundTag;
 
 public abstract class ComponentCircle extends ComponentBase
 {
+	public Category category() { return Category.CIRCLE; }
+	
 	public Type type() { return Type.CIRCLE; }
 	
 	public boolean isValidInput(ISpellComponent component) { return ISpellComponent.canBeInput(component) && this.inputGlyphs.isEmpty(); }

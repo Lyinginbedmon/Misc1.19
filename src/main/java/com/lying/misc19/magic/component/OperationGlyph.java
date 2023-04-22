@@ -6,6 +6,8 @@ import com.lying.misc19.magic.variable.VariableSet;
 
 public abstract class OperationGlyph extends ComponentBase
 {
+	public Category category() { return Category.OPERATION; }
+	
 	public Type type() { return Type.GLYPH; }
 	
 	public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn); }

@@ -13,6 +13,8 @@ public class VarVec implements IVariable
 	public VarVec(double x, double y, double z) { this.value = new Vec3(x, y, z); }
 	public VarVec(Direction dir) { this(dir.getNormal().getX(), dir.getNormal().getY(), dir.getNormal().getZ()); }
 	
+	public VarStack asStack() { return new VarStack(new VarDouble(value.x), new VarDouble(value.y), new VarDouble(value.z)); }
+	
 	public VariableType type() { return VariableType.VECTOR; }
 	
 	public String toString() { return "Vec"+value.toString(); }

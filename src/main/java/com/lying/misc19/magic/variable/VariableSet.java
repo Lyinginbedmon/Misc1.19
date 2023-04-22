@@ -23,6 +23,11 @@ public class VariableSet
 	
 	private Map<Slot, IVariable> values = new HashMap<>();
 	
+	public VariableSet()
+	{
+		values.put(Slot.AGE, new VarDouble(0D));
+	}
+	
 	public boolean isUsing(Slot name) { return values.containsKey(name); }
 	
 	public IVariable get(Slot name) { return values.getOrDefault(name, DEFAULT); }
@@ -74,6 +79,8 @@ public class VariableSet
 	
 	public static enum Slot
 	{
+		/** Age represents the number of times a given spell has executed thus far */
+		AGE(true),
 		/** Index is a special variable used by circles, containing the execution index */
 		INDEX(true),
 		/** World is the level the spell is executing in and is always present */
@@ -86,14 +93,22 @@ public class VariableSet
 		TARGET(true),
 		/** Look contains the vector from the Caster's eye position */
 		LOOK(true),
-		THOTH,
-		BAST,
 		ANUBIS,
-		SUTEKH,
-		OSIRIS,
-		ISIS,
+		APEP,
+		BAST,
+		BES,
+		AMUN,
+		HATHOR,
 		HORUS,
-		RA;
+		ISIS,
+		NEPTHYS,
+		OSIRIS,
+		PTAH,
+		RA,
+		SOBEK,
+		SUTEKH,
+		TAWARET,
+		THOTH;
 		
 		private boolean readOnly;
 		

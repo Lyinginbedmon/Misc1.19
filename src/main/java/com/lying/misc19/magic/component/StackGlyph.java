@@ -21,15 +21,15 @@ public abstract class StackGlyph extends OperationGlyph
 			IVariable stack, index;
 			IVariable slot1 = getVariable(0, variablesIn);
 			IVariable slot2 = getVariable(1, variablesIn);
-			if(slot1.type() == VariableType.STACK)
+			if(slot2.type() == VariableType.DOUBLE)
 			{
-				stack = slot1;
 				index = slot2;
+				stack = slot1;
 			}
 			else
 			{
-				index = slot1;
 				stack = slot2;
+				index = slot1;
 			}
 			
 			return stack.asStack().getFromStack((int)index.asDouble());

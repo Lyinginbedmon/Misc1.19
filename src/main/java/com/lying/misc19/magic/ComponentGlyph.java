@@ -9,6 +9,8 @@ public abstract class ComponentGlyph extends ComponentBase
 	
 	public static class Dummy extends ComponentGlyph
 	{
+		public Category category() { return Category.OPERATION; }
+		
 		public VariableSet execute(VariableSet variablesIn) { return variablesIn; }
 		
 		public int castingCost() { return 0; }

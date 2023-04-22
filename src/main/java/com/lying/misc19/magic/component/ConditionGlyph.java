@@ -5,6 +5,8 @@ import com.lying.misc19.magic.variable.VariableSet;
 
 public class ConditionGlyph extends ComponentBase
 {
+	public Category category() { return Category.OPERATION; }
+	
 	public Type type() { return Type.GLYPH; }
 	
 	public boolean isValidInput(ISpellComponent component) { return ISpellComponent.canBeInput(component) && this.inputGlyphs.isEmpty(); }
