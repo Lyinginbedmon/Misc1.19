@@ -42,7 +42,7 @@ import net.minecraftforge.registries.IForgeRegistry;
 import net.minecraftforge.registries.RegistryBuilder;
 import net.minecraftforge.registries.RegistryObject;
 
-public class Components
+public class SpellComponents
 {
 	public static final ResourceKey<Registry<ISpellComponentBuilder>> REGISTRY_KEY				= ResourceKey.createRegistryKey(new ResourceLocation(Reference.ModInfo.MOD_ID, "components"));
 	public static final DeferredRegister<ISpellComponentBuilder> COMPONENTS					= DeferredRegister.create(REGISTRY_KEY, Reference.ModInfo.MOD_ID);
@@ -84,6 +84,7 @@ public class Components
 	public static final ResourceLocation GLYPH_SUB = make("sub_glyph");
 	public static final ResourceLocation GLYPH_MUL = make("mul_glyph");
 	public static final ResourceLocation GLYPH_DIV = make("div_glyph");
+	public static final ResourceLocation GLYPH_MOD = make("mod_glyph");
 	
 	// Boolean operations
 	public static final ResourceLocation GLYPH_EQU = make("equals_glyph");
@@ -109,6 +110,7 @@ public class Components
 	
 	// Functions
 	public static final ResourceLocation GLYPH_DEBUG = make("debug_glyph");
+	public static final ResourceLocation GLYPH_TELEPORT = make("teleport_glyph");
 	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
@@ -139,6 +141,7 @@ public class Components
 		register(GLYPH_SUB, () -> () -> new OperationGlyph.Subtract());
 		register(GLYPH_MUL, () -> () -> new OperationGlyph.Multiply());
 		register(GLYPH_DIV, () -> () -> new OperationGlyph.Divide());
+		register(GLYPH_MOD, () -> () -> new OperationGlyph.Modulus());
 		
 		register(GLYPH_EQU, () -> () -> new ComparisonGlyph.Equals());
 		register(GLYPH_GRE, () -> () -> new ComparisonGlyph.Greater());
@@ -159,6 +162,7 @@ public class Components
 		register(GLYPH_STACK_SUB, () -> () -> new StackGlyph.StackSub());
 		
 		register(GLYPH_DEBUG, () -> () -> new FunctionGlyph.Debug());
+		register(GLYPH_TELEPORT, () -> () -> new FunctionGlyph.Teleport());
 	}
 	
 	private static RegistryObject<ISpellComponentBuilder> register(ResourceLocation nameIn, Supplier<ISpellComponentBuilder> miracleIn)
@@ -217,9 +221,10 @@ public class Components
 			}
 		Misc19.LOG.info("# "+COMPONENTS.getEntries().size()+" total components #");
 		
-		runComponentTests();
+//		runComponentTests();
 	}
 	
+	@SuppressWarnings("unused")
 	private static void runComponentTests()
 	{
 		Misc19.LOG.info("Running component tests");
@@ -228,7 +233,8 @@ public class Components
 		Misc19.LOG.info("Circle index test: "+((VariableGlyph)create(GLYPH_XYZ)).get(null).asDouble()+" runs = index "+testIndex.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
 		runArithmeticTests();
-		runAdderTests();
+		runLogicTests();
+		runVectorTests();
 	}
 	
 	private static void runArithmeticTests()
@@ -244,10 +250,14 @@ public class Components
 		
 		ISpellComponent testDiv = create(GLYPH_DIV).addInputs(create(GLYPH_4), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
 		Misc19.LOG.info("Divide 4 / 2 test: "+testDiv.execute(new VariableSet()).get(Slot.BAST).asDouble());
+		
+		ISpellComponent testMod = create(GLYPH_MOD).addInputs(create(GLYPH_ADD).addInputs(create(GLYPH_TRUE),create(GLYPH_XYZ)), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
+		Misc19.LOG.info("Modulus 7 % 2 test: "+testMod.execute(new VariableSet()).get(Slot.BAST).asDouble());
 	}
 	
-	private static void runAdderTests()
+	private static void runLogicTests()
 	{
+		Misc19.LOG.info("2-bit adder tests:");
 		runAdderTest(GLYPH_FALSE, GLYPH_FALSE, GLYPH_FALSE);
 		runAdderTest(GLYPH_TRUE, GLYPH_FALSE, GLYPH_FALSE);
 		runAdderTest(GLYPH_FALSE, GLYPH_TRUE, GLYPH_FALSE);
@@ -285,7 +295,16 @@ public class Components
 		
 		boolean testPassed = osiris == variables.get(Slot.OSIRIS).asBoolean() && ra == variables.get(Slot.RA).asBoolean();
 		
-		Misc19.LOG.info("Adder test: "+var0+" + "+var1+" ("+var2+") = "+variables.get(Slot.OSIRIS).asBoolean()+" ("+variables.get(Slot.RA).asBoolean()+") "+(testPassed ? "PASSED" : "FAILED"));
+		Misc19.LOG.info(" * "+(var0 ? 1 : 0)+" + "+(var1 ? 1 : 0)+" ("+(var2 ? 1 : 0)+") = "+(int)variables.get(Slot.OSIRIS).asDouble()+" ("+(int)variables.get(Slot.RA).asDouble()+") "+(testPassed ? "PASSED" : "FAILED"));
+	}
+	
+	private static void runVectorTests()
+	{
+		ISpellComponent dotTest = create(ROOT_DUMMY).addOutputs(create(CIRCLE_BASIC).addOutputs(
+				create(GLYPH_DOT).addInputs(create(make(Direction.NORTH.getSerializedName()+"_glyph")), create(make(Direction.SOUTH.getSerializedName()+"_glyph"))).addOutputs(create(VariableSet.Slot.SOBEK.glyph()))
+				));
+		Misc19.LOG.info("Dot product of "+Direction.NORTH.getNormal().toShortString()+" and "+Direction.SOUTH.getNormal().toShortString()+": "+dotTest.execute(new VariableSet()).get(Slot.SOBEK).asDouble());
+		
 	}
 	
 	@Nonnull

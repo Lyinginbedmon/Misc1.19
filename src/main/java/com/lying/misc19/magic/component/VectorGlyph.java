@@ -1,57 +1,73 @@
 package com.lying.misc19.magic.component;
 
+import java.util.Map;
+
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
+import com.lying.misc19.magic.variable.VarDouble;
+import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
-import com.lying.misc19.magic.variable.VarVec;
 
 import net.minecraft.world.phys.Vec3;
 
 public abstract class VectorGlyph extends OperationGlyph
 {
+	protected static final Param VEC_1 = Param.of("vec_1", VariableType.VECTOR);
+	protected static final Param VEC_2 = Param.of("vec_2", VariableType.VECTOR);
+	
+	protected VectorGlyph(Param... params) { super(params); }
+	protected VectorGlyph() { this(VEC_1, VEC_2); }
+	
 	public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn) && inputs().size() < 2; }
 	
-	protected abstract IVariable applyTo(VarVec var1, VarVec var2);
+	protected abstract IVariable applyTo(Vec3 var1, Vec3 var2);
 	
 	public IVariable getResult(VariableSet variablesIn)
 	{
-		if(inputs().size() < 2)
+		if(!inputsMet(variablesIn))
 			return VariableSet.DEFAULT;
 		
-		IVariable var1 = getVariable(0, variablesIn);
-		IVariable var2 = getVariable(1, variablesIn);
-		
-		if(var1.type() == VariableType.VECTOR && var2.type() == VariableType.VECTOR)
-			return applyTo((VarVec)var1, (VarVec)var2);
-		
-		return VariableSet.DEFAULT;
+		Map<String, IVariable> params = collectParams(variablesIn);
+		Vec3 var1 = VEC_1.get(params).asVec();
+		Vec3 var2 = VEC_2.get(params).asVec();
+		return applyTo(var1, var2);
+	}
+	
+	public static class Dot extends VectorGlyph
+	{
+		protected IVariable applyTo(Vec3 var1, Vec3 var2) { return new VarDouble(var1.dot(var2)); }
+	}
+	
+	public static class Cross extends VectorGlyph
+	{
+		protected IVariable applyTo(Vec3 var1, Vec3 var2) { return new VarVec(var1.cross(var2)); }
 	}
 	
 	public static class Normalise extends OperationGlyph
 	{
+		public Normalise() { super(VEC_1); }
+		
 		public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn) && inputs().isEmpty(); }
 		
 		public IVariable getResult(VariableSet variablesIn)
 		{
-			IVariable var1 = getVariable(0, variablesIn);
-			if(var1.type() == VariableType.VECTOR)
-				return ((VarVec)var1).normalise();
-			
+			if(inputsMet(variablesIn))
+				return new VarVec(VEC_1.get(collectParams(variablesIn)).asVec().normalize());
 			return VariableSet.DEFAULT;
 		}
 	}
 	
 	public static class Length extends OperationGlyph
 	{
+		public Length() { super(VEC_1); }
+		
 		public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn) && inputs().isEmpty(); }
 		
 		public IVariable getResult(VariableSet variablesIn)
 		{
-			IVariable var1 = getVariable(0, variablesIn);
-			if(var1.type() == VariableType.VECTOR)
-				return ((VarVec)var1).length();
-			
+			if(inputsMet(variablesIn))
+				return new VarDouble(VEC_1.get(collectParams(variablesIn)).asVec().length());
 			return VariableSet.DEFAULT;
 		}
 	}
@@ -83,15 +99,5 @@ public abstract class VectorGlyph extends OperationGlyph
 			
 			return new VarVec(new Vec3(x, y, z));
 		}
-	}
-	
-	public static class Dot extends VectorGlyph
-	{
-		protected IVariable applyTo(VarVec var1, VarVec var2) { return var1.dot(var2); }
-	}
-	
-	public static class Cross extends VectorGlyph
-	{
-		protected IVariable applyTo(VarVec var1, VarVec var2) { return var1.cross(var2); }
 	}
 }

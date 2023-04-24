@@ -1,0 +1,10 @@
+{
+	"item.misc19.magic_scroll": "Magic Scroll",
+	"entity.misc19.spell": "Spell",
+	"variable.misc19.double": "Double[%s]",
+	"variable.misc19.boolean": "Boolean[%s]",
+	"variable.misc19.vector": "Vec[%s, %s, %s]",
+	"variable.misc19.entity": "Entity[%s]",
+	"variable.misc19.level": "Level[%s]",
+	"variable.misc19.stack": "Stack[%s]"
+}

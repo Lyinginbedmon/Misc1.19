@@ -4,9 +4,16 @@ import java.util.List;
 
 import org.apache.commons.compress.utils.Lists;
 
+import com.lying.misc19.init.SpellVariables;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
+import com.lying.misc19.reference.Reference;
 
-public class VarStack implements IVariable
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+
+public class VarStack extends VariableBase
 {
 	private List<IVariable> variables = Lists.newArrayList();
 	
@@ -15,6 +22,13 @@ public class VarStack implements IVariable
 		for(int i=0; i<variablesIn.length; i++)
 			this.variables.add((variablesIn[i]));
 	}
+	
+	public Component translate()
+	{
+		return Component.translatable("variable."+Reference.ModInfo.MOD_ID+".stack", variables.size());
+	}
+	
+	public IVariable createFresh() { return new VarStack(); }
 	
 	public VariableType type() { return VariableType.STACK; }
 	
@@ -59,5 +73,26 @@ public class VarStack implements IVariable
 	{
 		variables.remove(index % variables.size());
 		return this;
+	}
+	
+	public CompoundTag save(CompoundTag compound)
+	{
+		if(!variables.isEmpty())
+		{
+			ListTag vars = new ListTag();
+			this.variables.forEach((var) -> vars.add(var.save(new CompoundTag())));
+			compound.put("Vars", vars);
+		}
+		return compound;
+	}
+	
+	public void load(CompoundTag compound)
+	{
+		if(!compound.contains("Vars", Tag.TAG_LIST))
+			return;
+		
+		ListTag vars = compound.getList("Vars", Tag.TAG_COMPOUND);
+		for(int i=0; i<vars.size(); i++)
+			this.variables.add(SpellVariables.readFromNbt(vars.getCompound(i)));
 	}
 }

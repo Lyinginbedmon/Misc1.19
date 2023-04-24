@@ -1,23 +1,34 @@
 package com.lying.misc19.magic.variable;
 
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
+import com.lying.misc19.reference.Reference;
 
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 
-public class VarVec implements IVariable
+public class VarVec extends VariableBase
 {
-	private Vec3 value;
+	private Vec3 value = Vec3.ZERO;
 	
 	public VarVec(Vec3 vecIn) { this.value = vecIn; }
 	public VarVec(double x, double y, double z) { this.value = new Vec3(x, y, z); }
 	public VarVec(Direction dir) { this(dir.getNormal().getX(), dir.getNormal().getY(), dir.getNormal().getZ()); }
 	
+	public IVariable create() { return new VarVec(Vec3.ZERO); }
+	
 	public VarStack asStack() { return new VarStack(new VarDouble(value.x), new VarDouble(value.y), new VarDouble(value.z)); }
 	
 	public VariableType type() { return VariableType.VECTOR; }
 	
-	public String toString() { return "Vec"+value.toString(); }
+	public Component translate()
+	{
+		return Component.translatable("variable."+Reference.ModInfo.MOD_ID+".vector", 
+				(double)Math.round(value.x * 100) / 100, 
+				(double)Math.round(value.y * 100) / 100, 
+				(double)Math.round(value.z * 100) / 100);
+	}
 	
 	public Vec3 asVec() { return this.value; }
 	
@@ -77,4 +88,17 @@ public class VarVec implements IVariable
 	public IVariable normalise() { return new VarVec(this.value.normalize()); }
 	
 	public IVariable length() { return new VarDouble(this.value.length()); }
+	
+	public CompoundTag save(CompoundTag compound)
+	{
+		compound.putDouble("X", this.value.x);
+		compound.putDouble("Y", this.value.y);
+		compound.putDouble("Z", this.value.z);
+		return compound;
+	}
+	
+	public void load(CompoundTag compound)
+	{
+		this.value = new Vec3(compound.getDouble("X"), compound.getDouble("Y"), compound.getDouble("Z"));
+	}
 }

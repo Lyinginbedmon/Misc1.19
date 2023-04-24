@@ -3,7 +3,6 @@ package com.lying.misc19.magic.component;
 import javax.annotation.Nonnull;
 
 import com.lying.misc19.magic.ISpellComponent;
-import com.lying.misc19.magic.variable.VarEntity;
 import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
@@ -23,13 +22,14 @@ public abstract class RootGlyph extends ComponentBase
 	
 	protected ISpellComponent circle() { return outputs().isEmpty() ? null : outputs().get(0); }
 	
-	public void performExecution(@Nonnull Level world, @Nonnull LivingEntity caster)
+	public void performExecution(@Nonnull Level world, @Nonnull LivingEntity caster, @Nonnull VariableSet variablesIn)
 	{
-		VariableSet variables = populateVariables(world, caster, new VariableSet());
-//		variables.set(Slot.WORLD, new VarLevel(world));
-		variables.set(Slot.CASTER, new VarEntity(caster));
-		execute(variables);
-		payManaCost(caster, variables.totalCastingCost());
+		variablesIn.resetExecutions();
+		variablesIn.recacheBeforeExecution(world);
+		
+		populateVariables(world, caster, variablesIn);
+		execute(variablesIn);
+		payManaCost(caster, variablesIn.totalCastingCost());
 	}
 	
 	public static void payManaCost(@Nonnull LivingEntity caster, int cost)

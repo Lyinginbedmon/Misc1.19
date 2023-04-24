@@ -2,10 +2,13 @@ package com.lying.misc19.magic.component;
 
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
+import com.lying.misc19.magic.variable.VarDouble;
 import com.lying.misc19.magic.variable.VariableSet;
 
 public abstract class OperationGlyph extends ComponentBase
 {
+	protected OperationGlyph(Param... params) { super(params); }
+	
 	public Category category() { return Category.OPERATION; }
 	
 	public Type type() { return Type.GLYPH; }
@@ -97,6 +100,17 @@ public abstract class OperationGlyph extends ComponentBase
 			}
 			
 			return value;
+		}
+	}
+	
+	public static class Modulus extends OperationGlyph
+	{
+		public IVariable getResult(VariableSet variablesIn)
+		{
+			if(inputs().size() < 2)
+				return VariableSet.DEFAULT;
+			
+			return new VarDouble(getVariable(0, variablesIn).asDouble() % getVariable(1, variablesIn).asDouble());
 		}
 	}
 }

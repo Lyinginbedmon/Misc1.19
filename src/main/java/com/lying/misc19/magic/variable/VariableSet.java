@@ -5,13 +5,17 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import com.lying.misc19.init.Components;
+import com.lying.misc19.init.SpellComponents;
+import com.lying.misc19.init.SpellVariables;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.component.VariableGlyph;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.level.Level;
 
 public class VariableSet
 {
@@ -28,7 +32,7 @@ public class VariableSet
 		values.put(Slot.AGE, new VarDouble(0D));
 	}
 	
-	public boolean isUsing(Slot name) { return values.containsKey(name); }
+	public boolean isUsing(Slot name) { return values.containsKey(name) && !values.get(name).equals(DEFAULT); }
 	
 	public IVariable get(Slot name) { return values.getOrDefault(name, DEFAULT); }
 	public VariableSet set(Slot name, @Nullable IVariable value)
@@ -37,25 +41,10 @@ public class VariableSet
 		return this;
 	}
 	
-	public void setDouble(Slot name, double value) { values.put(name, new VarDouble(value)); }
-	public double getDouble(Slot name)
+	public void recacheBeforeExecution(Level worldIn)
 	{
-		IVariable var = values.getOrDefault(name, null);
-		return var != null  ? var.asDouble() : 0D;
-	}
-	
-	public void setVector(Slot name, Vec3 vector) { values.put(name, new VarVec(vector)); }
-	public Vec3 getVector(Slot name)
-	{
-		IVariable var = values.getOrDefault(name, null);
-		return var != null ? var.asVec() : Vec3.ZERO;
-	}
-	
-	public void setEntity(Slot name, Entity entity) { values.put(name, new VarEntity(entity)); }
-	public Entity getEntity(Slot name)
-	{
-		IVariable var = values.getOrDefault(name, null);
-		return var != null ? var.asEntity() : null;	// FIXME Ensure a value to prevent null pointer crashes
+		for(IVariable var : values.values())
+			var.recache(worldIn);
 	}
 	
 	public boolean executionLimited() { return this.glyphsExecuted > EXECUTION_LIMIT; }
@@ -69,23 +58,58 @@ public class VariableSet
 	
 	public int totalCastingCost() { return this.accruedCost; }
 	
+	public CompoundTag writeToNBT(CompoundTag compound)
+	{
+		ListTag vars = new ListTag();
+		for(Slot slot : Slot.values())
+			if(isUsing(slot))
+			{
+				CompoundTag data = new CompoundTag();
+				data.putString("Slot", slot.getSerializedName());
+				vars.add(IVariable.saveToNBT(get(slot), data));
+			}
+		if(!vars.isEmpty())
+			compound.put("Variables", vars);
+		return compound;
+	}
+	
+	public static VariableSet readFromNBT(CompoundTag compound)
+	{
+		VariableSet variables = new VariableSet();
+		
+		if(compound.contains("Variables", Tag.TAG_LIST))
+		{
+			ListTag vars = compound.getList("Variables", Tag.TAG_COMPOUND);
+			for(int i=0; i<vars.size(); i++)
+			{
+				CompoundTag data = vars.getCompound(i);
+				Slot slot = Slot.byName(data.getString("Slot"));
+				if(slot == null)
+					continue;
+				
+				variables.values.put(slot, SpellVariables.readFromNbt(data));
+			}
+		}
+		
+		return variables;
+	}
+	
 	public static enum VariableType
 	{
 		DOUBLE,
 		VECTOR,
 		ENTITY,
-		STACK;
+		STACK,
+		WORLD;
 	}
 	
-	public static enum Slot
+	public static enum Slot implements StringRepresentable
 	{
-		/** Age represents the number of times a given spell has executed thus far */
+		/** Age represents the number of times a given spell has executed thus far.<br>Always present */
 		AGE(true),
-		/** Index is a special variable used by circles, containing the execution index */
-		INDEX(true),
-		/** World is the level the spell is executing in and is always present */
-		WORLD(true),	// TODO Implement World variables
-		/** Caster contains the LivingEntity that originally cast the spell and is always present */
+		/** World is the level the spell is executing in.<br>Always present */
+		WORLD(true),
+		/** Caster contains the LivingEntity that originally cast the spell.<br>Always present */
 		CASTER(true),
 		/** Position contains the location the spell is working from, usually the Caster's eye position */
 		POSITION(true),
@@ -93,6 +117,13 @@ public class VariableSet
 		TARGET(true),
 		/** Look contains the vector from the Caster's eye position */
 		LOOK(true),
+		/** Index is a special variable used by circles, containing the execution index */
+		INDEX(true),
+		/**
+		 * TRUE if this spell should continue after the current execution.<br>
+		 * By defaulting this to FALSE, we treat all spells as single-run by default.
+		 */
+		CONTINUE,
 		ANUBIS,
 		APEP,
 		BAST,
@@ -118,10 +149,21 @@ public class VariableSet
 		}
 		private Slot() { this(false); }
 		
-		public ResourceLocation glyph() { return Components.make(name().toLowerCase()+"_glyph"); }
+		public ResourceLocation glyph() { return SpellComponents.make(name().toLowerCase()+"_glyph"); }
 		
 		public boolean isPlayerAssignable() { return !this.readOnly; }
 		
 		public static ISpellComponent makeGlyph(Slot slotIn) { return new VariableGlyph.Local(slotIn); }
+		
+		public String getSerializedName() { return name().toLowerCase(); }
+		
+		@Nullable
+		public static Slot byName(String nameIn)
+		{
+			for(Slot slot : values())
+				if(slot.getSerializedName().equalsIgnoreCase(nameIn))
+					return slot;
+			return null;
+		}
 	}
 }

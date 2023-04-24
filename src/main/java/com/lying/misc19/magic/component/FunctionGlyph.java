@@ -1,6 +1,5 @@
 package com.lying.misc19.magic.component;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,19 +12,21 @@ import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 /** A glyph that performs an actual function based on its inputs and does not have any outputs */
 public abstract class FunctionGlyph extends ComponentBase
 {
-	private final Param[] inputNeeds;
 	private final int cost;
 	
 	protected FunctionGlyph(int costIn, Param... inputs)
 	{
+		super(inputs);
 		this.cost = costIn;
-		this.inputNeeds = inputs;
 	}
 	
 	public Category category() { return Category.FUNCTION; }
@@ -38,23 +39,6 @@ public abstract class FunctionGlyph extends ComponentBase
 	
 	public boolean isValidOutput(ISpellComponent componentIn) { return false; }
 	
-	public Param[] getInputNeeds() { return inputNeeds; }
-	
-	public boolean inputsMet(VariableSet variablesIn)
-	{
-		if(inputNeeds.length == 0)
-			return true;
-		
-		List<VariableType> needs = Lists.newArrayList();
-		for(int i=0; i<inputNeeds.length; i++)
-			needs.add(inputNeeds[i].type);
-		
-		for(int i=0; i<inputs().size(); i++)
-			needs.remove(getVariable(i, variablesIn).type());
-		
-		return needs.isEmpty();
-	}
-	
 	public VariableSet execute(VariableSet variablesIn)
 	{
 		if(inputsMet(variablesIn))
@@ -64,72 +48,33 @@ public abstract class FunctionGlyph extends ComponentBase
 	
 	protected abstract void run(VariableSet variablesIn, Map<String, IVariable> params);
 	
-	/** Creates a map containing all variables needed by this function, based on its inputs */
-	protected Map<String, IVariable> collectParams(VariableSet variablesIn)
-	{
-		Map<String, IVariable> params = new HashMap<>();
-		List<ISpellComponent> inputs = Lists.newArrayList();
-		inputs.addAll(inputs());
-		
-		for(Param param : inputNeeds)
-		{
-			ISpellComponent paramInput = null;
-			for(ISpellComponent input : inputs)
-			{
-				IVariable var = getVariable(input, variablesIn);
-				if(param.matches(var))
-				{
-					params.put(param.name, var);
-					paramInput = input;
-					break;
-				}
-			}
-			if(paramInput != null)
-				inputs.remove(paramInput);
-		}
-		
-		return params;
-	}
-	
-	protected static class Param
-	{
-		private final VariableType type;
-		private final String name;
-		
-		private Param(String nameIn, VariableType typeIn)
-		{
-			name = nameIn;
-			type = typeIn;
-		}
-		
-		public static Param of(String nameIn, VariableType typeIn) { return new Param(nameIn, typeIn); }
-		
-		public boolean matches(IVariable variable) { return type == variable.type(); }
-		
-		public IVariable get(Map<String, IVariable> paramsIn) { return paramsIn.getOrDefault(name, VariableSet.DEFAULT); }
-	}
-	
 	public static class Debug extends FunctionGlyph
 	{
 		public Debug() { super(0); }
 		
 		protected void run(VariableSet variablesIn, Map<String, IVariable> params)
 		{
+			List<Component> messages = Lists.newArrayList();
+			messages.add(Component.literal("# Debug Glyph #"));
+			messages.add(Component.literal("# Glyphs executed: "+variablesIn.totalGlyphs()+" of "+VariableSet.EXECUTION_LIMIT));
+			messages.add(Component.literal("# Casting cost: "+variablesIn.totalCastingCost()));
+			messages.add(Component.literal("# Register contents:"));
+			for(Slot slot : VariableSet.Slot.values())
+				if(variablesIn.isUsing(slot))
+					messages.add(Component.literal("# * "+slot.name()+": ").append(variablesIn.get(slot).translate()));
+			messages.add(Component.literal("# Debug End #"));
+			
 			if(variablesIn.isUsing(Slot.CASTER))
 			{
-				
+				Entity caster = variablesIn.get(Slot.CASTER).asEntity();
+				if(caster.getType() == EntityType.PLAYER)
+				{
+					Player player = (Player)caster;
+					messages.forEach((line) -> player.displayClientMessage(line, false));
+				}
 			}
 			else
-			{
-				Misc19.LOG.info("# Debug Glyph #");
-				Misc19.LOG.info("# Glyphs executed: "+variablesIn.totalGlyphs()+" of "+VariableSet.EXECUTION_LIMIT);
-				Misc19.LOG.info("# Casting cost: "+variablesIn.totalCastingCost());
-				Misc19.LOG.info("# Register contents:");
-				for(Slot slot : VariableSet.Slot.values())
-					if(variablesIn.isUsing(slot))
-						Misc19.LOG.info("# * "+slot.name()+": "+variablesIn.get(slot).toString());
-				Misc19.LOG.info("# Debug End #");
-			}
+				messages.forEach((line) -> Misc19.LOG.info(line.getString()));
 		}
 	}
 	

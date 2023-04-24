@@ -1,18 +1,26 @@
 package com.lying.misc19.magic.variable;
 
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
+import com.lying.misc19.reference.Reference;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 
-public class VarDouble implements IVariable
+public class VarDouble extends VariableBase
 {
 	protected double value;
 	
 	public VarDouble(double valueIn) { this.value = valueIn; }
 	
+	public IVariable createFresh() { return new VarDouble(0D); }
+	
 	public VariableType type() { return VariableType.DOUBLE; }
 	
-	public String toString() { return "Double["+value+"]"; }
+	public Component translate()
+	{
+		return Component.translatable("variable."+Reference.ModInfo.MOD_ID+".double", (double)Math.round(value * 100) / 100);
+	}
 	
 	public double asDouble() { return this.value; }
 	
@@ -23,6 +31,7 @@ public class VarDouble implements IVariable
 		switch(var2.type())
 		{
 			case DOUBLE:
+			case STACK:
 				return this.value < var2.asDouble();
 			case VECTOR:
 			case ENTITY:
@@ -36,6 +45,7 @@ public class VarDouble implements IVariable
 		switch(var2.type())
 		{
 			case DOUBLE:
+			case STACK:
 				return new VarDouble(this.value + var2.asDouble());
 			case VECTOR:
 				return new VarVec(var2.asVec().add(value, value, value));
@@ -54,6 +64,7 @@ public class VarDouble implements IVariable
 			case VECTOR:
 				return new VarVec(var2.asVec().scale(value));
 			case ENTITY:
+			case STACK:
 			default:
 				return new VarDouble(this.value);
 		}
@@ -69,8 +80,20 @@ public class VarDouble implements IVariable
 				Vec3 vecVal = var2.asVec();
 				return multiply(new VarVec(new Vec3(1 / vecVal.x, 1 / vecVal.y, 1 / vecVal.z)));
 			case ENTITY:
+			case STACK:
 			default:
 				return new VarDouble(this.value);
 		}
+	}
+	
+	public CompoundTag save(CompoundTag compound)
+	{
+		compound.putDouble("Value", this.value);
+		return compound;
+	}
+	
+	public void load(CompoundTag compound)
+	{
+		this.value = compound.getDouble("Value");
 	}
 }
