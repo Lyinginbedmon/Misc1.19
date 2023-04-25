@@ -2,19 +2,22 @@ package com.lying.misc19;
 
 import org.slf4j.Logger;
 
-import com.lying.misc19.init.SpellComponents;
+import com.lying.misc19.client.ClientSetupEvents;
 import com.lying.misc19.init.M19Entities;
 import com.lying.misc19.init.M19Items;
+import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.reference.Reference;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -35,6 +38,11 @@ public class Misc19
 
     public Misc19()
     {
+    	DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+		{
+			EVENT_BUS.register(ClientSetupEvents.class);
+		});
+    	
         EVENT_BUS.addListener(this::commonSetup);
         
         M19Entities.ENTITIES.register(EVENT_BUS);
