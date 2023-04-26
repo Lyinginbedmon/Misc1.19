@@ -2,6 +2,7 @@ package com.lying.misc19.magic.component;
 
 import javax.annotation.Nonnull;
 
+import com.lying.misc19.magic.ComponentCircle;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
@@ -10,17 +11,15 @@ import com.lying.misc19.magic.variable.VariableSet.Slot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 
-public abstract class RootGlyph extends ComponentBase
+public abstract class RootGlyph extends ComponentCircle.Basic
 {
 	public Category category() { return Category.ROOT; }
 	
 	public Type type() { return Type.ROOT; }
 	
+	public void setParent(ISpellComponent parent) { }
+	
 	public boolean isValidInput(ISpellComponent component) { return false; }
-	
-	public boolean isValidOutput(ISpellComponent component) { return outputs().isEmpty() && component.type() == Type.CIRCLE; }
-	
-	protected ISpellComponent circle() { return outputs().isEmpty() ? null : outputs().get(0); }
 	
 	public void performExecution(@Nonnull Level world, @Nonnull LivingEntity caster, @Nonnull VariableSet variablesIn)
 	{
@@ -35,11 +34,6 @@ public abstract class RootGlyph extends ComponentBase
 	public static void payManaCost(@Nonnull LivingEntity caster, int cost)
 	{
 		// TODO Subtract variables mana from caster and damage if necessary
-	}
-	
-	public VariableSet execute(VariableSet variablesIn)
-	{
-		return !variablesIn.executionLimited() && circle() != null ? circle().execute(variablesIn).glyphExecuted(circle().castingCost()) : variablesIn;
 	}
 	
 	public abstract VariableSet populateVariables(Level world, LivingEntity caster, VariableSet variablesIn);

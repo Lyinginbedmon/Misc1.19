@@ -1,10 +1,13 @@
 package com.lying.misc19.magic;
 
 import com.lying.misc19.magic.component.ComponentBase;
+import com.lying.misc19.magic.variable.VarDouble;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
+import com.lying.misc19.utility.M19Utils;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.phys.Vec2;
 
 public abstract class ComponentCircle extends ComponentBase
 {
@@ -16,6 +19,32 @@ public abstract class ComponentCircle extends ComponentBase
 	
 	public boolean isValidOutput(ISpellComponent component) { return component.type() == Type.GLYPH && this.outputGlyphs.size() < 8; }
 	
+	public void organise()
+	{
+		float spin = 180F / inputGlyphs.size();
+		Vec2 start = M19Utils.rotate(new Vec2(-20, 0), spin / 2);
+		for(ISpellComponent input : inputGlyphs)
+		{
+			input.setParent(this);
+			input.setPosition(start.x, start.y);
+			input.organise();
+			
+			start = M19Utils.rotate(start, spin);
+		}
+		
+		spin = 360F / outputGlyphs.size();
+		start = new Vec2(0, -100);
+		for(ISpellComponent output : outputGlyphs)
+		{
+			output.setParent(this);
+			output.setPosition(start.x, start.y);
+			output.organise();
+			
+			start = M19Utils.rotate(start, spin);
+		}
+	}
+	
+	/** Returns how many times this circle should cycle in this execution */
 	public int calculateRuns(VariableSet variablesIn)
 	{
 		if(!inputs().isEmpty())
@@ -24,13 +53,14 @@ public abstract class ComponentCircle extends ComponentBase
 		return 1;
 	}
 	
+	/** Performs circle execution logic once */
 	protected abstract VariableSet doRun(VariableSet variablesIn);
 	
 	public VariableSet execute(VariableSet variablesIn)
 	{
 		for(int i=0; i<calculateRuns(variablesIn); i++)
 			if(!variablesIn.executionLimited())
-				variablesIn = doRun(variablesIn.set(Slot.INDEX, new com.lying.misc19.magic.variable.VarDouble(i)));
+				variablesIn = doRun(variablesIn.set(Slot.INDEX, new VarDouble(i)));
 		return variablesIn.set(Slot.INDEX, VariableSet.DEFAULT);
 	}
 	

@@ -1,10 +1,13 @@
 package com.lying.misc19.client;
 
+import com.lying.misc19.client.gui.screen.ScreenSandbox;
 import com.lying.misc19.client.renderer.entity.PendulumLayer;
 import com.lying.misc19.init.M19Items;
+import com.lying.misc19.init.M19Menus;
 import com.lying.misc19.reference.Reference;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
@@ -30,6 +33,8 @@ public class ClientSetupEvents
 			{
 				return entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1F : 0F;
 			});
+			
+			MenuScreens.register(M19Menus.SANDBOX_MENU.get(), ScreenSandbox::new);
 		});
 	}
     

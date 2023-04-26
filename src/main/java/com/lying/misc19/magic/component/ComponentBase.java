@@ -11,34 +11,84 @@ import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
+import com.lying.misc19.utility.M19Utils;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec2;
 
 public abstract class ComponentBase implements ISpellComponent
 {
+	private ISpellComponent parent = null;
+	
 	private final Param[] inputNeeds;
 	protected final List<ISpellComponent> inputGlyphs = Lists.newArrayList();
 	protected final List<ISpellComponent> outputGlyphs = Lists.newArrayList();
 	
 	private ResourceLocation registryName = SpellComponents.GLYPH_DUMMY;
-	private Vec2 pos = Vec2.ZERO;
+	private float posX = 0F, posY = 0F;
 	
 	protected ComponentBase(Param... parameters) { this.inputNeeds = parameters; }
 	
-	public void setPosition(float x, float y) { this.pos = new Vec2(x, y); }
+	public void setParent(ISpellComponent parentIn) { this.parent = parentIn; }
 	
-	public Vec2 position() { return this.pos;}
+	public ISpellComponent parent() { return this.parent; }
+	
+	public void setPosition(float x, float y)
+	{
+		posX = x;
+		posY = y;
+	}
+	
+	public Vec2 position()
+	{
+		if(parent() == null)
+			return new Vec2(posX, posY);
+		else
+			return new Vec2(posX, posY).add(parent().position());
+	}
 	
 	public void setRegistryName(ResourceLocation location) { this.registryName = location; }
 	
 	public ResourceLocation getRegistryName() { return this.registryName; }
 	
-	public void addInput(ISpellComponent component){ this.inputGlyphs.add(component); }
+	public void organise()
+	{
+		float spin = 180F / inputGlyphs.size();
+		Vec2 offset = M19Utils.rotate(up(), 90D).scale(-20F);
+		Vec2 start = M19Utils.rotate(offset, spin / 2);
+		for(ISpellComponent input : inputGlyphs)
+		{
+			input.setParent(this);
+			input.setPosition(start.x, start.y);
+			input.organise();
+			start = M19Utils.rotate(start, spin);
+		}
+		
+		spin = 180F / outputGlyphs.size();
+		offset = M19Utils.rotate(up(), 90D).scale(20F);
+		start = M19Utils.rotate(offset, spin / 2);
+		for(ISpellComponent output : outputGlyphs)
+		{
+			output.setParent(this);
+			output.setPosition(start.x, start.y);
+			output.organise();
+			start = M19Utils.rotate(start, spin);
+		}
+	}
+	
+	public void addInput(ISpellComponent component)
+	{
+		this.inputGlyphs.add(component);
+		organise();
+	}
 	
 	public List<ISpellComponent> inputs(){ return this.inputGlyphs; }
 	
-	public void addOutput(ISpellComponent component) { this.outputGlyphs.add(component); }
+	public void addOutput(ISpellComponent component)
+	{
+		this.outputGlyphs.add(component);
+		organise();
+	}
 	
 	public List<ISpellComponent> outputs() { return this.outputGlyphs; }
 	

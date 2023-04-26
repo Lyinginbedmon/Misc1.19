@@ -1,6 +1,7 @@
 package com.lying.misc19.client.renderer.entity;
 
 import com.lying.misc19.init.M19Items;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Matrix3f;
@@ -53,9 +54,10 @@ public class PendulumLayer<T extends LivingEntity, M extends EntityModel<T> & Ar
 				
 				renderLine(poseStack, bufferSource);
 				
-				poseStack.translate(0D, -LENGTH, 0D);
+				// XXX Coloured trail?
+				renderTrail(poseStack, bufferSource);
 				
-				// XXX Coloured trail behind weight?
+				poseStack.translate(0D, -LENGTH, 0D);
 				
 				poseStack.scale(0.3F, 0.3F, 0.3F);
 				BakedModel bakedModel = itemRenderer.getModel(WEIGHT, player.getLevel(), player, player.getId());
@@ -71,21 +73,46 @@ public class PendulumLayer<T extends LivingEntity, M extends EntityModel<T> & Ar
 		Matrix3f normal = poseStack.last().normal();
 		
 		float col = 48F / 255F;
+		drawLine(Vec3.ZERO, new Vec3(0, -(float)(LENGTH - 0.05D), 0), col, col, col, 1F, matrix, normal, builder);
+	}
+	
+	private static void drawLine(Vec3 posA, Vec3 posB, float r, float g, float b, float a, Matrix4f matrix, Matrix3f normal, VertexConsumer builder)
+	{
+		RenderSystem.enableBlend();
+		builder.vertex(matrix, (float)posA.x, (float)posA.y, (float)posA.z).color(r, g, b, a).normal(normal, 1, 0, 0).endVertex();
+		builder.vertex(matrix, (float)posB.x, (float)posB.y, (float)posB.z).color(r, g, b, a).normal(normal, 1, 0, 0).endVertex();
 		
-		float len = -(float)(LENGTH - 0.05D);
-		builder.vertex(matrix, 0F, 0F, 0F).color(col, col, col, 1F).normal(normal, 1, 0, 0).endVertex();
-		builder.vertex(matrix, 0F, len, 0F).color(col, col, col, 1F).normal(normal, 1, 0, 0).endVertex();
-		builder.vertex(matrix, 0F, 0F, 0F).color(col, col, col, 1F).normal(normal, -1, 0, 0).endVertex();
-		builder.vertex(matrix, 0F, len, 0F).color(col, col, col, 1F).normal(normal, -1, 0, 0).endVertex();
+		builder.vertex(matrix, (float)posA.x, (float)posA.y, (float)posA.z).color(r, g, b, a).normal(normal, -1, 0, 0).endVertex();
+		builder.vertex(matrix, (float)posB.x, (float)posB.y, (float)posB.z).color(r, g, b, a).normal(normal, -1, 0, 0).endVertex();
 		
-		builder.vertex(matrix, 0F, 0F, 0F).color(col, col, col, 1F).normal(normal, 0, 1, 0).endVertex();
-		builder.vertex(matrix, 0F, len, 0F).color(col, col, col, 1F).normal(normal, 0, 1, 0).endVertex();
-		builder.vertex(matrix, 0F, 0F, 0F).color(col, col, col, 1F).normal(normal, 0, -1, 0).endVertex();
-		builder.vertex(matrix, 0F, len, 0F).color(col, col, col, 1F).normal(normal, 0, -1, 0).endVertex();
+		builder.vertex(matrix, (float)posA.x, (float)posA.y, (float)posA.z).color(r, g, b, a).normal(normal, 0, 1, 0).endVertex();
+		builder.vertex(matrix, (float)posB.x, (float)posB.y, (float)posB.z).color(r, g, b, a).normal(normal, 0, 1, 0).endVertex();
 		
-		builder.vertex(matrix, 0F, 0F, 0F).color(col, col, col, 1F).normal(normal, 0, 0, 1).endVertex();
-		builder.vertex(matrix, 0F, len, 0F).color(col, col, col, 1F).normal(normal, 0, 0, 1).endVertex();
-		builder.vertex(matrix, 0F, 0F, 0F).color(col, col, col, 1F).normal(normal, 0, 0, -1).endVertex();
-		builder.vertex(matrix, 0F, len, 0F).color(col, col, col, 1F).normal(normal, 0, 0, -1).endVertex();
+		builder.vertex(matrix, (float)posA.x, (float)posA.y, (float)posA.z).color(r, g, b, a).normal(normal, 0, -1, 0).endVertex();
+		builder.vertex(matrix, (float)posB.x, (float)posB.y, (float)posB.z).color(r, g, b, a).normal(normal, 0, -1, 0).endVertex();
+		
+		builder.vertex(matrix, (float)posA.x, (float)posA.y, (float)posA.z).color(r, g, b, a).normal(normal, 0, 0, 1).endVertex();
+		builder.vertex(matrix, (float)posB.x, (float)posB.y, (float)posB.z).color(r, g, b, a).normal(normal, 0, 0, 1).endVertex();
+		
+		builder.vertex(matrix, (float)posA.x, (float)posA.y, (float)posA.z).color(r, g, b, a).normal(normal, 0, 0, -1).endVertex();
+		builder.vertex(matrix, (float)posB.x, (float)posB.y, (float)posB.z).color(r, g, b, a).normal(normal, 0, 0, -1).endVertex();
+		RenderSystem.disableBlend();
+	}
+	
+	private static void renderTrail(PoseStack poseStack, MultiBufferSource bufferSource)
+	{
+		VertexConsumer builder = bufferSource.getBuffer(RenderType.lines());
+		Matrix4f matrix = poseStack.last().pose();
+		Matrix3f normal = poseStack.last().normal();
+		
+		Vec3 start = new Vec3(0, -LENGTH, 0);
+		int count = 8;
+		for(int i=0; i<count; i++)
+		{
+			Vec3 end = start.add(-0.01D, 0, 0).zRot(0.155F);
+			float alpha = 1F - ((float)i / (float)count);
+			drawLine(start, end, 1F, 1F, 1F, alpha, matrix, normal, builder);
+			start = end;
+		}
 	}
 }

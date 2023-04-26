@@ -8,20 +8,41 @@ import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.variable.VariableSet;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.FloatTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec2;
 
 public interface ISpellComponent
 {
-	public void setPosition(float x, float y);
-	
-	public Vec2 position();
-	
 	public void setRegistryName(ResourceLocation location);
 	
 	public ResourceLocation getRegistryName();
+	
+	public void setParent(ISpellComponent parentIn);
+	
+	/** Component this component is associated with */
+	public ISpellComponent parent();
+	
+	/** Sets relative position to parent (if any)*/
+	public void setPosition(float x, float y);
+	
+	/** Global position in arrangement, including offset from parent */
+	public Vec2 position();
+	
+	/** Update the positions of all child components */
+	public void organise();
+	
+	/** Relative up direction for this glyph */
+	public default Vec2 up()
+	{
+		if(parent() == null)
+			return new Vec2(0, 1);
+		
+		Vec2 pos = position();
+		Vec2 par = parent().position();
+		
+		return new Vec2(par.x - pos.x, par.y - pos.y).normalized();
+	}
 	
 	public Category category();
 	
@@ -38,7 +59,10 @@ public interface ISpellComponent
 	public default ISpellComponent addInputs(ISpellComponent... components)
 	{
 		for(int i=0; i<components.length; i++)
+		{
+			components[i].setParent(this);
 			addInput(components[i]);
+		}
 		
 		return this;
 	}
@@ -52,7 +76,10 @@ public interface ISpellComponent
 	public default ISpellComponent addOutputs(ISpellComponent... components)
 	{
 		for(int i=0; i<components.length; i++)
+		{
+			components[i].setParent(this);
 			addOutput(components[i]);
+		}
 		return this;
 	}
 	
@@ -63,14 +90,6 @@ public interface ISpellComponent
 	public static CompoundTag saveToNBT(ISpellComponent component)
 	{
 		CompoundTag nbt = saveAtomically(component);
-		
-		if(component.position().length() > 0)
-		{
-			ListTag position = new ListTag();
-			position.add(FloatTag.valueOf(component.position().x));
-			position.add(FloatTag.valueOf(component.position().y));
-			nbt.put("Position", position);
-		}
 		
 		CompoundTag extra = new CompoundTag();
 		component.serialiseNBT(extra);

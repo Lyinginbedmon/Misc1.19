@@ -313,9 +313,6 @@ public class SpellComponents
 		ResourceLocation registryName = nbt.contains("ID", Tag.TAG_STRING) ? new ResourceLocation(Reference.ModInfo.MOD_ID, nbt.getString("ID")) : GLYPH_DUMMY;
 		ISpellComponent component = create(registryName);
 		
-		if(nbt.contains("Position", Tag.TAG_LIST))
-			component.setPosition(nbt.getList("Position", Tag.TAG_FLOAT).getFloat(0), nbt.getList("Position", Tag.TAG_FLOAT).getFloat(1));
-		
 		if(nbt.contains("Data", Tag.TAG_COMPOUND))
 			component.deserialiseNBT(nbt.getCompound("Data"));
 		
