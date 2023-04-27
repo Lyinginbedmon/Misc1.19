@@ -29,6 +29,9 @@ public interface ISpellComponent
 	/** Global position in arrangement, including offset from parent */
 	public Vec2 position();
 	
+	/** Position that descendants treat as the target for the purposes of their up() function */
+	public default Vec2 core() { return position(); }
+	
 	/** Update the positions of all child components */
 	public void organise();
 	
@@ -39,7 +42,7 @@ public interface ISpellComponent
 			return new Vec2(0, 1);
 		
 		Vec2 pos = position();
-		Vec2 par = parent().position();
+		Vec2 par = parent().core();
 		
 		return new Vec2(par.x - pos.x, par.y - pos.y).normalized();
 	}

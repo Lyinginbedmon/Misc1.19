@@ -44,6 +44,8 @@ public abstract class ComponentCircle extends ComponentBase
 		}
 	}
 	
+	public Vec2 core() { return position().add(up().scale(-40F)); }
+	
 	/** Returns how many times this circle should cycle in this execution */
 	public int calculateRuns(VariableSet variablesIn)
 	{

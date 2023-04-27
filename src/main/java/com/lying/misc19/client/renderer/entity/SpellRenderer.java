@@ -1,6 +1,8 @@
 package com.lying.misc19.client.renderer.entity;
 
+import com.lying.misc19.client.renderer.ComponentRenderers;
 import com.lying.misc19.entities.SpellEntity;
+import com.lying.misc19.magic.ISpellComponent;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -20,8 +22,10 @@ public class SpellRenderer extends EntityRenderer<SpellEntity>
 		return null;
 	}
 	
-	public void render(SpellEntity spellEntity, float p_115037_, float p_115038_, PoseStack p_115039_, MultiBufferSource p_115040_, int p_115041_)
+	public void render(SpellEntity spellEntity, float p_115037_, float p_115038_, PoseStack matrixStack, MultiBufferSource p_115040_, int p_115041_)
 	{
-		// TODO Render contained spell
+		// TODO Render contained spell in world
+		ISpellComponent arrangement = spellEntity.getSpell();
+		ComponentRenderers.renderGUIPattern(arrangement, matrixStack);
 	}
 }

@@ -3,36 +3,47 @@ package com.lying.misc19.client.renderer.magic;
 import java.util.List;
 
 import com.lying.misc19.client.renderer.ComponentRenderers;
+import com.lying.misc19.client.renderer.RenderUtils;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.reference.Reference;
-import com.lying.misc19.utility.M19Utils;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.math.Matrix3f;
 import com.mojang.math.Matrix4f;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec2;
 
 public class ComponentRenderer
 {
-	public void render(ISpellComponent component, PoseStack matrixStack)
+	public void drawGlyph(ISpellComponent component, PoseStack matrixStack)
 	{
-		drawCircle(component, 10, matrixStack);
 		drawGlyph(component.getRegistryName(), component.position(), matrixStack);
-	    
-	    renderInputs(component.inputs(), matrixStack);
-	    renderOutputs(component.outputs(), matrixStack);
+	    drawChildGlyphs(component, matrixStack);
+	}
+	
+	protected static void drawChildGlyphs(ISpellComponent component, PoseStack matrixStack)
+	{
+		component.inputs().forEach((input) -> ComponentRenderers.renderGUIGlyph(input, matrixStack));
+		component.outputs().forEach((output) -> ComponentRenderers.renderGUIGlyph(output, matrixStack));
+	}
+	
+	public void drawPattern(ISpellComponent component, PoseStack matrixStack)
+	{
+		RenderUtils.drawCircle(component.position(), 10, 1.25F);
+	    drawChildPatterns(component, matrixStack);
+	}
+	
+	protected static void drawChildPatterns(ISpellComponent component, PoseStack matrixStack)
+	{
+		component.inputs().forEach((input) -> ComponentRenderers.renderGUIPattern(input, matrixStack));
+		component.outputs().forEach((output) -> ComponentRenderers.renderGUIPattern(output, matrixStack));
 	}
 	
 	// FIXME Render glyph texture properly and centred on component position
@@ -46,37 +57,6 @@ public class ComponentRenderer
 		    blit(matrixStack, (int)(position.x - 8), (int)(position.y - 8), 0, 0, 16, 16);
 		    RenderSystem.disableBlend();
 	    matrixStack.popPose();
-	}
-	
-	// FIXME Line should be solid thickness centred on component position
-	protected static void drawCircle(ISpellComponent component, float radius, PoseStack matrixStack)
-	{
-		Vec2 pos = component.position();
-		
-		Matrix3f normal = matrixStack.last().normal();
-		VertexConsumer consumer = Minecraft.getInstance().renderBuffers().bufferSource().getBuffer(RenderType.lineStrip());
-		Vec2 offset = new Vec2(radius, 0);
-		for(int i = 0; i<36; i++)
-		{
-			Vec2 posA = pos.add(M19Utils.rotate(offset, 10D * i));
-			Vec2 posB = pos.add(M19Utils.rotate(offset, 10D * i+1));
-			drawLine(consumer, posA, posB, normal);
-		}
-	}
-	
-	private static void drawLine(VertexConsumer consumer, Vec2 posA, Vec2 posB, Matrix3f normal)
-	{
-		consumer.vertex(posA.x, posA.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, 1, 0, 0).endVertex();
-		consumer.vertex(posB.x, posB.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, 1, 0, 0).endVertex();
-		
-//		consumer.vertex(posA.x, posA.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, -1, 0, 0).endVertex();
-//		consumer.vertex(posB.x, posB.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, -1, 0, 0).endVertex();
-		
-		consumer.vertex(posA.x, posA.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, 0, 1, 0).endVertex();
-		consumer.vertex(posB.x, posB.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, 0, 1, 0).endVertex();
-		
-//		consumer.vertex(posA.x, posA.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, 0, -1, 0).endVertex();
-//		consumer.vertex(posB.x, posB.y, 0D).color(1F, 1F, 1F, 1F).normal(normal, 0, -1, 0).endVertex();
 	}
 	
 	public static void blit(PoseStack p_93201_, int p_93202_, int p_93203_, int p_93204_, int p_93205_, int p_93206_, TextureAtlasSprite p_93207_)
@@ -123,11 +103,11 @@ public class ComponentRenderer
 	
 	public final void renderInputs(List<ISpellComponent> inputs, PoseStack matrixStack)
 	{
-		inputs.forEach((input) -> ComponentRenderers.renderComponent(input, matrixStack));
+		inputs.forEach((input) -> ComponentRenderers.renderGUIPattern(input, matrixStack));
 	}
 	
 	public final void renderOutputs(List<ISpellComponent> outputs, PoseStack matrixStack)
 	{
-		outputs.forEach((output) -> ComponentRenderers.renderComponent(output, matrixStack));
+		outputs.forEach((output) -> ComponentRenderers.renderGUIPattern(output, matrixStack));
 	}
 }

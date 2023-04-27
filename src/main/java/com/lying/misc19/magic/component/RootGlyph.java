@@ -10,6 +10,7 @@ import com.lying.misc19.magic.variable.VariableSet.Slot;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec2;
 
 public abstract class RootGlyph extends ComponentCircle.Basic
 {
@@ -20,6 +21,8 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	public void setParent(ISpellComponent parent) { }
 	
 	public boolean isValidInput(ISpellComponent component) { return false; }
+	
+	public Vec2 core() { return position(); }
 	
 	public void performExecution(@Nonnull Level world, @Nonnull LivingEntity caster, @Nonnull VariableSet variablesIn)
 	{

@@ -28,8 +28,19 @@ public class ComponentRenderers
 		REGISTRY.put(name, renderer);
 	}
 	
-	public static void renderComponent(ISpellComponent component, PoseStack matrixStack)
+	public static void renderGUI(ISpellComponent component, PoseStack matrixStack)
 	{
-		REGISTRY.getOrDefault(component.getRegistryName(), new ComponentRenderer()).render(component, matrixStack);
+		renderGUIPattern(component, matrixStack);
+		renderGUIGlyph(component, matrixStack);
+	}
+	
+	public static void renderGUIPattern(ISpellComponent component, PoseStack matrixStack)
+	{
+		REGISTRY.getOrDefault(component.getRegistryName(), new ComponentRenderer()).drawPattern(component, matrixStack);
+	}
+	
+	public static void renderGUIGlyph(ISpellComponent component, PoseStack matrixStack)
+	{
+		REGISTRY.getOrDefault(component.getRegistryName(), new ComponentRenderer()).drawGlyph(component, matrixStack);
 	}
 }
