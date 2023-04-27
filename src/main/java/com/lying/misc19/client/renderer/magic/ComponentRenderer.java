@@ -1,9 +1,8 @@
 package com.lying.misc19.client.renderer.magic;
 
-import java.util.List;
-
+import com.lying.misc19.client.Canvas;
+import com.lying.misc19.client.Canvas.Circle;
 import com.lying.misc19.client.renderer.ComponentRenderers;
-import com.lying.misc19.client.renderer.RenderUtils;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.reference.Reference;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -22,7 +21,20 @@ import net.minecraft.world.phys.Vec2;
 
 public class ComponentRenderer
 {
-	public void drawGlyph(ISpellComponent component, PoseStack matrixStack)
+	/** Adds the given component and all of its descendants to the canvas */
+	public final void addToCanvasRecursive(ISpellComponent component, Canvas canvas)
+	{
+		addToCanvas(component, canvas);
+		component.inputs().forEach((input) -> ComponentRenderers.get(input.getRegistryName()).addToCanvasRecursive(input, canvas));
+		component.outputs().forEach((output) -> ComponentRenderers.get(output.getRegistryName()).addToCanvasRecursive(output, canvas));
+	}
+	
+	public void addToCanvas(ISpellComponent component, Canvas canvas)
+	{
+		canvas.addElement(new Circle(component.position(), 10, 1.25F), 0);
+	}
+	
+	public void drawGUIGlyph(ISpellComponent component, PoseStack matrixStack)
 	{
 		drawGlyph(component.getRegistryName(), component.position(), matrixStack);
 	    drawChildGlyphs(component, matrixStack);
@@ -32,18 +44,6 @@ public class ComponentRenderer
 	{
 		component.inputs().forEach((input) -> ComponentRenderers.renderGUIGlyph(input, matrixStack));
 		component.outputs().forEach((output) -> ComponentRenderers.renderGUIGlyph(output, matrixStack));
-	}
-	
-	public void drawPattern(ISpellComponent component, PoseStack matrixStack)
-	{
-		RenderUtils.drawCircle(component.position(), 10, 1.25F);
-	    drawChildPatterns(component, matrixStack);
-	}
-	
-	protected static void drawChildPatterns(ISpellComponent component, PoseStack matrixStack)
-	{
-		component.inputs().forEach((input) -> ComponentRenderers.renderGUIPattern(input, matrixStack));
-		component.outputs().forEach((output) -> ComponentRenderers.renderGUIPattern(output, matrixStack));
 	}
 	
 	// FIXME Render glyph texture properly and centred on component position
@@ -99,15 +99,5 @@ public class ComponentRenderer
 		bufferbuilder.vertex(p_93113_, (float)p_93115_, (float)p_93116_, (float)p_93118_).uv(p_93120_, p_93121_).endVertex();
 		bufferbuilder.vertex(p_93113_, (float)p_93114_, (float)p_93116_, (float)p_93118_).uv(p_93119_, p_93121_).endVertex();
 		BufferUploader.drawWithShader(bufferbuilder.end());
-	}
-	
-	public final void renderInputs(List<ISpellComponent> inputs, PoseStack matrixStack)
-	{
-		inputs.forEach((input) -> ComponentRenderers.renderGUIPattern(input, matrixStack));
-	}
-	
-	public final void renderOutputs(List<ISpellComponent> outputs, PoseStack matrixStack)
-	{
-		outputs.forEach((output) -> ComponentRenderers.renderGUIPattern(output, matrixStack));
 	}
 }

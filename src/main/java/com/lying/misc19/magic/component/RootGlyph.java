@@ -2,6 +2,8 @@ package com.lying.misc19.magic.component;
 
 import javax.annotation.Nonnull;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.lying.misc19.magic.ComponentCircle;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.VarVec;
@@ -23,6 +25,8 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	public boolean isValidInput(ISpellComponent component) { return false; }
 	
 	public Vec2 core() { return position(); }
+	
+	protected Pair<Float, Float> separations() { return Pair.of(30F, 80F); }
 	
 	public void performExecution(@Nonnull Level world, @Nonnull LivingEntity caster, @Nonnull VariableSet variablesIn)
 	{

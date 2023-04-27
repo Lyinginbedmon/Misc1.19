@@ -1,5 +1,7 @@
 package com.lying.misc19.magic;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.lying.misc19.magic.component.ComponentBase;
 import com.lying.misc19.magic.variable.VarDouble;
 import com.lying.misc19.magic.variable.VariableSet;
@@ -21,30 +23,32 @@ public abstract class ComponentCircle extends ComponentBase
 	
 	public void organise()
 	{
+		Vec2 core = core().add(position().negated());
+		
 		float spin = 180F / inputGlyphs.size();
-		Vec2 start = M19Utils.rotate(new Vec2(-20, 0), spin / 2);
+		Vec2 offset = M19Utils.rotate(left().scale(separations().getLeft()), spin / 2);
 		for(ISpellComponent input : inputGlyphs)
 		{
 			input.setParent(this);
-			input.setPosition(start.x, start.y);
-			input.organise();
+			input.setPositionAndOrganise(core.x + offset.x, core.y + offset.y);
 			
-			start = M19Utils.rotate(start, spin);
+			offset = M19Utils.rotate(offset, spin);
 		}
 		
 		spin = 360F / outputGlyphs.size();
-		start = new Vec2(0, -100);
+		offset = M19Utils.rotate(up().scale(separations().getRight()), spin / 2);
 		for(ISpellComponent output : outputGlyphs)
 		{
 			output.setParent(this);
-			output.setPosition(start.x, start.y);
-			output.organise();
+			output.setPositionAndOrganise(core.x + offset.x, core.y + offset.y);
 			
-			start = M19Utils.rotate(start, spin);
+			offset = M19Utils.rotate(offset, spin);
 		}
 	}
 	
-	public Vec2 core() { return position().add(up().scale(-40F)); }
+	public Vec2 core() { return position().add(up().scale(-100F)); }
+	
+	protected Pair<Float, Float> separations() { return Pair.of(20F, 60F); }
 	
 	/** Returns how many times this circle should cycle in this execution */
 	public int calculateRuns(VariableSet variablesIn)

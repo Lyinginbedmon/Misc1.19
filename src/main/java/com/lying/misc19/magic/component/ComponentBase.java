@@ -54,25 +54,21 @@ public abstract class ComponentBase implements ISpellComponent
 	public void organise()
 	{
 		float spin = 180F / inputGlyphs.size();
-		Vec2 offset = M19Utils.rotate(up(), 90D).scale(-20F);
-		Vec2 start = M19Utils.rotate(offset, spin / 2);
+		Vec2 offset = M19Utils.rotate(left().scale(20), spin / 2);
 		for(ISpellComponent input : inputGlyphs)
 		{
 			input.setParent(this);
-			input.setPosition(start.x, start.y);
-			input.organise();
-			start = M19Utils.rotate(start, spin);
+			input.setPositionAndOrganise(offset.x, offset.y);
+			offset = M19Utils.rotate(offset, spin);
 		}
 		
 		spin = 180F / outputGlyphs.size();
-		offset = M19Utils.rotate(up(), 90D).scale(20F);
-		start = M19Utils.rotate(offset, spin / 2);
+		offset = M19Utils.rotate(right().scale(20), spin / 2);
 		for(ISpellComponent output : outputGlyphs)
 		{
 			output.setParent(this);
-			output.setPosition(start.x, start.y);
-			output.organise();
-			start = M19Utils.rotate(start, spin);
+			output.setPositionAndOrganise(offset.x, offset.y);
+			offset = M19Utils.rotate(offset, spin);
 		}
 	}
 	

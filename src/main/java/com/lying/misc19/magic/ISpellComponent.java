@@ -6,6 +6,7 @@ import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.variable.VariableSet;
+import com.lying.misc19.utility.M19Utils;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -35,17 +36,27 @@ public interface ISpellComponent
 	/** Update the positions of all child components */
 	public void organise();
 	
+	public default void setPositionAndOrganise(float x, float y)
+	{
+		setPosition(x, y);
+		organise();
+	}
+	
 	/** Relative up direction for this glyph */
 	public default Vec2 up()
 	{
 		if(parent() == null)
-			return new Vec2(0, 1);
+			return new Vec2(0, -1);
 		
 		Vec2 pos = position();
 		Vec2 par = parent().core();
 		
 		return new Vec2(par.x - pos.x, par.y - pos.y).normalized();
 	}
+	
+	public default Vec2 left() { return M19Utils.rotate(up(), -90D); }
+	public default Vec2 right() { return M19Utils.rotate(up(), 90D); }
+	public default Vec2 down() { return up().negated(); }
 	
 	public Category category();
 	

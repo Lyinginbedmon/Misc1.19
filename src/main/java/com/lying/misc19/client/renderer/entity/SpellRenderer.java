@@ -26,6 +26,6 @@ public class SpellRenderer extends EntityRenderer<SpellEntity>
 	{
 		// TODO Render contained spell in world
 		ISpellComponent arrangement = spellEntity.getSpell();
-		ComponentRenderers.renderGUIPattern(arrangement, matrixStack);
+		ComponentRenderers.renderGUI(arrangement, matrixStack);
 	}
 }

@@ -1,15 +1,16 @@
 package com.lying.misc19.client.renderer.magic;
 
-import com.lying.misc19.client.renderer.RenderUtils;
+import com.lying.misc19.client.Canvas;
+import com.lying.misc19.client.Canvas.Circle;
 import com.lying.misc19.magic.ISpellComponent;
-import com.mojang.blaze3d.vertex.PoseStack;
 
 public class RootRenderer extends ComponentRenderer
 {
-	public void drawPattern(ISpellComponent component, PoseStack matrixStack)
+	public void addToCanvas(ISpellComponent component, Canvas canvas)
 	{
-		super.drawPattern(component, matrixStack);
-		RenderUtils.drawCircle(component.position(), 95, 1.25F);
-		RenderUtils.drawCircle(component.position(), 105, 1.25F);
+		canvas.addElement(new Circle(component.position(), 20, 1.5F), 0);
+		
+		canvas.addElement(new Circle(component.position(), 75, 1.25F), 1);
+		canvas.addElement(new Circle(component.position(), 85, 1.25F), 1);
 	}
 }

@@ -15,12 +15,12 @@ import net.minecraft.world.phys.Vec2;
 
 public class RenderUtils
 {
-	public static void drawLine(Vec2 posA, Vec2 posB, float width)
+	public static void drawColorLine(Vec2 posA, Vec2 posB, float width)
 	{
-		drawLine(posA, posB, width, 255, 255, 255, 255);
+		drawColorLine(posA, posB, width, 255, 255, 255, 255);
 	}
 	
-	public static void drawLine(Vec2 posA, Vec2 posB, float width, int r, int g, int b, int a)
+	public static void drawColorLine(Vec2 posA, Vec2 posB, float width, int r, int g, int b, int a)
 	{
 	    RenderSystem.setShader(GameRenderer::getPositionColorShader);
 	    RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
@@ -40,9 +40,9 @@ public class RenderUtils
 		});
 	}
 	
-	public static void drawSquare(Vec2 posA, Vec2 posB, int r, int g, int b, int a)
+	public static void drawColorSquare(Vec2 posA, Vec2 posB, int r, int g, int b, int a)
 	{
-	    RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+	    RenderSystem.setShader(GameRenderer::getPositionColorShader);
 	    RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 		draw(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR, (buffer) -> 
 		{
@@ -62,7 +62,7 @@ public class RenderUtils
 	{
 		Vec2 offset = new Vec2(radius, 0);
 		for(int i=0; i<360; i++)
-			drawLine(posA.add(offset), posA.add(offset = M19Utils.rotate(offset, 1D)), thickness, r, g, b, a);
+			drawColorLine(posA.add(offset), posA.add(offset = M19Utils.rotate(offset, 1D)), thickness, r, g, b, a);
 	}
 	
 	public static void draw(VertexFormat.Mode drawMode, VertexFormat format, Consumer<BufferBuilder> func)

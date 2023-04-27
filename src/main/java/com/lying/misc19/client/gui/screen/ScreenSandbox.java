@@ -28,8 +28,7 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 		super.render(matrixStack, mouseX, mouseY, partialTicks);
 		
 		ISpellComponent arrangement = menu.arrangement();
-		arrangement.setPosition(width / 2, height / 2);
-		arrangement.organise();
+		arrangement.setPositionAndOrganise(width / 2, height / 2);
 		ComponentRenderers.renderGUI(arrangement, matrixStack);
 	}
 }
