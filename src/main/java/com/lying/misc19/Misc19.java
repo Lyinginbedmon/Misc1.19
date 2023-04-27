@@ -9,6 +9,7 @@ import com.lying.misc19.init.M19Entities;
 import com.lying.misc19.init.M19Items;
 import com.lying.misc19.init.M19Menus;
 import com.lying.misc19.init.SpellComponents;
+import com.lying.misc19.init.SpellVariables;
 import com.lying.misc19.reference.Reference;
 import com.mojang.logging.LogUtils;
 
@@ -45,6 +46,7 @@ public class Misc19
         M19Menus.MENUS.register(EVENT_BUS);
         
         SpellComponents.COMPONENTS.register(EVENT_BUS);
+        SpellVariables.VARIABLES.register(EVENT_BUS);
         EVENT_BUS.addListener(SpellComponents::reportInit);
         
         MinecraftForge.EVENT_BUS.register(this);

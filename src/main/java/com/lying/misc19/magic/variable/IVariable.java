@@ -2,6 +2,7 @@ package com.lying.misc19.magic.variable;
 
 import javax.annotation.Nonnull;
 
+import com.lying.misc19.init.SpellVariables;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
 import net.minecraft.nbt.CompoundTag;
@@ -35,7 +36,7 @@ public interface IVariable
 	
 	public static CompoundTag saveToNBT(IVariable variable, CompoundTag compound)
 	{
-		compound.putString("ID", variable.getRegistryName().toString());
+		compound.putString("ID", SpellVariables.getRegistryName(variable).toString());
 		CompoundTag data = new CompoundTag();
 		variable.save(data);
 		if(!data.isEmpty())

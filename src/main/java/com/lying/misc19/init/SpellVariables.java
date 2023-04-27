@@ -56,6 +56,17 @@ public class SpellVariables
 		return VARIABLES.register(nameIn.getPath(), variableIn);
 	}
 	
+	public static ResourceLocation getRegistryName(IVariable variable)
+	{
+		if(variable.getRegistryName() != null)
+			return variable.getRegistryName();
+		
+		for(RegistryObject<IVariableBuilder> entry : VARIABLES.getEntries())
+			if(entry.get().create().getClass() == variable.getClass())
+				return entry.getId();
+		return BOOL;
+	}
+	
 	@Nonnull
 	public static IVariable create(ResourceLocation registryName)
 	{

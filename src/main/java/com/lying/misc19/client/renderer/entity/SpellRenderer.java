@@ -22,10 +22,12 @@ public class SpellRenderer extends EntityRenderer<SpellEntity>
 		return null;
 	}
 	
-	public void render(SpellEntity spellEntity, float p_115037_, float p_115038_, PoseStack matrixStack, MultiBufferSource p_115040_, int p_115041_)
+	public void render(SpellEntity spellEntity, float p_115037_, float p_115038_, PoseStack matrixStack, MultiBufferSource bufferSource, int p_115041_)
 	{
-		// TODO Render contained spell in world
-		ISpellComponent arrangement = spellEntity.getSpell();
-		ComponentRenderers.renderGUI(arrangement, matrixStack);
+		matrixStack.pushPose();
+			matrixStack.translate(0D, spellEntity.getBbHeight() * 0.5D, 0D);
+			ISpellComponent arrangement = spellEntity.getSpell();
+			ComponentRenderers.renderWorld(arrangement, matrixStack, bufferSource);
+		matrixStack.popPose();
 	}
 }

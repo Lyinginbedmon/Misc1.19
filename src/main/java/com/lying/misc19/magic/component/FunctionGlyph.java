@@ -66,12 +66,12 @@ public abstract class FunctionGlyph extends ComponentBase
 			
 			if(variablesIn.isUsing(Slot.CASTER))
 			{
-				Entity caster = variablesIn.get(Slot.CASTER).asEntity();
-				if(caster.getType() == EntityType.PLAYER)
-				{
-					Player player = (Player)caster;
-					messages.forEach((line) -> player.displayClientMessage(line, false));
-				}
+//				Entity caster = variablesIn.get(Slot.CASTER).asEntity();
+//				if(caster.getType() == EntityType.PLAYER)
+//				{
+//					Player player = (Player)caster;
+//					messages.forEach((line) -> player.displayClientMessage(line, false));
+//				}
 			}
 			else
 				messages.forEach((line) -> Misc19.LOG.info(line.getString()));

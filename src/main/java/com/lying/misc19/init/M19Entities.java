@@ -19,8 +19,7 @@ public class M19Entities
 {
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, Reference.ModInfo.MOD_ID);
     
-    public static final RegistryObject<EntityType<SpellEntity>> SPELL = register("spell", EntityType.Builder.<SpellEntity>of(SpellEntity::new, MobCategory.MISC));
-//    public static final RegistryObject<EntityType<EntityHearthLight>> HEARTH_LIGHT = 	register("hearth_light",	EntityType.Builder.<EntityHearthLight>of(EntityHearthLight::new, MobCategory.AMBIENT).sized(0.5F, 0.5F).clientTrackingRange(16));
+    public static final RegistryObject<EntityType<SpellEntity>> SPELL = register("spell", EntityType.Builder.<SpellEntity>of(SpellEntity::new, MobCategory.MISC).sized(0.5F, 0.5F).clientTrackingRange(16));
     
 	private static <T extends Entity> RegistryObject<EntityType<T>> register(String name, EntityType.Builder<T> builder)
 	{
