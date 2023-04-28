@@ -4,6 +4,7 @@ import com.lying.misc19.client.renderer.ComponentRenderers;
 import com.lying.misc19.entities.SpellEntity;
 import com.lying.misc19.magic.ISpellComponent;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Vector3f;
 
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -26,8 +27,12 @@ public class SpellRenderer extends EntityRenderer<SpellEntity>
 	{
 		matrixStack.pushPose();
 			matrixStack.translate(0D, spellEntity.getBbHeight() * 0.5D, 0D);
-			ISpellComponent arrangement = spellEntity.getSpell();
-			ComponentRenderers.renderWorld(arrangement, matrixStack, bufferSource);
+			matrixStack.mulPose(Vector3f.YP.rotationDegrees(-spellEntity.getYRot()));
+			matrixStack.mulPose(Vector3f.XP.rotationDegrees(spellEntity.getXRot()));
+			matrixStack.pushPose();
+				ISpellComponent arrangement = spellEntity.getSpell();
+				ComponentRenderers.renderWorld(arrangement, matrixStack, bufferSource);
+			matrixStack.popPose();
 		matrixStack.popPose();
 	}
 }

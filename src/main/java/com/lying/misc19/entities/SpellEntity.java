@@ -48,6 +48,8 @@ public class SpellEntity extends Entity
 		spell.setOwner(owner);
 		spell.setSpell(spellIn);
 		spell.setPos(owner.position().x, owner.position().y + (owner.getBbHeight() / 2F), owner.position().z);
+		spell.setYRot(owner.getYRot());
+		spell.setXRot(owner.getXRot());
 		return spell;
 	}
 	

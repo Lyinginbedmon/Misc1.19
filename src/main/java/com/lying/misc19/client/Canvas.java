@@ -88,13 +88,13 @@ public class Canvas
 		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource)
 		{
 			// Existing line-based approach to drawing circles
-			Vec2 offset = new Vec2(radius, 0);
-			for(int i=0; i<360; i++)
-			{
-				Vec2 pos = position.add(offset);
-				Vec2 pos2 = position.add(offset = M19Utils.rotate(offset, 1D));
-				RenderUtils.drawColorLine(matrixStack, bufferSource, pos, pos2, thickness, 255, 0, 0, a);
-			}
+//			Vec2 offset = new Vec2(radius, 0);
+//			for(int i=0; i<360; i++)
+//			{
+//				Vec2 pos = position.add(offset);
+//				Vec2 pos2 = position.add(offset = M19Utils.rotate(offset, 1D));
+//				RenderUtils.drawColorLine(matrixStack, bufferSource, pos, pos2, thickness, 255, 0, 0, a);
+//			}
 			
 			// FIXME Correctly order points for square drawing
 			Vec2 offsetOut = new Vec2(radius + thickness / 2, 0);
