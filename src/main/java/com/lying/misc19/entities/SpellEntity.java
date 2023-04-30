@@ -5,14 +5,15 @@ import java.util.UUID;
 
 import javax.annotation.Nonnull;
 
-import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.init.M19Entities;
+import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.component.RootGlyph;
 import com.lying.misc19.magic.variable.VarEntity;
 import com.lying.misc19.magic.variable.VarLevel;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
+import com.lying.misc19.reference.Reference;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -31,6 +32,9 @@ public class SpellEntity extends Entity
 {
 	protected static final EntityDataAccessor<Optional<UUID>> OWNER_UUID = SynchedEntityData.defineId(SpellEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 	protected static final EntityDataAccessor<CompoundTag> SPELL_DATA = SynchedEntityData.defineId(SpellEntity.class, EntityDataSerializers.COMPOUND_TAG);
+	private static final EntityDataAccessor<Integer> VISIBILITY = SynchedEntityData.defineId(SpellEntity.class, EntityDataSerializers.INT);
+	private static final int VANISH_TIME = Reference.Values.TICKS_PER_SECOND * 2;
+	
 	private VariableSet variableSet = new VariableSet();
 	private LivingEntity ownerCached = null;
 	
@@ -57,6 +61,7 @@ public class SpellEntity extends Entity
 	{
 		getEntityData().define(SPELL_DATA, new CompoundTag());
 		getEntityData().define(OWNER_UUID, Optional.empty());
+		getEntityData().define(VISIBILITY, VANISH_TIME);
 	}
 	
 	protected void readAdditionalSaveData(CompoundTag compound)
@@ -66,6 +71,8 @@ public class SpellEntity extends Entity
 		getEntityData().set(SPELL_DATA, compound.getCompound("Spell"));
 		
 		this.variableSet = VariableSet.readFromNBT(compound.getCompound("Variables"));
+		
+		getEntityData().set(VISIBILITY, compound.getInt("Vanish"));
 	}
 	
 	protected void addAdditionalSaveData(CompoundTag compound)
@@ -75,13 +82,27 @@ public class SpellEntity extends Entity
 		compound.put("Spell", getEntityData().get(SPELL_DATA));
 		
 		compound.put("Variables", this.variableSet.writeToNBT(new CompoundTag()));
+		
+		compound.putInt("Vanish", getEntityData().get(VISIBILITY).intValue());
 	}
 	
 	public boolean isAttackable() { return false; }
 	
+	public float getVisibility() { return getEntityData().get(VISIBILITY).floatValue() / (float)VANISH_TIME; }
+	
 	public void tick()
 	{
 		super.tick();
+		if(getVisibility() < 1F)
+		{
+			int visibility = getEntityData().get(VISIBILITY).intValue() - 1;
+			getEntityData().set(VISIBILITY, visibility);
+			
+			if(visibility <= 0)
+				kill();
+			return;
+		}
+		
 		ISpellComponent spell = getSpell();
 		variableSet.set(Slot.WORLD, new VarLevel(getLevel()));
 		LivingEntity caster = getOwner();
@@ -96,7 +117,7 @@ public class SpellEntity extends Entity
 		catch(Exception e) { }
 		
 		if(!this.variableSet.get(Slot.CONTINUE).asBoolean())
-			kill();
+			getEntityData().set(VISIBILITY, VANISH_TIME - 1);
 		else
 			setSpell(spell);
 	}

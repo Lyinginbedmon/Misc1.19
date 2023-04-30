@@ -38,13 +38,6 @@ public class ComponentRenderers
 	public static void renderGUI(ISpellComponent component, PoseStack matrixStack)
 	{
 		populateCanvas(component, matrixStack).drawIntoGUI(matrixStack);
-//		renderer.drawGUIGlyph(component, matrixStack);
-	}
-	
-	public static void renderGUIGlyph(ISpellComponent component, PoseStack matrixStack)
-	{
-		ResourceLocation registryName = component.getRegistryName();
-		REGISTRY.getOrDefault(registryName, new ComponentRenderer()).drawGUIGlyph(component, matrixStack);
 	}
 	
 	public static void renderWorld(ISpellComponent component, PoseStack matrixStack, MultiBufferSource bufferSource)
