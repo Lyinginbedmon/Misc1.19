@@ -24,7 +24,7 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	
 	public void render(PoseStack matrixStack, int mouseX, int mouseY, float partialTicks)
 	{
-		this.renderBackground(matrixStack);
+//		this.renderBackground(matrixStack);
 		super.render(matrixStack, mouseX, mouseY, partialTicks);
 		
 		ISpellComponent arrangement = menu.arrangement();

@@ -25,6 +25,7 @@ import net.minecraft.world.phys.Vec2;
 
 public class RenderUtils
 {
+	private static final double CIRCLE_UNIT = 3D;
 	public static boolean testColor = true;
 	
 	/** Draws a coloured line into a GUI screen between the given points */
@@ -85,47 +86,80 @@ public class RenderUtils
 	{
 		List<Quad> totalQuads = Lists.newArrayList();
 		totalQuads.add(quadIn);
+		
+		drawBlockColorSquare(totalQuads, r, g, b, a, exclusions);
+	}
+	
+	public static void drawBlockColorSquare(List<Quad> totalQuads, int r, int g, int b, int a, List<Quad> exclusions)
+	{
+		totalQuads = splitQuadsRecursive(totalQuads, exclusions);
 		totalQuads = splitQuadsRecursive(totalQuads, exclusions);
 		if(!totalQuads.isEmpty())
-			totalQuads.forEach((finalisedQuad) -> drawBlockColorSquare(finalisedQuad.a(), finalisedQuad.b(), finalisedQuad.c(), finalisedQuad.d(), testColor ? 255 : 0, testColor ? 255 : 0, testColor ? 255 : 0, a));
-		
-		testColor = !testColor;
+			for(Quad quad : totalQuads)
+			{
+				drawBlockColorSquare(quad.a(), quad.b(), quad.c(), quad.d(), testColor ? 255 : 0, testColor ? 255 : 0, testColor ? 255 : 0, a);
+				testColor = !testColor;
+			}
+//			totalQuads.forEach((finalisedQuad) -> drawBlockColorSquare(finalisedQuad.a(), finalisedQuad.b(), finalisedQuad.c(), finalisedQuad.d(), r, g, b, a));
 	}
 	
 	private static List<Quad> splitQuadsRecursive(List<Quad> quadsToSplit, List<Quad> exclusions)
 	{
-		// Step 1: Break the quad down to a set of all quads bisected an exclusion
-		// Step 2: Remove any quads that are entirely within an exclusion
-		// Step 3: Repeat until no quads added or removed
+		if(exclusions.isEmpty())
+			return quadsToSplit;
+		else if(quadsToSplit.isEmpty())
+			return Lists.newArrayList();
 		
-		List<Quad> quadsAdded = Lists.newArrayList();
-		boolean quadsChanged = false;
-		for(Quad exclusion : exclusions)
-			for(Quad quad : quadsToSplit)
+		List<Quad> quadsSplit = Lists.newArrayList();
+		quadsSplit.addAll(quadsToSplit);
+		quadsSplit.removeIf((quad) -> quad.isUndrawable());
+		
+		if(!quadsSplit.isEmpty())
+			for(Quad exclusion : exclusions)
 			{
-				// Skip the quad if it is entirely inside the exclusion
-				if(exclusion.contains(quad))
-				{
-					quadsChanged = true;
-					continue;
-				}
+				List<Quad> nextSet = excludeQuads(exclusion, quadsSplit);
+				nextSet.removeIf((quad) -> quad.isUndrawable());
 				
-				Line intersectingLine = quad.intersects(exclusion);
-				// If there's an intersection, split the quad along it and add any resulting quads
-				if(intersectingLine != null)
-				{
-					for(Quad splitQuad : quad.splitAlong(intersectingLine))
-						if(!exclusion.contains(splitQuad))
-						{
-							quadsAdded.add(splitQuad);
-							quadsChanged = true;
-						}
-				}
-				else	// If there's no intersection, just add the entire quad
-					quadsAdded.add(quad);
+				quadsSplit.clear();
+				quadsSplit.addAll(nextSet);
 			}
 		
-		return quadsChanged ? splitQuadsRecursive(quadsAdded, exclusions) : quadsToSplit;
+		return quadsSplit;
+	}
+	
+	private static List<Quad> excludeQuads(Quad exclusion, List<Quad> quadsSplit)
+	{
+		// Step 1: Remove all quads entirely within the exclusion
+		// Step 2: Split quads bisected by the exclusion
+		// Step 3: Repeat until no quads are split or removed
+		
+		boolean actionTaken = false;
+		List<Quad> nextSet = Lists.newArrayList();
+		for(Quad quad : quadsSplit)
+		{
+			// Skip the quad if it is entirely inside the exclusion
+			if(exclusion.entirelyOverlaps(quad))
+			{
+				actionTaken = true;
+				continue;
+			}
+			
+			Line intersectingLine = quad.intersects(exclusion);
+			// If there's an intersection, split the quad along it and add any resulting quads
+			if(intersectingLine != null)
+			{
+				actionTaken = true;
+				for(Quad splitQuad : quad.splitAlong(intersectingLine))
+					if(!exclusion.entirelyOverlaps(splitQuad))
+						nextSet.add(splitQuad);
+			}
+			else	// If there's no intersection, just add the entire quad
+				nextSet.add(quad);
+		}
+		
+		nextSet.removeIf((quad) -> quad.isUndrawable());
+		actionTaken = false;
+		return actionTaken ? excludeQuads(exclusion, nextSet) : nextSet;
 	}
 	
 	/** Draws a coloured square into the GUI */
@@ -181,25 +215,21 @@ public class RenderUtils
 	/** Draws a hollow circular shape into the GUI */
 	public static void drawOutlineCircle(Vec2 position, float radius, float thickness, int r, int g, int b, int a, List<Quad> exclusions)
 	{
-		int resolution = 64;
+		int resolution = (int)((2 * Math.PI * radius) / CIRCLE_UNIT);
 		Vec2 offsetOut = new Vec2(radius + thickness / 2, 0);
 		Vec2 offsetIn = new Vec2(radius - thickness / 2, 0);
 		float turn = 360F / resolution;
+		List<Quad> quads = Lists.newArrayList();
 		for(int i=0; i<resolution; i++)
-		{
-			Vec2 topLeft = position.add(offsetOut);
-			Vec2 topRight = position.add(offsetIn);
-			Vec2 botRight = position.add(offsetIn = M19Utils.rotate(offsetIn, turn));
-			Vec2 botLeft = position.add(offsetOut = M19Utils.rotate(offsetOut, turn));
-			
-			RenderUtils.drawBlockColorSquare(new Quad(topLeft, topRight, botRight, botLeft), r, g, b, a, exclusions);
-		}
+			quads.add(new Quad(position.add(offsetOut), position.add(offsetIn), position.add(offsetIn = M19Utils.rotate(offsetIn, turn)), position.add(offsetOut = M19Utils.rotate(offsetOut, turn))));
+		
+		RenderUtils.drawBlockColorSquare(quads, r, g, b, a, exclusions);
 	}
 	
 	/** Draws a hollow circular shape in the world */
 	public static void drawOutlineCircle(PoseStack matrixStack, MultiBufferSource bufferSource, Vec2 position, float radius, float thickness, int r, int g, int b, int a)
 	{
-		int resolution = 64;
+		int resolution = (int)((2 * Math.PI * radius) / CIRCLE_UNIT);
 		Vec2 offsetOut = new Vec2(radius + thickness / 2, 0);
 		Vec2 offsetIn = new Vec2(radius - thickness / 2, 0);
 		float turn = 360F / resolution;

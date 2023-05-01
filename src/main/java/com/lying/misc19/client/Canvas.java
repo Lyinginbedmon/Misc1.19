@@ -56,6 +56,7 @@ public class Canvas
 	private void draw(PoseStack matrixStack, TriConsumer<ICanvasObject, PoseStack, List<Quad>> func)
 	{
 		RenderUtils.testColor = true;
+		
 		List<Integer> levels = Lists.newArrayList();
 		levels.addAll(elements.keySet());
 		levels.sort(Collections.reverseOrder());
@@ -68,11 +69,10 @@ public class Canvas
 	{
 		List<Quad> exclusions = Lists.newArrayList();
 		for(Entry<Integer, List<ICanvasObject>> entry : elements.entrySet())
-			if(entry.getKey() > level)
+			if(entry.getKey() < level)
 				entry.getValue().forEach((object) -> {
 					if(object.isExclusion())
 						exclusions.addAll(((ICanvasExclusion)object).getQuads()); } );
-		
 		return exclusions;
 	}
 	
@@ -230,5 +230,18 @@ public class Canvas
 		}
 		
 		public List<Quad> getQuads(){ return List.of(this.quad); }
+		
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
+		{
+			Line lineAB = new Line(quad.a(), quad.b(), 1, 255, 255, 255, 255);
+			Line lineBC = new Line(quad.b(), quad.c(), 1, 255, 255, 255, 255);
+			Line lineCD = new Line(quad.c(), quad.d(), 1, 255, 255, 255, 255);
+			Line lineDA = new Line(quad.d(), quad.a(), 1, 255, 255, 255, 255);
+			
+			lineAB.drawGui(matrixStack, Lists.newArrayList());
+			lineBC.drawGui(matrixStack, Lists.newArrayList());
+			lineCD.drawGui(matrixStack, Lists.newArrayList());
+			lineDA.drawGui(matrixStack, Lists.newArrayList());
+		}
 	}
 }
