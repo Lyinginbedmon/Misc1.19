@@ -6,19 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.annotation.Nullable;
-
 import org.apache.commons.compress.utils.Lists;
-import org.apache.commons.lang3.tuple.Pair;
 
 import com.lying.misc19.client.renderer.RenderUtils;
-import com.lying.misc19.utility.M19Utils;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.math.Matrix4f;
@@ -60,34 +53,46 @@ public class Canvas
 		matrixStack.popPose();
 	}
 	
-	private void draw(PoseStack matrixStack, TriConsumer<ICanvasObject, PoseStack, List<Exclusion>> func)
+	private void draw(PoseStack matrixStack, TriConsumer<ICanvasObject, PoseStack, List<Quad>> func)
 	{
+		RenderUtils.testColor = true;
 		List<Integer> levels = Lists.newArrayList();
 		levels.addAll(elements.keySet());
 		levels.sort(Collections.reverseOrder());
 		
 		for(int i : levels)
-			elements.get(i).forEach((element) -> func.accept(element,matrixStack, getExclusionsAbove(i)));
+			elements.get(i).forEach((element) -> func.accept(element,matrixStack, getExclusionsBelow(i)));
 	}
 	
-	public List<Exclusion> getExclusionsAbove(int level)
+	public List<Quad> getExclusionsBelow(int level)
 	{
-		List<Exclusion> exclusions = Lists.newArrayList();
-		
+		List<Quad> exclusions = Lists.newArrayList();
 		for(Entry<Integer, List<ICanvasObject>> entry : elements.entrySet())
-			if(entry.getKey() < level)
+			if(entry.getKey() > level)
 				entry.getValue().forEach((object) -> {
-					if(object.getClass() == Exclusion.class)
-						exclusions.add((Exclusion)object); } );
+					if(object.isExclusion())
+						exclusions.addAll(((ICanvasExclusion)object).getQuads()); } );
 		
 		return exclusions;
 	}
 	
 	public interface ICanvasObject
 	{
-		public void drawGui(PoseStack matrixStack, List<Exclusion> exclusions);
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions);
 		
-		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Exclusion> exclusions);
+		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions);
+		
+		public default boolean isExclusion() { return false; }
+	}
+	
+	public interface ICanvasExclusion extends ICanvasObject
+	{
+		public default boolean isExclusion() { return true; }
+		
+		public List<Quad> getQuads();
+		
+		public default void drawGui(PoseStack matrixStack, List<Quad> exclusions) { }
+		public default void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions) { }
 	}
 	
 	public static class Circle implements ICanvasObject
@@ -112,12 +117,12 @@ public class Canvas
 			this.a = alpha;
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Exclusion> exclusions)
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
 		{
 			RenderUtils.drawOutlineCircle(position, radius, thickness, r, g, b, a, exclusions);
 		}
 		
-		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Exclusion> exclusions)
+		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions)
 		{
 			RenderUtils.drawOutlineCircle(matrixStack, bufferSource, position, radius, thickness, r, g, b, a);
 		}
@@ -145,12 +150,12 @@ public class Canvas
 			this.a = alpha;
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Exclusion> exclusions)
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
 		{
 			RenderUtils.drawColorLine(start, end, thickness, r, g, b, a, exclusions);
 		}
 		
-		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Exclusion> exclusions)
+		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions)
 		{
 			RenderUtils.drawColorLine(matrixStack, bufferSource, start, end, thickness, r, g, b, a);
 		}
@@ -170,7 +175,7 @@ public class Canvas
 			this.height = height;
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Exclusion> exclusions)
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
 		{
 		    RenderSystem.setShader(GameRenderer::getPositionTexShader);
 		    RenderSystem.setShaderTexture(0, textureLocation);
@@ -189,7 +194,7 @@ public class Canvas
 			});
 		}
 		
-		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Exclusion> exclusions)
+		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions)
 		{
 			Vec2 topLeft = new Vec2(position.x - width / 2, position.y - height / 2);
 			Vec2 topRight = new Vec2(position.x + width / 2, position.y - height / 2);
@@ -215,65 +220,15 @@ public class Canvas
 	}
 	
 	/** Defines a quad where canvas objects below should not be drawn */
-	public static class Exclusion implements ICanvasObject
+	public static class ExclusionQuad implements ICanvasExclusion
 	{
-		private final Vec2 xy, Xy, XY, xY;
+		private final Quad quad;
 		
-		private final double xy2XY, Xy2xY;
-		private final List<Pair<Vec2, Vec2>> bounds;
-		
-		public Exclusion(Vec2 xyIn, Vec2 XyIn, Vec2 XYin, Vec2 xYIn)
+		public ExclusionQuad(Vec2 xyIn, Vec2 XyIn, Vec2 XYin, Vec2 xYIn)
 		{
-			this.xy = xyIn;
-			this.Xy = XyIn;
-			this.XY = XYin;
-			this.xY = xYIn;
-			
-			this.xy2XY = xy.distanceToSqr(XY);
-			this.Xy2xY = Xy.distanceToSqr(xY);
-			
-			this.bounds = List.of(Pair.of(xy, Xy), Pair.of(Xy, XY), Pair.of(XY, xY), Pair.of(xY, xy));
+			this.quad = new Quad(xyIn, XyIn, XYin, xYIn);
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Exclusion> exclusions) { }
-		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Exclusion> exclusions) { }
-		
-		/** Returns true if the given point is contained inbetween the points of this exclusion */
-		public boolean isInside(Vec2 point)
-		{
-			// Any point inside the quad will be closer to all opposing diagonal corners than they are to eachother
-			double distxy = point.distanceToSqr(xy);
-			double distXY = point.distanceToSqr(XY);
-			
-			double distXy = point.distanceToSqr(Xy);
-			double distxY = point.distanceToSqr(xY);
-			
-			return distxy < xy2XY && distXY < xy2XY || distXy < Xy2xY && distxY < Xy2xY;
-		}
-		
-		/** Returns the point at which the given line intersects the bounds of this exclusion */
-		@Nullable
-		public Vec2 intercept(Vec2 posA, Vec2 posB)
-		{
-			if(isInside(posA) == isInside(posB))
-				return null;
-			
-			Vec2 target = isInside(posA) ? posA : posB;
-			Vec2 closest = null;
-			double minDist = Double.MAX_VALUE;
-			for(Pair<Vec2, Vec2> bound : bounds)
-			{
-				
-				Vec2 interceptBetween = null;
-				
-				if(interceptBetween.distanceToSqr(target) < minDist)
-				{
-					minDist = interceptBetween.distanceToSqr(target);
-					closest = interceptBetween;
-				}
-			}
-			
-			return closest;
-		}
+		public List<Quad> getQuads(){ return List.of(this.quad); }
 	}
 }
