@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.client.renderer.RenderUtils;
+import com.lying.misc19.utility.M19Utils;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -230,23 +231,23 @@ public class Canvas
 		public List<Quad> getQuads(){ return List.of(this.quad); }
 	}
 	
+	/** Defines a circle of quads where canvas objects below should not be drawn */
 	public static class ExclusionCircle implements ICanvasExclusion
 	{
-		private final Vec2 position;
-		private final float radius;
-		
+		private static final float TURN = 360F / 20F;
+		private static final double COS = Math.cos(TURN);
+		private static final double SIN = Math.sin(TURN);
+		private static final double COS2 = Math.cos(TURN / 2);
+		private static final double SIN2 = Math.sin(TURN / 2);
 		private final List<Quad> quads = Lists.newArrayList();
 		
 		public ExclusionCircle(Vec2 pos, float radius)
-		{
-			this.position = pos;
-			this.radius = radius;
-			
-			// TODO Implement calculation of quads
-			
+		{	
+			Vec2 offset = new Vec2(radius, 0);
+			for(int i=0; i<360 / TURN; i++)
+				quads.add(new Quad(pos, pos.add(offset), pos.add(M19Utils.rotate(offset, COS2, SIN2)), pos.add(offset = M19Utils.rotate(offset, COS, SIN))));
 		}
 		
 		public List<Quad> getQuads() { return this.quads; }
-		
 	}
 }

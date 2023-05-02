@@ -27,9 +27,7 @@ public class ComponentRenderer
 	public void addToCanvas(ISpellComponent component, Canvas canvas)
 	{
 		Vec2 pos = component.position();
-		int offset = (spriteScale() - 6) / 2;
-		offset = 20;
-		canvas.addElement(new ExclusionCircle(pos, offset), Canvas.EXCLUSIONS);
+		canvas.addElement(new ExclusionCircle(pos, spriteScale() - 6), Canvas.EXCLUSIONS);
 		canvas.addElement(new Circle(pos, spriteScale() - 6, 1.25F), Canvas.GLYPHS);
 	}
 }

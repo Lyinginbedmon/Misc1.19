@@ -6,10 +6,13 @@ import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.variable.VariableSet;
+import com.lying.misc19.reference.Reference;
 import com.lying.misc19.utility.M19Utils;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec2;
 
@@ -18,6 +21,9 @@ public interface ISpellComponent
 	public void setRegistryName(ResourceLocation location);
 	
 	public ResourceLocation getRegistryName();
+	
+	public default MutableComponent translated() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()); }
+	public default MutableComponent description() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()+".description"); }
 	
 	public void setParent(ISpellComponent parentIn);
 	

@@ -7,11 +7,14 @@ import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VarDouble;
 import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
+import com.lying.misc19.reference.Reference;
 
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.phys.Vec3;
 
-public abstract class VariableGlyph extends ComponentGlyph
+public abstract class VariableSigil extends ComponentGlyph
 {
 	public Category category() { return Category.VARIABLE; }
 	
@@ -24,7 +27,7 @@ public abstract class VariableGlyph extends ComponentGlyph
 	public VariableSet execute(VariableSet variablesIn) { return variablesIn; }
 	
 	/** Constant variables store useful values and cannot be assigned */
-	public static class Constant extends VariableGlyph
+	public static class Constant extends VariableSigil
 	{
 		private final IVariable value;
 		
@@ -42,11 +45,14 @@ public abstract class VariableGlyph extends ComponentGlyph
 	}
 	
 	/** Local variables can be set and retrieved by arrangements */
-	public static class Local extends VariableGlyph
+	public static class Local extends VariableSigil
 	{
 		private final VariableSet.Slot slot;
 		
 		public Local(VariableSet.Slot slotIn) { this.slot = slotIn; }
+		
+		public MutableComponent translate() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".local_sigil", slot.translate()); }
+		public MutableComponent description() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".local_sigil.desc"+(slot.isRegister() ? 1 : 0), slot.translate()); }
 		
 		public IVariable get(VariableSet variablesIn) { return variablesIn.get(this.slot); }
 		

@@ -18,7 +18,7 @@ import com.lying.misc19.magic.component.FunctionGlyph;
 import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.component.RootGlyph;
 import com.lying.misc19.magic.component.StackGlyph;
-import com.lying.misc19.magic.component.VariableGlyph;
+import com.lying.misc19.magic.component.VariableSigil;
 import com.lying.misc19.magic.component.VectorGlyph;
 import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VarBool;
@@ -67,14 +67,14 @@ public class SpellComponents
 	public static final ResourceLocation CIRCLE_STEP = make("step_circle");
 	
 	// Constants
-	public static final ResourceLocation GLYPH_FALSE = make("false_glyph");
-	public static final ResourceLocation GLYPH_TRUE = make("true_glyph");
-	public static final ResourceLocation GLYPH_2 = make("two_glyph");
-	public static final ResourceLocation GLYPH_4 = make("four_glyph");
-	public static final ResourceLocation GLYPH_8 = make("eight_glyph");
-	public static final ResourceLocation GLYPH_16 = make("sixteen_glyph");
-	public static final ResourceLocation GLYPH_PI = make("pi_glyph");
-	public static final ResourceLocation GLYPH_XYZ = make("xyz_glyph");
+	public static final ResourceLocation SIGIL_FALSE = make("false_sigil");
+	public static final ResourceLocation SIGIL_TRUE = make("true_sigil");
+	public static final ResourceLocation SIGIL_2 = make("two_sigil");
+	public static final ResourceLocation SIGIL_4 = make("four_sigil");
+	public static final ResourceLocation SIGIL_8 = make("eight_sigil");
+	public static final ResourceLocation SIGIL_16 = make("sixteen_sigil");
+	public static final ResourceLocation SIGIL_PI = make("pi_sigil");
+	public static final ResourceLocation SIGIL_XYZ = make("xyz_sigil");
 	
 	public static final ResourceLocation GLYPH_DUMMY = make("dummy_glyph");
 	
@@ -93,7 +93,7 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_XOR = make("xor_glyph");
 	public static final ResourceLocation GLYPH_NAND = make("not_glyph");
 	public static final ResourceLocation GLYPH_GRE = make("greater_glyph");
-	public static final ResourceLocation GLYPH_LES = make("less_glyph");
+	public static final ResourceLocation GLYPH_LES = make("lesser_glyph");
 	
 	// Vector operations
 	public static final ResourceLocation GLYPH_MAKEVEC = make("make_vec_glyph");
@@ -109,8 +109,8 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_STACK_SUB = make("stack_sub_glyph");
 	
 	// Functions
-	public static final ResourceLocation GLYPH_DEBUG = make("debug_glyph");
-	public static final ResourceLocation GLYPH_TELEPORT = make("teleport_glyph");
+	public static final ResourceLocation GLYPH_DEBUG = make("debug_function");
+	public static final ResourceLocation GLYPH_TELEPORT = make("teleport_function");
 	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
@@ -124,13 +124,13 @@ public class SpellComponents
 		register(CIRCLE_BASIC, () -> () -> new ComponentCircle.Basic());
 		register(CIRCLE_STEP, () -> () -> new ComponentCircle.Step());
 		
-		register(GLYPH_FALSE, () -> () -> new VariableGlyph.Constant(VarBool.FALSE));
-		register(GLYPH_TRUE, () -> () -> new VariableGlyph.Constant(VarBool.TRUE));
-		register(GLYPH_2, () -> () -> VariableGlyph.Constant.doubleConst(2D));
-		register(GLYPH_4, () -> () -> VariableGlyph.Constant.doubleConst(4D));
-		register(GLYPH_8, () -> () -> VariableGlyph.Constant.doubleConst(8D));
-		register(GLYPH_16, () -> () -> VariableGlyph.Constant.doubleConst(16D));
-		register(GLYPH_PI, () -> () -> VariableGlyph.Constant.doubleConst(Math.PI));
+		register(SIGIL_FALSE, () -> () -> new VariableSigil.Constant(VarBool.FALSE));
+		register(SIGIL_TRUE, () -> () -> new VariableSigil.Constant(VarBool.TRUE));
+		register(SIGIL_2, () -> () -> VariableSigil.Constant.doubleConst(2D));
+		register(SIGIL_4, () -> () -> VariableSigil.Constant.doubleConst(4D));
+		register(SIGIL_8, () -> () -> VariableSigil.Constant.doubleConst(8D));
+		register(SIGIL_16, () -> () -> VariableSigil.Constant.doubleConst(16D));
+		register(SIGIL_PI, () -> () -> VariableSigil.Constant.doubleConst(Math.PI));
 		registerLocalVariables();
 		registerVectorConstants();
 		
@@ -170,6 +170,17 @@ public class SpellComponents
 		return COMPONENTS.register(nameIn.getPath(), miracleIn);
 	}
 	
+	/** Returns a list of fresh components within the given category */
+	public static List<ISpellComponent> byCategory(Category cat)
+	{
+		List<ISpellComponent> components = Lists.newArrayList();
+		for(RegistryObject<ISpellComponentBuilder> entry : COMPONENTS.getEntries())
+			if(entry.get().create().category() == cat)
+				components.add(create(entry.getId()));
+		
+		return components;
+	}
+	
 	private static void registerLocalVariables()
 	{
 		for(VariableSet.Slot slot : VariableSet.Slot.values())
@@ -183,11 +194,11 @@ public class SpellComponents
 		{
 			Vec3i normal = dir.getNormal();
 			IVariable dirVar = new VarVec(new Vec3(normal.getX(), normal.getY(), normal.getZ()));
-			register(make(dir.getSerializedName()+"_glyph"), () -> () -> new VariableGlyph.Constant(dirVar));
+			register(make(dir.getSerializedName()+"_sigil"), () -> () -> new VariableSigil.Constant(dirVar));
 			dirVariables.add(dirVar);
 		}
 		
-		register(GLYPH_XYZ, () -> () -> new VariableGlyph.Constant(new VarStack(dirVariables.toArray(new IVariable[0]))));
+		register(SIGIL_XYZ, () -> () -> new VariableSigil.Constant(new VarStack(dirVariables.toArray(new IVariable[0]))));
 	}
 	
 	public static ISpellComponent create(ResourceLocation registryName)
@@ -229,8 +240,8 @@ public class SpellComponents
 	{
 		Misc19.LOG.info("Running component tests");
 		
-		ISpellComponent testIndex = create(CIRCLE_BASIC).addInputs(create(GLYPH_XYZ)).addOutputs(create(GLYPH_SET).addInputs(create(Slot.INDEX.glyph())).addOutputs(create(Slot.BAST.glyph())));
-		Misc19.LOG.info("Circle index test: "+((VariableGlyph)create(GLYPH_XYZ)).get(null).asDouble()+" runs = index "+testIndex.execute(new VariableSet()).get(Slot.BAST).asDouble());
+		ISpellComponent testIndex = create(CIRCLE_BASIC).addInputs(create(SIGIL_XYZ)).addOutputs(create(GLYPH_SET).addInputs(create(Slot.INDEX.glyph())).addOutputs(create(Slot.BAST.glyph())));
+		Misc19.LOG.info("Circle index test: "+((VariableSigil)create(SIGIL_XYZ)).get(null).asDouble()+" runs = index "+testIndex.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
 		runArithmeticTests();
 		runLogicTests();
@@ -239,32 +250,32 @@ public class SpellComponents
 	
 	private static void runArithmeticTests()
 	{
-		ISpellComponent testAdd = create(GLYPH_ADD).addInputs(create(GLYPH_4), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
+		ISpellComponent testAdd = create(GLYPH_ADD).addInputs(create(SIGIL_4), create(SIGIL_2)).addOutputs(create(Slot.BAST.glyph()));
 		Misc19.LOG.info("Add 4 + 2 test: "+testAdd.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
-		ISpellComponent testSub = create(GLYPH_SUB).addInputs(create(GLYPH_4), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
+		ISpellComponent testSub = create(GLYPH_SUB).addInputs(create(SIGIL_4), create(SIGIL_2)).addOutputs(create(Slot.BAST.glyph()));
 		Misc19.LOG.info("Subtract 4 - 2 test: "+testSub.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
-		ISpellComponent testMul = create(GLYPH_MUL).addInputs(create(GLYPH_4), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
+		ISpellComponent testMul = create(GLYPH_MUL).addInputs(create(SIGIL_4), create(SIGIL_2)).addOutputs(create(Slot.BAST.glyph()));
 		Misc19.LOG.info("Multiply 4 * 2 test: "+testMul.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
-		ISpellComponent testDiv = create(GLYPH_DIV).addInputs(create(GLYPH_4), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
+		ISpellComponent testDiv = create(GLYPH_DIV).addInputs(create(SIGIL_4), create(SIGIL_2)).addOutputs(create(Slot.BAST.glyph()));
 		Misc19.LOG.info("Divide 4 / 2 test: "+testDiv.execute(new VariableSet()).get(Slot.BAST).asDouble());
 		
-		ISpellComponent testMod = create(GLYPH_MOD).addInputs(create(GLYPH_ADD).addInputs(create(GLYPH_TRUE),create(GLYPH_XYZ)), create(GLYPH_2)).addOutputs(create(Slot.BAST.glyph()));
+		ISpellComponent testMod = create(GLYPH_MOD).addInputs(create(GLYPH_ADD).addInputs(create(SIGIL_TRUE),create(SIGIL_XYZ)), create(SIGIL_2)).addOutputs(create(Slot.BAST.glyph()));
 		Misc19.LOG.info("Modulus 7 % 2 test: "+testMod.execute(new VariableSet()).get(Slot.BAST).asDouble());
 	}
 	
 	private static void runLogicTests()
 	{
 		Misc19.LOG.info("2-bit adder tests:");
-		runAdderTest(GLYPH_FALSE, GLYPH_FALSE, GLYPH_FALSE);
-		runAdderTest(GLYPH_TRUE, GLYPH_FALSE, GLYPH_FALSE);
-		runAdderTest(GLYPH_FALSE, GLYPH_TRUE, GLYPH_FALSE);
-		runAdderTest(GLYPH_TRUE, GLYPH_TRUE, GLYPH_FALSE);
-		runAdderTest(GLYPH_FALSE, GLYPH_FALSE, GLYPH_TRUE);
-		runAdderTest(GLYPH_TRUE, GLYPH_FALSE, GLYPH_TRUE);
-		runAdderTest(GLYPH_FALSE, GLYPH_TRUE, GLYPH_TRUE);
+		runAdderTest(SIGIL_FALSE, SIGIL_FALSE, SIGIL_FALSE);
+		runAdderTest(SIGIL_TRUE, SIGIL_FALSE, SIGIL_FALSE);
+		runAdderTest(SIGIL_FALSE, SIGIL_TRUE, SIGIL_FALSE);
+		runAdderTest(SIGIL_TRUE, SIGIL_TRUE, SIGIL_FALSE);
+		runAdderTest(SIGIL_FALSE, SIGIL_FALSE, SIGIL_TRUE);
+		runAdderTest(SIGIL_TRUE, SIGIL_FALSE, SIGIL_TRUE);
+		runAdderTest(SIGIL_FALSE, SIGIL_TRUE, SIGIL_TRUE);
 	}
 	
 	private static void runAdderTest(ResourceLocation bit0, ResourceLocation bit1, ResourceLocation bit2)
@@ -285,9 +296,9 @@ public class SpellComponents
 		VariableSet variables = new VariableSet();
 		variables = circle2.execute(variables);
 		
-		boolean var0 = ((VariableGlyph)create(bit0)).get(null).asBoolean();
-		boolean var1 = ((VariableGlyph)create(bit1)).get(null).asBoolean();
-		boolean var2 = ((VariableGlyph)create(bit2)).get(null).asBoolean();
+		boolean var0 = ((VariableSigil)create(bit0)).get(null).asBoolean();
+		boolean var1 = ((VariableSigil)create(bit1)).get(null).asBoolean();
+		boolean var2 = ((VariableSigil)create(bit2)).get(null).asBoolean();
 		
 		boolean anubis = (var0 || var1) && var0 != var1;
 		boolean osiris = (anubis || var2) && anubis != var2;

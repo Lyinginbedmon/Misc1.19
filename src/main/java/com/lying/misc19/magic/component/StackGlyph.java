@@ -52,7 +52,7 @@ public abstract class StackGlyph extends OperationGlyph
 			for(ISpellComponent output : outputs())
 				if(output.type() == Type.VARIABLE)
 				{
-					VariableGlyph variable = (VariableGlyph)output;
+					VariableSigil variable = (VariableSigil)output;
 					variablesIn = variable.set(variablesIn, variable.get(variablesIn).asStack().addToStack(input));
 				}
 			
@@ -76,7 +76,7 @@ public abstract class StackGlyph extends OperationGlyph
 			for(ISpellComponent output : outputs())
 				if(output.type() == Type.VARIABLE)
 				{
-					VariableGlyph variable = (VariableGlyph)output;
+					VariableSigil variable = (VariableSigil)output;
 					variablesIn = variable.set(variablesIn, variable.get(variablesIn).asStack().removeFromStack((int)input.asDouble()));
 				}
 			

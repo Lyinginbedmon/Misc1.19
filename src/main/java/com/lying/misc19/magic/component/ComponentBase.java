@@ -100,7 +100,7 @@ public abstract class ComponentBase implements ISpellComponent
 	protected IVariable getVariable(ISpellComponent input, VariableSet variablesIn)
 	{
 		if(input.type() == Type.VARIABLE)
-			return ((VariableGlyph)input).get(variablesIn);
+			return ((VariableSigil)input).get(variablesIn);
 		else if(input instanceof OperationGlyph)
 			return ((OperationGlyph)input).getResult(variablesIn);
 		else
@@ -129,7 +129,7 @@ public abstract class ComponentBase implements ISpellComponent
 	{
 		for(ISpellComponent glyph : outputs())
 			if(glyph.type() == Type.VARIABLE)
-				variablesIn = ((VariableGlyph)glyph).set(variablesIn, value);
+				variablesIn = ((VariableSigil)glyph).set(variablesIn, value);
 		return variablesIn;
 	}
 	

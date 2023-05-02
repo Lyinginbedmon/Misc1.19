@@ -15,7 +15,7 @@ public class RootRenderer extends ComponentRenderer
 	{
 		Vec2 pos = component.position();
 		canvas.addElement(new Circle(pos, spriteScale() + 5, 1.5F), Canvas.GLYPHS);
-		canvas.addElement(new ExclusionCircle(pos, 20), Canvas.EXCLUSIONS);
+		canvas.addElement(new ExclusionCircle(pos, spriteScale() + 5), Canvas.EXCLUSIONS);
 		
 		canvas.addElement(new Circle(pos, 75, 1.25F), Canvas.DECORATIONS);
 		canvas.addElement(new Circle(pos, 85, 1.25F), Canvas.DECORATIONS);

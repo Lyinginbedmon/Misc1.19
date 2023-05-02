@@ -1,5 +1,6 @@
 package com.lying.misc19.magic.variable;
 
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -8,11 +9,14 @@ import javax.annotation.Nullable;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.init.SpellVariables;
 import com.lying.misc19.magic.ISpellComponent;
-import com.lying.misc19.magic.component.VariableGlyph;
+import com.lying.misc19.magic.component.VariableSigil;
+import com.lying.misc19.reference.Reference;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.Level;
@@ -106,19 +110,19 @@ public class VariableSet
 	public static enum Slot implements StringRepresentable
 	{
 		/** Age represents the number of times a given spell has executed thus far.<br>Always present */
-		AGE(true),
+		AGE(true, true),
 		/** World is the level the spell is executing in.<br>Always present */
-		WORLD(true),
+		WORLD(true, false),
 		/** Caster contains the LivingEntity that originally cast the spell.<br>Always present */
-		CASTER(true),
+		CASTER(true, true),
 		/** Position contains the location the spell is working from, usually the Caster's eye position */
-		POSITION(true),
+		POSITION(true, true),
 		/** Target contains the Entity the Caster was looking at, if any */
-		TARGET(true),
+		TARGET(true, true),
 		/** Look contains the vector from the Caster's eye position */
-		LOOK(true),
+		LOOK(true, true),
 		/** Index is a special variable used by circles, containing the execution index */
-		INDEX(true),
+		INDEX(true, true),
 		/**
 		 * TRUE if this spell should continue after the current execution.<br>
 		 * By defaulting this to FALSE, we treat all spells as single-run by default.
@@ -141,19 +145,29 @@ public class VariableSet
 		TAWARET,
 		THOTH;
 		
-		private boolean readOnly;
+		private static final EnumSet<Slot> REGISTERS = EnumSet.of(ANUBIS, APEP, BAST, BES, AMUN, HATHOR, HORUS, ISIS, NEPTHYS, OSIRIS, PTAH, RA, SOBEK, SUTEKH, TAWARET, THOTH);
 		
-		private Slot(boolean assignIn)
+		private boolean readOnly;
+		private boolean playerPlaceable;
+		
+		private Slot(boolean assignIn, boolean placeable)
 		{
 			readOnly = assignIn;
+			playerPlaceable = placeable;
 		}
-		private Slot() { this(false); }
+		private Slot() { this(false, true); }
 		
-		public ResourceLocation glyph() { return SpellComponents.make(name().toLowerCase()+"_glyph"); }
+		public boolean isRegister() { return REGISTERS.contains(this); }
+		
+		public ResourceLocation glyph() { return SpellComponents.make(getSerializedName()+"_sigil"); }
+		
+		public MutableComponent translate() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".variable."+getSerializedName()); }
 		
 		public boolean isPlayerAssignable() { return !this.readOnly; }
 		
-		public static ISpellComponent makeGlyph(Slot slotIn) { return new VariableGlyph.Local(slotIn); }
+		public boolean isPlayerPlaceable() { return this.playerPlaceable; }
+		
+		public static ISpellComponent makeGlyph(Slot slotIn) { return new VariableSigil.Local(slotIn); }
 		
 		public String getSerializedName() { return name().toLowerCase(); }
 		
