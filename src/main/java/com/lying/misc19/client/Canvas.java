@@ -55,14 +55,12 @@ public class Canvas
 	
 	private void draw(PoseStack matrixStack, TriConsumer<ICanvasObject, PoseStack, List<Quad>> func)
 	{
-		RenderUtils.testColor = true;
-		
 		List<Integer> levels = Lists.newArrayList();
 		levels.addAll(elements.keySet());
 		levels.sort(Collections.reverseOrder());
 		
 		for(int i : levels)
-			elements.get(i).forEach((element) -> func.accept(element,matrixStack, getExclusionsBelow(i)));
+			elements.get(i).forEach((element) -> { if(!element.isExclusion()) func.accept(element,matrixStack, getExclusionsBelow(i)); });
 	}
 	
 	public List<Quad> getExclusionsBelow(int level)
@@ -230,18 +228,25 @@ public class Canvas
 		}
 		
 		public List<Quad> getQuads(){ return List.of(this.quad); }
+	}
+	
+	public static class ExclusionCircle implements ICanvasExclusion
+	{
+		private final Vec2 position;
+		private final float radius;
 		
-		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
+		private final List<Quad> quads = Lists.newArrayList();
+		
+		public ExclusionCircle(Vec2 pos, float radius)
 		{
-			Line lineAB = new Line(quad.a(), quad.b(), 1, 255, 255, 255, 255);
-			Line lineBC = new Line(quad.b(), quad.c(), 1, 255, 255, 255, 255);
-			Line lineCD = new Line(quad.c(), quad.d(), 1, 255, 255, 255, 255);
-			Line lineDA = new Line(quad.d(), quad.a(), 1, 255, 255, 255, 255);
+			this.position = pos;
+			this.radius = radius;
 			
-			lineAB.drawGui(matrixStack, Lists.newArrayList());
-			lineBC.drawGui(matrixStack, Lists.newArrayList());
-			lineCD.drawGui(matrixStack, Lists.newArrayList());
-			lineDA.drawGui(matrixStack, Lists.newArrayList());
+			// TODO Implement calculation of quads
+			
 		}
+		
+		public List<Quad> getQuads() { return this.quads; }
+		
 	}
 }

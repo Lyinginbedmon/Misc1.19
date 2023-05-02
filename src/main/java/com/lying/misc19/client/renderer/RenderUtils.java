@@ -26,7 +26,6 @@ import net.minecraft.world.phys.Vec2;
 public class RenderUtils
 {
 	private static final double CIRCLE_UNIT = 3D;
-	public static boolean testColor = true;
 	
 	/** Draws a coloured line into a GUI screen between the given points */
 	public static void drawColorLine(Vec2 posA, Vec2 posB, float width, List<Quad> exclusions)
@@ -93,14 +92,8 @@ public class RenderUtils
 	public static void drawBlockColorSquare(List<Quad> totalQuads, int r, int g, int b, int a, List<Quad> exclusions)
 	{
 		totalQuads = splitQuadsRecursive(totalQuads, exclusions);
-		totalQuads = splitQuadsRecursive(totalQuads, exclusions);
 		if(!totalQuads.isEmpty())
-			for(Quad quad : totalQuads)
-			{
-				drawBlockColorSquare(quad.a(), quad.b(), quad.c(), quad.d(), testColor ? 255 : 0, testColor ? 255 : 0, testColor ? 255 : 0, a);
-				testColor = !testColor;
-			}
-//			totalQuads.forEach((finalisedQuad) -> drawBlockColorSquare(finalisedQuad.a(), finalisedQuad.b(), finalisedQuad.c(), finalisedQuad.d(), r, g, b, a));
+			totalQuads.forEach((finalisedQuad) -> drawBlockColorSquare(finalisedQuad.a(), finalisedQuad.b(), finalisedQuad.c(), finalisedQuad.d(), r, g, b, a));
 	}
 	
 	private static List<Quad> splitQuadsRecursive(List<Quad> quadsToSplit, List<Quad> exclusions)
@@ -148,17 +141,20 @@ public class RenderUtils
 			// If there's an intersection, split the quad along it and add any resulting quads
 			if(intersectingLine != null)
 			{
-				actionTaken = true;
-				for(Quad splitQuad : quad.splitAlong(intersectingLine))
-					if(!exclusion.entirelyOverlaps(splitQuad))
-						nextSet.add(splitQuad);
+				List<Quad> split = quad.splitAlong(intersectingLine);
+				if(split.size() > 1)
+				{
+					actionTaken = true;
+					for(Quad splitQuad : quad.splitAlong(intersectingLine))
+						if(!exclusion.entirelyOverlaps(splitQuad))
+							nextSet.add(splitQuad);
+				}
 			}
 			else	// If there's no intersection, just add the entire quad
 				nextSet.add(quad);
 		}
 		
 		nextSet.removeIf((quad) -> quad.isUndrawable());
-		actionTaken = false;
 		return actionTaken ? excludeQuads(exclusion, nextSet) : nextSet;
 	}
 	

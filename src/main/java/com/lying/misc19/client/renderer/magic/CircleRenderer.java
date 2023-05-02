@@ -19,7 +19,6 @@ public class CircleRenderer extends ComponentRenderer
 		
 		canvas.addElement(new Line(pos.add(up.scale(-10F)), core.add(up.scale(10F)), 1F), Canvas.DECORATIONS);
 		canvas.addElement(new Circle(core, 10, 1.25F), Canvas.DECORATIONS);
-		
 		canvas.addElement(new Circle(component.core(), 55, 1.25F), Canvas.DECORATIONS);
 		canvas.addElement(new Circle(component.core(), 65, 1.25F), Canvas.DECORATIONS);
 	}

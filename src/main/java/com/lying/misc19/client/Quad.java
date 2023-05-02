@@ -253,6 +253,9 @@ public class Quad
 		
 		public boolean inRange(Vec2 point)
 		{
+			if(point.equals(getA()) || point.equals(getB()))
+				return false;
+			
 			if(xRange.getB() != xRange.getA())
 				if(point.x < xRange.getA() || point.x > xRange.getB())
 					return false;
