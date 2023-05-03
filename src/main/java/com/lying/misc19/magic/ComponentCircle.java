@@ -13,13 +13,15 @@ import net.minecraft.world.phys.Vec2;
 
 public abstract class ComponentCircle extends ComponentBase
 {
+	protected static final int CAPACITY = 6;
+	
 	public Category category() { return Category.CIRCLE; }
 	
 	public Type type() { return Type.CIRCLE; }
 	
 	public boolean isValidInput(ISpellComponent component) { return ISpellComponent.canBeInput(component) && this.inputGlyphs.isEmpty(); }
 	
-	public boolean isValidOutput(ISpellComponent component) { return component.type() == Type.GLYPH && this.outputGlyphs.size() < 8; }
+	public boolean isValidOutput(ISpellComponent component) { return component.type() == Type.GLYPH && this.outputGlyphs.size() < CAPACITY; }
 	
 	public void organise()
 	{

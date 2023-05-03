@@ -88,6 +88,14 @@ public abstract class ComponentBase implements ISpellComponent
 	
 	public List<ISpellComponent> outputs() { return this.outputGlyphs; }
 	
+	public void remove(ISpellComponent part)
+	{
+		if(inputGlyphs.contains(part))
+			inputGlyphs.remove(part);
+		else if(outputGlyphs.contains(part))
+			outputGlyphs.remove(part);
+	}
+	
 	/** Retrieves the variable attached to the given input index, if it is a variable glyph */
 	protected IVariable getVariable(int index, VariableSet variablesIn)
 	{

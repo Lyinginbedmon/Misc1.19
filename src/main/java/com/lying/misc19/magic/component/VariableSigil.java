@@ -51,8 +51,8 @@ public abstract class VariableSigil extends ComponentGlyph
 		
 		public Local(VariableSet.Slot slotIn) { this.slot = slotIn; }
 		
-		public MutableComponent translate() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".local_sigil", slot.translate()); }
-		public MutableComponent description() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".local_sigil.desc"+(slot.isRegister() ? 1 : 0), slot.translate()); }
+		public MutableComponent translatedName() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".local_sigil", slot.translate()); }
+		public MutableComponent description() { return slot.isRegister() ? Component.translatable("magic."+Reference.ModInfo.MOD_ID+".local_sigil.description", slot.translate()) : super.description(); }
 		
 		public IVariable get(VariableSet variablesIn) { return variablesIn.get(this.slot); }
 		

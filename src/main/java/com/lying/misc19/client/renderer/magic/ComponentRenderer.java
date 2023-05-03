@@ -13,7 +13,7 @@ import net.minecraft.world.phys.Vec2;
 
 public class ComponentRenderer
 {
-	protected int spriteScale() { return 16; }
+	public int spriteScale() { return 16; }
 	
 	/** Adds the given component and all of its descendants to the canvas */
 	public final void addToCanvasRecursive(ISpellComponent component, Canvas canvas)

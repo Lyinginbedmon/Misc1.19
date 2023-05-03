@@ -9,7 +9,7 @@ import net.minecraft.world.phys.Vec2;
 
 public class RootRenderer extends ComponentRenderer
 {
-	protected int spriteScale() { return 24; }
+	public int spriteScale() { return 24; }
 	
 	public void addToCanvas(ISpellComponent component, Canvas canvas)
 	{

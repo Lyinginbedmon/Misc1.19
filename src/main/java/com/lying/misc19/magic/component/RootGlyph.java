@@ -24,6 +24,11 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	
 	public boolean isValidInput(ISpellComponent component) { return false; }
 	
+	public boolean isValidOutput(ISpellComponent component)
+	{
+		return this.outputGlyphs.size() < CAPACITY && (component.type() == Type.CIRCLE || component.type() == Type.GLYPH);
+	}
+	
 	public Vec2 core() { return position(); }
 	
 	protected Pair<Float, Float> separations() { return Pair.of(30F, 80F); }

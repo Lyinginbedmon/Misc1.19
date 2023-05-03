@@ -46,6 +46,18 @@ public class ScrollItem extends Item implements ISpellContainer
 		return InteractionResultHolder.sidedSuccess(stack, world.isClientSide());
 	}
 	
+	public static ItemStack setSpell(ItemStack stack, ISpellComponent component)
+	{
+		CompoundTag tag = stack.getOrCreateTag();
+		
+		CompoundTag spellData = ISpellComponent.saveToNBT(component);
+		tag.put("Spell", spellData);
+		
+		stack.setTag(tag);
+		
+		return stack;
+	}
+	
 	@Nullable
 	public ISpellComponent getSpell(CompoundTag compound)
 	{

@@ -14,6 +14,8 @@ import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 /** A glyph that performs an actual function based on its inputs and does not have any outputs */
@@ -64,12 +66,12 @@ public abstract class FunctionGlyph extends ComponentBase
 			
 			if(variablesIn.isUsing(Slot.CASTER))
 			{
-//				Entity caster = variablesIn.get(Slot.CASTER).asEntity();
-//				if(caster.getType() == EntityType.PLAYER)
-//				{
-//					Player player = (Player)caster;
-//					messages.forEach((line) -> player.displayClientMessage(line, false));
-//				}
+				Entity caster = variablesIn.get(Slot.CASTER).asEntity();
+				if(caster.getType() == EntityType.PLAYER)
+				{
+					Player player = (Player)caster;
+					messages.forEach((line) -> player.displayClientMessage(line, false));
+				}
 			}
 			else
 				messages.forEach((line) -> Misc19.LOG.info(line.getString()));

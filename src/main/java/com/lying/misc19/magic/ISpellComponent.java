@@ -22,7 +22,7 @@ public interface ISpellComponent
 	
 	public ResourceLocation getRegistryName();
 	
-	public default MutableComponent translated() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()); }
+	public default MutableComponent translatedName() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()); }
 	public default MutableComponent description() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()+".description"); }
 	
 	public void setParent(ISpellComponent parentIn);
@@ -106,6 +106,17 @@ public interface ISpellComponent
 	public default void addOutput(ISpellComponent component) { }
 	
 	public default List<ISpellComponent> outputs() { return Lists.newArrayList(); }
+	
+	public void remove(ISpellComponent part);
+	
+	public default List<ISpellComponent> getParts()
+	{
+		List<ISpellComponent> parts = Lists.newArrayList();
+		parts.add(this);
+		inputs().forEach((input) -> parts.addAll(input.getParts()));
+		outputs().forEach((output) -> parts.addAll(output.getParts()));
+		return parts;
+	}
 	
 	public static CompoundTag saveToNBT(ISpellComponent component)
 	{
