@@ -22,7 +22,9 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	
 	public void setParent(ISpellComponent parent) { }
 	
-	public boolean isValidInput(ISpellComponent component) { return false; }
+	public int calculateRuns(VariableSet variablesIn) { return 1; }
+	
+	public boolean isValidInput(ISpellComponent component) { return component.type() == Type.HERTZ; }
 	
 	public boolean isValidOutput(ISpellComponent component)
 	{
@@ -30,6 +32,14 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	}
 	
 	public Vec2 core() { return position(); }
+	
+	public int tickRate()
+	{
+		if(inputs().isEmpty())
+			return 1;
+		
+		return inputs().isEmpty() ? 1 : ((HertzGlyph)inputs().get(0)).getTickRate();
+	}
 	
 	protected Pair<Float, Float> separations() { return Pair.of(30F, 80F); }
 	

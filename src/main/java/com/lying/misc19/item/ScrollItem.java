@@ -67,7 +67,7 @@ public class ScrollItem extends Item implements ISpellContainer
 				.addOutputs(
 					SpellComponents.create(SpellComponents.GLYPH_SET).addInputs(SpellComponents.create(SpellComponents.SIGIL_TRUE)).addOutputs(SpellComponents.create(VariableSet.Slot.CONTINUE.glyph())),
 					SpellComponents.create(SpellComponents.GLYPH_SET).addInputs(SpellComponents.create(SpellComponents.SIGIL_XYZ)).addOutputs(SpellComponents.create(VariableSet.Slot.AMUN.glyph())),
-					SpellComponents.create(SpellComponents.GLYPH_DEBUG)
+					SpellComponents.create(SpellComponents.FUNCTION_DEBUG)
 				));
 			
 			return circle;

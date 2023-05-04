@@ -14,5 +14,7 @@ public abstract class ComponentGlyph extends ComponentBase
 		public VariableSet execute(VariableSet variablesIn) { return variablesIn; }
 		
 		public int castingCost() { return 0; }
+		
+		public boolean playerPlaceable() { return false; }
 	}
 }

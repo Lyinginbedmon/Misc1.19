@@ -6,9 +6,7 @@ import com.lying.misc19.client.Canvas.ExclusionCircle;
 import com.lying.misc19.client.Canvas.Sprite;
 import com.lying.misc19.client.renderer.ComponentRenderers;
 import com.lying.misc19.magic.ISpellComponent;
-import com.lying.misc19.reference.Reference;
 
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec2;
 
 public class ComponentRenderer
@@ -18,7 +16,7 @@ public class ComponentRenderer
 	/** Adds the given component and all of its descendants to the canvas */
 	public final void addToCanvasRecursive(ISpellComponent component, Canvas canvas)
 	{
-		canvas.addElement(new Sprite(new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/magic/"+component.getRegistryName().getPath()+".png"), component.position(), spriteScale(), spriteScale()), Canvas.SPRITES);
+		canvas.addElement(new Sprite(component.spriteLocation(), component.position(), spriteScale(), spriteScale()), Canvas.SPRITES);
 		addToCanvas(component, canvas);
 		component.inputs().forEach((input) -> ComponentRenderers.get(input.getRegistryName()).addToCanvasRecursive(input, canvas));
 		component.outputs().forEach((output) -> ComponentRenderers.get(output.getRegistryName()).addToCanvasRecursive(output, canvas));

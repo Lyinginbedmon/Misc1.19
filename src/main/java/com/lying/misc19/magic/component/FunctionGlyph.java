@@ -8,14 +8,18 @@ import org.apache.commons.compress.utils.Lists;
 import com.lying.misc19.Misc19;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
+import com.lying.misc19.magic.variable.VarLevel;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** A glyph that performs an actual function based on its inputs and does not have any outputs */
@@ -91,7 +95,28 @@ public abstract class FunctionGlyph extends ComponentBase
 			Vec3 pos = POS.get(params).asVec();
 			
 			if(entity != null && entity.isAlive())
-				entity.teleportTo(pos.x, pos.y, pos.z);
+			{
+				Vec3 original = entity.position();
+				entity.teleportTo(original.x + pos.x, original.y + pos.y, original.z + pos.z);
+			}
+		}
+	}
+	
+	public static class Create extends FunctionGlyph
+	{
+		private static final Param POS = Param.of("pos", VariableType.VECTOR);
+		
+		public Create()
+		{
+			super(15, POS);
+		}
+		
+		protected void run(VariableSet variablesIn, Map<String, IVariable> params)
+		{
+			Level world = ((VarLevel)variablesIn.get(Slot.WORLD)).get();
+			Vec3 pos = POS.get(params).asVec();
+			
+			world.setBlockAndUpdate(new BlockPos(pos.x, pos.y, pos.z), Blocks.STONE.defaultBlockState());
 		}
 	}
 }

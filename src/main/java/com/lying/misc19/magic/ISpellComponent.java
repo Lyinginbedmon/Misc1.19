@@ -22,8 +22,12 @@ public interface ISpellComponent
 	
 	public ResourceLocation getRegistryName();
 	
+	public default boolean playerPlaceable() { return true; }
+	
 	public default MutableComponent translatedName() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()); }
 	public default MutableComponent description() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()+".description"); }
+	
+	public default ResourceLocation spriteLocation() { return new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/magic/"+getRegistryName().getPath()+".png"); }
 	
 	public void setParent(ISpellComponent parentIn);
 	
@@ -157,17 +161,44 @@ public interface ISpellComponent
 	
 	public static enum Category
 	{
-		CONSTANT,
-		VARIABLE,
-		OPERATION,
-		FUNCTION,
-		CIRCLE,
-		ROOT;
+		CONSTANT(4),
+		VARIABLE(5),
+		OPERATION(3),
+		FUNCTION(6),
+		CIRCLE(2),
+		HERTZ(1),
+		ROOT(0);
+		
+		private final int index;
+		
+		private Category(int ind)
+		{
+			this.index = ind;
+		}
+		
+		public MutableComponent translate() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+".category."+getSerializedName()); }
+		
+		public String getSerializedName() { return name().toLowerCase(); }
+		
+		public int index() { return this.index; }
+		
+		public static Category byIndex(int index)
+		{
+			while(index < 0)
+				index += values().length;
+			
+			index %= values().length;
+			for(Category cat : values())
+				if(cat.index == index)
+					return cat;
+			return ROOT;
+		}
 	}
 	
 	public static enum Type
 	{
 		ROOT,
+		HERTZ,
 		VARIABLE,
 		CIRCLE,
 		GLYPH;

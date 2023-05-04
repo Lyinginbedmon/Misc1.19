@@ -8,22 +8,13 @@ import javax.annotation.Nonnull;
 import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.Misc19;
-import com.lying.misc19.magic.ComponentCircle;
-import com.lying.misc19.magic.ComponentGlyph;
+import com.lying.misc19.magic.*;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.ISpellComponent.Category;
 import com.lying.misc19.magic.ISpellComponentBuilder;
-import com.lying.misc19.magic.component.ComparisonGlyph;
-import com.lying.misc19.magic.component.FunctionGlyph;
-import com.lying.misc19.magic.component.OperationGlyph;
-import com.lying.misc19.magic.component.RootGlyph;
-import com.lying.misc19.magic.component.StackGlyph;
-import com.lying.misc19.magic.component.VariableSigil;
-import com.lying.misc19.magic.component.VectorGlyph;
+import com.lying.misc19.magic.component.*;
 import com.lying.misc19.magic.variable.IVariable;
-import com.lying.misc19.magic.variable.VarBool;
-import com.lying.misc19.magic.variable.VarStack;
-import com.lying.misc19.magic.variable.VarVec;
+import com.lying.misc19.magic.variable.*;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
 import com.lying.misc19.reference.Reference;
@@ -61,6 +52,10 @@ public class SpellComponents
 	public static final ResourceLocation ROOT_CASTER = make("caster_root");
 	public static final ResourceLocation ROOT_TARGET = make("target_root");
 	public static final ResourceLocation ROOT_POSITION = make("position_root");
+	
+	// Hertz augments
+	public static final ResourceLocation HERTZ_SECOND = make("second_hertz");
+	public static final ResourceLocation HERTZ_MINUTE = make("minute_hertz");
 	
 	// Circles
 	public static final ResourceLocation CIRCLE_BASIC = make("basic_circle");
@@ -109,8 +104,9 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_STACK_SUB = make("stack_sub_glyph");
 	
 	// Functions
-	public static final ResourceLocation GLYPH_DEBUG = make("debug_function");
-	public static final ResourceLocation GLYPH_TELEPORT = make("teleport_function");
+	public static final ResourceLocation FUNCTION_DEBUG = make("debug_function");
+	public static final ResourceLocation FUNCTION_TELEPORT = make("teleport_function");
+	public static final ResourceLocation FUNCTION_CREATE = make("creation_function");
 	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
@@ -120,6 +116,9 @@ public class SpellComponents
 		register(ROOT_CASTER, () -> () -> new RootGlyph.Self());
 		register(ROOT_TARGET, () -> () -> new RootGlyph.Target());
 		register(ROOT_POSITION, () -> () -> new RootGlyph.Position());
+		
+		register(HERTZ_SECOND, () -> () -> new HertzGlyph(Reference.Values.TICKS_PER_SECOND));
+		register(HERTZ_MINUTE, () -> () -> new HertzGlyph(Reference.Values.TICKS_PER_MINUTE));
 		
 		register(CIRCLE_BASIC, () -> () -> new ComponentCircle.Basic());
 		register(CIRCLE_STEP, () -> () -> new ComponentCircle.Step());
@@ -161,8 +160,9 @@ public class SpellComponents
 		register(GLYPH_STACK_ADD, () -> () -> new StackGlyph.StackAdd());
 		register(GLYPH_STACK_SUB, () -> () -> new StackGlyph.StackSub());
 		
-		register(GLYPH_DEBUG, () -> () -> new FunctionGlyph.Debug());
-		register(GLYPH_TELEPORT, () -> () -> new FunctionGlyph.Teleport());
+		register(FUNCTION_DEBUG, () -> () -> new FunctionGlyph.Debug());
+		register(FUNCTION_TELEPORT, () -> () -> new FunctionGlyph.Teleport());
+		register(FUNCTION_CREATE, () -> () -> new FunctionGlyph.Create());
 	}
 	
 	private static RegistryObject<ISpellComponentBuilder> register(ResourceLocation nameIn, Supplier<ISpellComponentBuilder> miracleIn)
@@ -171,12 +171,15 @@ public class SpellComponents
 	}
 	
 	/** Returns a list of fresh components within the given category */
-	public static List<ISpellComponent> byCategory(Category cat)
+	public static List<ISpellComponent> byCategory(Category cat, boolean placeableOnly)
 	{
 		List<ISpellComponent> components = Lists.newArrayList();
 		for(RegistryObject<ISpellComponentBuilder> entry : COMPONENTS.getEntries())
-			if(entry.get().create().category() == cat)
+		{
+			ISpellComponent comp = entry.get().create();
+			if(comp.category() == cat && (!placeableOnly || placeableOnly && comp.playerPlaceable()))
 				components.add(create(entry.getId()));
+		}
 		
 		return components;
 	}

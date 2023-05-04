@@ -5,6 +5,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import org.apache.commons.compress.utils.Lists;
+import org.lwjgl.glfw.GLFW;
 
 import com.lying.misc19.client.gui.menu.MenuSandbox;
 import com.lying.misc19.client.renderer.ComponentRenderers;
@@ -14,38 +15,47 @@ import com.lying.misc19.item.ScrollItem;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.ISpellComponent.Category;
 import com.lying.misc19.magic.ISpellComponent.Type;
-import com.lying.misc19.magic.variable.VariableSet;
+import com.lying.misc19.reference.Reference;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec2;
 
 public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 {
+	public static final ResourceLocation SAND_BACKGROUND = new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/gui/sandbox_background.png");
 	private final MenuSandbox menu;
 	private final Inventory playerInv;
 	private Vec2 position = Vec2.ZERO;
 	private Vec2 moveStart = null;
 	private boolean isMoving = false;
 	
-	/** The total arrangement */
-	ISpellComponent arrangement = null;
-	
 	/** The last part we were hovering over, if any */
-	ISpellComponent hoveredPart = null;
+	private ISpellComponent hoveredPart = null;
 	
+	private GlyphList glyphList;
 	/** The part we have selected to add with left-click */
-	ISpellComponent attachPart = null;
+	public ISpellComponent attachPart = null;
 	
-	ISpellComponent selectedPart = null;
+	private ISpellComponent selectedPart = null;
 	
-	Button rootButton, printButton;
+	private Button printButton, copyButton, pasteButton;
 	
 	public ScreenSandbox(MenuSandbox menuIn, Inventory inv, Component p_96550_)
 	{
@@ -59,59 +69,87 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	protected void init()
 	{
 		this.minecraft.keyboardHandler.setSendRepeatsToGui(true);
-		this.addRenderableWidget(rootButton = new Button(40, 40, 20, 20, Component.literal("ROOT"), (button) -> { setNewPart(SpellComponents.create(SpellComponents.ROOT_CASTER)); }));
-		this.addRenderableWidget(new Button(40, 60, 20, 20, Component.literal("OPERATION"), (button) -> { setNewPart(SpellComponents.create(SpellComponents.GLYPH_SET)); }));
-		this.addRenderableWidget(new Button(40, 80, 20, 20, Component.literal("VARIABLE1"), (button) -> { setNewPart(SpellComponents.create(SpellComponents.SIGIL_XYZ)); }));
-		this.addRenderableWidget(new Button(40, 100, 20, 20, Component.literal("VARIABLE2"), (button) -> { setNewPart(SpellComponents.create(VariableSet.Slot.APEP.glyph())); }));
-		this.addRenderableWidget(new Button(40, 120, 20, 20, Component.literal("FUNCTION"), (button) -> { setNewPart(SpellComponents.create(SpellComponents.GLYPH_DEBUG)); }));
+		this.addWidget(this.glyphList = new GlyphList(this.minecraft, this, 150, this.height, 20, this.height - 20, 20));
 		
-		this.addRenderableWidget(printButton = new Button(40, 200, 20, 20, Component.literal("Print"), (button) -> 
+		this.addRenderableWidget(new Button(0, 0, 10, 20, Component.literal("<"), (button) -> 
+		{
+			this.glyphList.decCategory(menu.arrangement());
+		}));
+		this.addRenderableWidget(new Button(140, 0, 10, 20, Component.literal(">"), (button) -> 
+		{
+			this.glyphList.incCategory(menu.arrangement());
+		}));
+		this.addRenderableWidget(printButton = new Button(0, this.height - 20, 100, 20, Component.literal("Print"), (button) -> 
 		{
 			ItemStack spell = new ItemStack(M19Items.MAGIC_SCROLL.get());
-			if(arrangement != null)
+			if(menu.arrangement() != null)
 			{
-				ScrollItem.setSpell(spell, arrangement);
+				ScrollItem.setSpell(spell, menu.arrangement());
 				this.playerInv.add(spell);
 			}
 			onClose();
+		}));
+		this.addRenderableWidget(copyButton = new Button(105, this.height - 20, 20, 20, Component.literal("Copy"), (button) -> 
+		{
+			this.minecraft.keyboardHandler.setClipboard(ISpellComponent.saveToNBT(menu.arrangement()).toString());
+		}));
+		this.addRenderableWidget(pasteButton = new Button(130, this.height - 20, 20, 20, Component.literal("Paste"), (button) -> 
+		{
+			String clipboard = this.minecraft.keyboardHandler.getClipboard();
+			try
+			{
+				Tag parsed = TagParser.parseTag(clipboard);
+				if(parsed.getId() == Tag.TAG_COMPOUND)
+				{
+					ISpellComponent comp = SpellComponents.readFromNBT((CompoundTag)parsed);
+					if(comp.getRegistryName() != SpellComponents.GLYPH_DUMMY)
+						setNewPart(comp);
+				}
+			}
+			catch(Exception e) { }
 		}));
 	}
 	
 	public void tick()
 	{
-		this.rootButton.active = arrangement == null;
-		this.printButton.active = arrangement != null;
+		this.printButton.active = this.copyButton.active = menu.arrangement() != null;
+		this.pasteButton.active = !this.minecraft.keyboardHandler.getClipboard().isEmpty();
+		
+		// Only show core glyphs if the current arrangement is empty
+		this.glyphList.checkCategory(menu.arrangement());
 	}
 	
 	public void render(PoseStack matrixStack, int mouseX, int mouseY, float partialTicks)
 	{
-		this.renderBackground(matrixStack);
-		super.render(matrixStack, mouseX, mouseY, partialTicks);
-		arrangement = menu.arrangement();
-		hoveredPart = getComponentAt(mouseX, mouseY);
+		this.renderSandBackground(0);
 		
-		float scrollX = position.x, scrollY = position.y;
-		if(isMoving)
+		hoveredPart = getComponentAt(mouseX, mouseY);
+		if(menu.arrangement() != null)
 		{
-			Vec2 shift = new Vec2(mouseX - moveStart.x, mouseY - moveStart.y);
-			if(shift.length() > 5)
+			ISpellComponent arrangement = menu.arrangement();
+			float scrollX = position.x, scrollY = position.y;
+			if(isMoving)
 			{
-				scrollX += mouseX - moveStart.x;
-				scrollY += mouseY - moveStart.y;
+				Vec2 shift = new Vec2(mouseX - moveStart.x, mouseY - moveStart.y);
+				if(shift.length() > 5)
+				{
+					scrollX += mouseX - moveStart.x;
+					scrollY += mouseY - moveStart.y;
+				}
 			}
+			
+			arrangement.setPositionAndOrganise((width / 2) + scrollX, (height / 2) + scrollY);
+			ComponentRenderers.renderGUI(arrangement, matrixStack);
 		}
 		
-		if(arrangement == null)
-			return;
-		
-		arrangement.setPositionAndOrganise((width / 2) + scrollX, (height / 2) + scrollY);
-		ComponentRenderers.renderGUI(arrangement, matrixStack);
+		this.glyphList.setLeftPos(0);
+		this.glyphList.render(matrixStack, mouseX, mouseY, partialTicks);
 		
 		if(hoveredPart != null && attachPart == null)
 		{
 			List<Component> tooltip = Lists.newArrayList();
 			tooltip.add(hoveredPart.translatedName().withStyle(ChatFormatting.BOLD));
-			tooltip.add(Component.literal(hoveredPart.category().name()));
+			tooltip.add(hoveredPart.category().translate());
 			tooltip.add(hoveredPart.description().withStyle(ChatFormatting.ITALIC));
 			
 			this.renderComponentTooltip(matrixStack, tooltip, mouseX, mouseY);
@@ -126,17 +164,52 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 				boolean input = inInputArea(hoveredPart, mouseX, mouseY);
 				boolean valid = input ? hoveredPart.isValidInput(attachPart) : hoveredPart.isValidOutput(attachPart);
 				if(valid)
-					this.renderTooltip(matrixStack, Component.literal(input ? "Input" : "Output"), mouseX, mouseY);
+					this.renderTooltip(matrixStack, Component.translatable("gui."+Reference.ModInfo.MOD_ID+".sandbox.add_"+(input ? "input" : "output")), mouseX, mouseY);
 			}
 		}
 		
+		// TODO Render selection as a sprite instead of just showing the tooltip
 		if(this.selectedPart != null)
 			this.renderTooltip(matrixStack, selectedPart.translatedName(), (int)selectedPart.position().x, (int)selectedPart.position().y);
+		
+		super.render(matrixStack, mouseX, mouseY, partialTicks);
+	}
+	
+	public void renderSandBackground(int offset)
+	{
+		Tesselator tesselator = Tesselator.getInstance();
+		BufferBuilder bufferbuilder = tesselator.getBuilder();
+		RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+		RenderSystem.setShaderTexture(0, SAND_BACKGROUND);
+		RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+		float f = 32.0F;
+		int brightness = 235;
+		bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+			bufferbuilder.vertex(0.0D, (double)this.height, 0.0D).uv(0.0F, (float)this.height / f + (float)offset).color(brightness, brightness, brightness, 255).endVertex();
+			bufferbuilder.vertex((double)this.width, (double)this.height, 0.0D).uv((float)this.width / f, (float)this.height / f + (float)offset).color(brightness, brightness, brightness, 255).endVertex();
+			bufferbuilder.vertex((double)this.width, 0.0D, 0.0D).uv((float)this.width / f, (float)offset).color(brightness, brightness, brightness, 255).endVertex();
+			bufferbuilder.vertex(0.0D, 0.0D, 0.0D).uv(0.0F, (float)offset).color(brightness, brightness, brightness, 255).endVertex();
+		tesselator.end();
+		net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ScreenEvent.BackgroundRendered(this, new PoseStack()));
+	}
+	
+	public void setNewPart(ResourceLocation component)
+	{
+		setNewPart(SpellComponents.create(component));
+		clearSelected();
+	}
+	
+	public void setNewPart(ISpellComponent component)
+	{
+		this.attachPart = SpellComponents.readFromNBT(ISpellComponent.saveToNBT(component));
 	}
 	
 	@Nullable
 	public ISpellComponent getComponentAt(int mouseX, int mouseY)
 	{
+		if(this.glyphList.isMouseOver(mouseX, mouseY))
+			return null;
+		
 		Vec2 pos = new Vec2(mouseX, mouseY);
 		double minDist = Double.MAX_VALUE;
 		ISpellComponent hovered = null;
@@ -158,36 +231,43 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	
 	public List<ISpellComponent> getTotalComponents()
 	{
-		return arrangement == null ? Lists.newArrayList() : arrangement.getParts();
+		return menu.arrangement() == null ? Lists.newArrayList() : menu.arrangement().getParts();
 	}
 	
 	public boolean tryAddGlyph(ISpellComponent recipient, ISpellComponent input, boolean isInput)
 	{
-		if(recipient == null && input.category() == Category.ROOT)
+		if(menu.arrangement() == null)
 		{
-			menu.setArrangement(input);
-			return true;
+			if(input.category() == Category.ROOT)
+			{
+				menu.setArrangement(input);
+				this.glyphList.incCategory(menu.arrangement());
+				return true;
+			}
 		}
-		else
+		else if(recipient != null)
 		{
+			boolean result = false;
 			if(isInput && recipient.isValidInput(input))
 			{
 				recipient.addInput(input);
-				return true;
+				result = true;
 			}
 			else if(!isInput && recipient.isValidOutput(input))
 			{
 				recipient.addOutput(input);
-				return true;
+				result = true;
 			}
-			
-			menu.setArrangement(arrangement);
+			return result;
 		}
 		return false;
 	}
 	
 	public boolean mouseClicked(double x, double y, int mouseKey)
 	{
+		if(this.glyphList.isMouseOver(x, y))
+			return this.glyphList.mouseClicked(x, y, mouseKey);
+		
 		if(attachPart != null)
 		{
 			if(mouseKey == 0)
@@ -195,7 +275,7 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 				boolean asInput = false;
 				ISpellComponent target = null;
 				
-				if(arrangement != null && hoveredPart != null)
+				if(menu.arrangement() != null && hoveredPart != null)
 				{
 					target = hoveredPart;
 					asInput = inInputArea(target, (int)x, (int)y);
@@ -213,12 +293,16 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 				return true;
 			}
 		}
-		else if(!super.mouseClicked(x, y, mouseKey))
+		else if(mouseKey == 0 && !super.mouseClicked(x, y, mouseKey) && !this.glyphList.isMouseOver(x, y))
 		{
-			this.selectedPart = hoveredPart;
+			if(hoveredPart == null)
+			{
+				this.isMoving = true;
+				moveStart = new Vec2((int)x, (int)y);
+			}
+			else
+				this.selectedPart = hoveredPart;
 			
-			this.isMoving = true;
-			moveStart = new Vec2((int)x, (int)y);
 			return true;
 		}
 		return false;
@@ -226,6 +310,9 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	
 	public boolean mouseReleased(double x, double y, int mouseKey)
 	{
+		if(this.glyphList.isMouseOver(x, y))
+			return this.glyphList.mouseReleased(x, y, mouseKey);
+		
 		if(mouseKey == 0 && isMoving)
 		{
 			float xOff = (float)x - moveStart.x;
@@ -247,26 +334,46 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 		return up.dot(dir) > 0;
 	}
 	
-	public boolean keyPressed(int keyID, int p_97879_, int p_97880_)
+	public boolean keyPressed(int keyID, int scanCode, int modifiers)
 	{
-		if(selectedPart != null && (keyID == 261 || keyID == 259))
+		if(selectedPart != null)
 		{
-			ISpellComponent parent = selectedPart.parent();
-			if(parent == null && selectedPart.type() == Type.ROOT)
-				menu.setArrangement(null);
-			else
-				parent.remove(selectedPart);
-			
-			selectedPart = null;
+			if(keyID == GLFW.GLFW_KEY_DELETE || keyID == GLFW.GLFW_KEY_BACKSPACE)
+			{
+				handleDelete(selectedPart);
+				clearSelected();
+			}
+			else if(modifiers == 2)	// Left control held
+				if(keyID == GLFW.GLFW_KEY_X)
+				{
+					// Cut
+					setNewPart(selectedPart);
+					handleDelete(selectedPart);
+					clearSelected();
+				}
+				else if(keyID == GLFW.GLFW_KEY_C)
+				{
+					// Copy
+					setNewPart(selectedPart);
+				}
 			return true;
 		}
 		else
-			return super.keyPressed(keyID, p_97879_, p_97880_);
+			return super.keyPressed(keyID, scanCode, modifiers);
 	}
 	
-	public void setNewPart(ISpellComponent component)
+	private void handleDelete(ISpellComponent part)
 	{
-		this.attachPart = component;
-		this.selectedPart = null;
+		if(part == null)
+			return;
+		
+		ISpellComponent parent = part.parent();
+		if(parent == null && part.type() == Type.ROOT)
+			menu.setArrangement(null);
+		else
+			parent.remove(part);
+		
 	}
+	
+	private void clearSelected() { this.selectedPart = null; }
 }

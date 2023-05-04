@@ -9,6 +9,8 @@ import com.lying.misc19.init.M19Entities;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.component.RootGlyph;
+import com.lying.misc19.magic.variable.VarBool;
+import com.lying.misc19.magic.variable.VarDouble;
 import com.lying.misc19.magic.variable.VarEntity;
 import com.lying.misc19.magic.variable.VarLevel;
 import com.lying.misc19.magic.variable.VariableSet;
@@ -35,6 +37,7 @@ public class SpellEntity extends Entity
 	private static final EntityDataAccessor<Integer> VISIBILITY = SynchedEntityData.defineId(SpellEntity.class, EntityDataSerializers.INT);
 	private static final int VANISH_TIME = Reference.Values.TICKS_PER_SECOND * 2;
 	
+	private int ticks = 0;
 	private VariableSet variableSet = new VariableSet();
 	private LivingEntity ownerCached = null;
 	
@@ -71,6 +74,7 @@ public class SpellEntity extends Entity
 		getEntityData().set(SPELL_DATA, compound.getCompound("Spell"));
 		
 		this.variableSet = VariableSet.readFromNBT(compound.getCompound("Variables"));
+		this.ticks = compound.getInt("Ticks");
 		
 		getEntityData().set(VISIBILITY, compound.getInt("Vanish"));
 	}
@@ -82,6 +86,7 @@ public class SpellEntity extends Entity
 		compound.put("Spell", getEntityData().get(SPELL_DATA));
 		
 		compound.put("Variables", this.variableSet.writeToNBT(new CompoundTag()));
+		compound.putInt("Ticks", this.ticks);
 		
 		compound.putInt("Vanish", getEntityData().get(VISIBILITY).intValue());
 	}
@@ -93,6 +98,9 @@ public class SpellEntity extends Entity
 	public void tick()
 	{
 		super.tick();
+		if(getLevel().isClientSide())
+			return;
+		
 		if(getVisibility() < 1F)
 		{
 			int visibility = getEntityData().get(VISIBILITY).intValue() - 1;
@@ -104,22 +112,29 @@ public class SpellEntity extends Entity
 		}
 		
 		ISpellComponent spell = getSpell();
+		
 		variableSet.set(Slot.WORLD, new VarLevel(getLevel()));
 		LivingEntity caster = getOwner();
 		if(caster != null)
 			this.variableSet.set(Slot.CASTER, new VarEntity(caster));
 		
+		this.ticks++;
 		try
 		{
-			
-			((RootGlyph)spell).performExecution(getLevel(), caster, this.variableSet);
+			RootGlyph root = (RootGlyph)spell;
+			if(ticks % root.tickRate() == 0)
+			{
+				this.variableSet.set(Slot.CONTINUE, VarBool.FALSE);
+				root.performExecution(getLevel(), caster, this.variableSet);
+				this.variableSet.set(Slot.AGE, new VarDouble(this.variableSet.get(Slot.AGE).asDouble() + 1));
+				
+				if(!this.variableSet.get(Slot.CONTINUE).asBoolean())
+					getEntityData().set(VISIBILITY, VANISH_TIME - 1);
+				else
+					setSpell(spell);
+			}
 		}
-		catch(Exception e) { }
-		
-		if(!this.variableSet.get(Slot.CONTINUE).asBoolean())
-			getEntityData().set(VISIBILITY, VANISH_TIME - 1);
-		else
-			setSpell(spell);
+		catch(Exception e) { e.printStackTrace(); }
 	}
 	
 	public LivingEntity getOwner()

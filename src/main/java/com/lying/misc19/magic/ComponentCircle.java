@@ -109,7 +109,7 @@ public abstract class ComponentCircle extends ComponentBase
 		
 		public void serialiseNBT(CompoundTag nbt)
 		{
-			if(this.index % outputs().size() > 0)
+			if(outputs().size() > 0 && this.index % outputs().size() > 0)
 				nbt.putInt("Index", this.index % outputs().size());
 		}
 		
