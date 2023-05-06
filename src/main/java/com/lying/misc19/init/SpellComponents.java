@@ -80,6 +80,12 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_MUL = make("mul_glyph");
 	public static final ResourceLocation GLYPH_DIV = make("div_glyph");
 	public static final ResourceLocation GLYPH_MOD = make("mod_glyph");
+	/**
+	 * Signum
+	 * Absolute value
+	 * Random
+	 * Negate
+	 */
 	
 	// Boolean operations
 	public static final ResourceLocation GLYPH_EQU = make("equals_glyph");
@@ -96,12 +102,30 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_CROSS = make("cross_glyph");
 	public static final ResourceLocation GLYPH_NORMALISE = make("normalize_glyph");
 	public static final ResourceLocation GLYPH_LENGTH = make("length_glyph");
-	// TODO Operation to rotate vectors
+	/**
+	 * Vector rotation
+	 * Ray trace operation (return first non-empty block or entity)
+	 * Is-block-empty check
+	 */
+	
+	// Entity operations
+	/**
+	 * Get position
+	 * Get look vector
+	 * Get current health
+	 * Get current motion
+	 * Get current target
+	 * Get creature type?
+	 * Get entities within an area
+	 */
 	
 	// Stack operations
 	public static final ResourceLocation GLYPH_STACK_GET = make("stack_get_glyph");
 	public static final ResourceLocation GLYPH_STACK_ADD = make("stack_add_glyph");
 	public static final ResourceLocation GLYPH_STACK_SUB = make("stack_sub_glyph");
+	/**
+	 * Sort by distance to a point
+	 */
 	
 	// Functions
 	public static final ResourceLocation FUNCTION_DEBUG = make("debug_function");

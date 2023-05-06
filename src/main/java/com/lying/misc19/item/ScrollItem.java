@@ -5,6 +5,8 @@ import javax.annotation.Nullable;
 import com.lying.misc19.entities.SpellEntity;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.magic.ISpellComponent;
+import com.lying.misc19.magic.ISpellComponent.Type;
+import com.lying.misc19.magic.component.RootGlyph;
 import com.lying.misc19.magic.variable.VariableSet;
 
 import net.minecraft.nbt.CompoundTag;
@@ -32,18 +34,24 @@ public class ScrollItem extends Item implements ISpellContainer
 		if(!world.isClientSide())
 		{
 			ISpellComponent spell = getSpell(stack.getOrCreateTag());
-			if(spell != null)
+			if(spell != null && spell.type() == Type.ROOT)
 			{
+				RootGlyph root = (RootGlyph)spell;
 				SpellEntity spellEntity = SpellEntity.create(spell, player, world);
+				spellEntity.setVariables(root.populateCoreVariables(world, player, new VariableSet()));
+				root.positionAndOrientSpell(spellEntity, player);
+				
 				world.addFreshEntity(spellEntity);
 				player.awardStat(Stats.ITEM_USED.get(this));
 				
-				if(!player.getAbilities().instabuild)
-					stack.shrink(1);
+				return InteractionResultHolder.sidedSuccess(stack, world.isClientSide());
 			}
+			
+			if(!player.getAbilities().instabuild)
+				stack.shrink(1);
 		}
 		
-		return InteractionResultHolder.sidedSuccess(stack, world.isClientSide());
+		return InteractionResultHolder.pass(stack);
 	}
 	
 	public static ItemStack setSpell(ItemStack stack, ISpellComponent component)

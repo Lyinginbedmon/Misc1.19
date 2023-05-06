@@ -35,7 +35,7 @@ public abstract class FunctionGlyph extends ComponentBase
 	
 	public Category category() { return Category.FUNCTION; }
 	
-	public Type type() { return Type.GLYPH; }
+	public Type type() { return Type.FUNCTION; }
 	
 	public int castingCost() { return cost; }
 	
@@ -116,6 +116,7 @@ public abstract class FunctionGlyph extends ComponentBase
 			Level world = ((VarLevel)variablesIn.get(Slot.WORLD)).get();
 			Vec3 pos = POS.get(params).asVec();
 			
+			// TODO Check if the target position can be replaced with the block
 			world.setBlockAndUpdate(new BlockPos(pos.x, pos.y, pos.z), Blocks.STONE.defaultBlockState());
 		}
 	}

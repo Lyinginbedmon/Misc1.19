@@ -23,9 +23,10 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.phys.Vec2;
 
+// FIXME Amend world draw functions to accept exclusions
 public class RenderUtils
 {
-	private static final double CIRCLE_UNIT = 3D;
+	public static final double CIRCLE_UNIT = 3D;
 	
 	/** Draws a coloured line into a GUI screen between the given points */
 	public static void drawColorLine(Vec2 posA, Vec2 posB, float width, List<Quad> exclusions)
@@ -215,11 +216,10 @@ public class RenderUtils
 		Vec2 offsetOut = new Vec2(radius + thickness / 2, 0);
 		Vec2 offsetIn = new Vec2(radius - thickness / 2, 0);
 		float turn = 360F / resolution;
-		List<Quad> quads = Lists.newArrayList();
 		for(int i=0; i<resolution; i++)
-			quads.add(new Quad(position.add(offsetOut), position.add(offsetIn), position.add(offsetIn = M19Utils.rotate(offsetIn, turn)), position.add(offsetOut = M19Utils.rotate(offsetOut, turn))));
-		
-		RenderUtils.drawBlockColorSquare(quads, r, g, b, a, exclusions);
+			RenderUtils.drawBlockColorSquare(
+					new Quad(position.add(offsetOut), position.add(offsetIn), position.add(offsetIn = M19Utils.rotate(offsetIn, turn)), position.add(offsetOut = M19Utils.rotate(offsetOut, turn))), 
+					r, g, b, a, exclusions);
 	}
 	
 	/** Draws a hollow circular shape in the world */

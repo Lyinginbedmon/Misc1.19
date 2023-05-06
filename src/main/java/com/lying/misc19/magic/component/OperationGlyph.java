@@ -4,6 +4,9 @@ import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VarDouble;
 import com.lying.misc19.magic.variable.VariableSet;
+import com.lying.misc19.utility.M19Utils;
+
+import net.minecraft.world.phys.Vec2;
 
 public abstract class OperationGlyph extends ComponentBase
 {
@@ -11,11 +14,40 @@ public abstract class OperationGlyph extends ComponentBase
 	
 	public Category category() { return Category.OPERATION; }
 	
-	public Type type() { return Type.GLYPH; }
+	public Type type() { return Type.OPERATION; }
 	
-	public boolean isValidInput(ISpellComponent componentIn) { return ISpellComponent.canBeInput(componentIn); }
+	public boolean isValidInput(ISpellComponent componentIn)
+	{
+		return isNestedOperation() ? (inputs().size() < 3 && componentIn.type() == Type.VARIABLE) : ISpellComponent.canBeInput(componentIn);
+	}
 	
-	public boolean isValidOutput(ISpellComponent componentIn) { return componentIn.type() == Type.VARIABLE; }
+	public boolean isValidOutput(ISpellComponent componentIn)
+	{
+		return isNestedOperation() ? false : componentIn.type() == Type.VARIABLE;
+	}
+	
+	public boolean isNestedOperation()
+	{
+		return parent() != null ? !parent().type().isContainer() : false;
+	}
+	
+	public void organise()
+	{
+		if(!isNestedOperation())
+		{
+			super.organise();
+			return;
+		}
+		
+		float spin = 180F / inputGlyphs.size();
+		Vec2 offset = M19Utils.rotate(left().scale(20), spin / 2);
+		for(ISpellComponent input : inputGlyphs)
+		{
+			input.setParent(this);
+			input.setPositionAndOrganise(offset.x, offset.y);
+			offset = M19Utils.rotate(offset, spin);
+		}
+	}
 	
 	/** Returns the product of this operation, without setting outputs */
 	public abstract IVariable getResult(VariableSet variablesIn);

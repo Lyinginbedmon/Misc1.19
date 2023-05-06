@@ -60,6 +60,8 @@ public class SpellEntity extends Entity
 		return spell;
 	}
 	
+	public void setVariables(VariableSet variablesIn) { this.variableSet = variablesIn; }
+	
 	protected void defineSynchedData()
 	{
 		getEntityData().define(SPELL_DATA, new CompoundTag());

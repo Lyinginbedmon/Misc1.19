@@ -45,6 +45,28 @@ public class Quad
 	public Line cd(){ return cd; }
 	public Line da(){ return da; }
 	
+	public Tuple<Vec2, Vec2> screenBounds()
+	{
+		float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+		float maxX = Float.MIN_VALUE, maxY = Float.MIN_VALUE;
+		for(Vec2 vertex : vertices)
+		{
+			minX = Math.min(minX, vertex.x);
+			maxX = Math.max(maxX, vertex.x);
+			minY = Math.min(minY, vertex.y);
+			maxY = Math.max(maxY, vertex.y);
+		}
+		return new Tuple<Vec2, Vec2>(new Vec2(minX, minY), new Vec2(maxX, maxY));
+	}
+	
+	public boolean isWithinScreen(int width, int height)
+	{
+		for(Vec2 vertex : vertices)
+			if(vertex.x >= 0 && vertex.y >= 0 && vertex.x <= width && vertex.y <= height)
+				return true;
+		return false;
+	}
+	
 	/** Returns the first boundary line of this quad that the given quad intersects with */
 	public Line intersects(Quad quad2)
 	{

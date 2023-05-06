@@ -27,11 +27,13 @@ import net.minecraft.world.phys.Vec2;
 public class Canvas
 {
 	public static final int SPRITES = 0;
-	public static final int GLYPHS = 1;
-	public static final int EXCLUSIONS = 2;
-	public static final int DECORATIONS = 3;
+	public static final int GLYPHS = 5;
+	public static final int EXCLUSIONS = 10;
+	public static final int DECORATIONS = 15;
 	
 	private Map<Integer, List<ICanvasObject>> elements = new HashMap<>();
+	
+	public void clear() { this.elements.clear(); }
 	
 	public void addElement(ICanvasObject object, int zLevel)
 	{
@@ -40,9 +42,9 @@ public class Canvas
 		elements.put(zLevel, objects);
 	}
 	
-	public void drawIntoGUI(PoseStack matrixStack)
+	public void drawIntoGUI(PoseStack matrixStack, int width, int height)
 	{
-		draw(matrixStack, (element, matrix, exclusions) -> element.drawGui(matrixStack, exclusions));
+		draw(matrixStack, (element, matrix, exclusions) -> element.drawGui(matrixStack, exclusions, width, height));
 	}
 	
 	public void drawIntoWorld(PoseStack matrixStack, MultiBufferSource bufferSource)
@@ -77,7 +79,8 @@ public class Canvas
 	
 	public interface ICanvasObject
 	{
-		public void drawGui(PoseStack matrixStack, List<Quad> exclusions);
+		// FIXME Update all objects to draw as little as necessary outside actual GUI area
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions, int width, int height);
 		
 		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions);
 		
@@ -90,7 +93,7 @@ public class Canvas
 		
 		public List<Quad> getQuads();
 		
-		public default void drawGui(PoseStack matrixStack, List<Quad> exclusions) { }
+		public default void drawGui(PoseStack matrixStack, List<Quad> exclusions, int width, int height) { }
 		public default void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions) { }
 	}
 	
@@ -99,6 +102,8 @@ public class Canvas
 		private final Vec2 position;
 		private final float radius, thickness;
 		private final int r, g, b, a;
+		
+		private final List<Quad> quads = Lists.newArrayList();
 		
 		public Circle(Vec2 pos, float radiusIn, float thicknessIn)
 		{
@@ -114,15 +119,31 @@ public class Canvas
 			this.g = green;
 			this.b = blue;
 			this.a = alpha;
+			
+			int resolution = (int)((2 * Math.PI * radius) / RenderUtils.CIRCLE_UNIT);
+			Vec2 offsetOut = new Vec2(radius + thickness / 2, 0);
+			Vec2 offsetIn = new Vec2(radius - thickness / 2, 0);
+			
+			float turn = 360F / resolution;
+			double rads = Math.toRadians(turn);
+			double cos = Math.cos(rads), sin = Math.sin(rads);
+			
+			for(int i=0; i<resolution; i++)
+				quads.add(new Quad(pos.add(offsetOut), pos.add(offsetIn), pos.add(offsetIn = M19Utils.rotate(offsetIn, cos, sin)), pos.add(offsetOut = M19Utils.rotate(offsetOut, cos, sin))));
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions, int width, int height)
 		{
-			RenderUtils.drawOutlineCircle(position, radius, thickness, r, g, b, a, exclusions);
+			for(Quad quad : quads)
+				if(quad.isWithinScreen(width, height))
+					RenderUtils.drawBlockColorSquare(quad, r, g, b, a, exclusions);
 		}
 		
 		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions)
 		{
+			for(Quad quad : quads)
+				if(!quad.isUndrawable())
+					;
 			RenderUtils.drawOutlineCircle(matrixStack, bufferSource, position, radius, thickness, r, g, b, a);
 		}
 	}
@@ -149,7 +170,7 @@ public class Canvas
 			this.a = alpha;
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions, int width, int height)
 		{
 			RenderUtils.drawColorLine(start, end, thickness, r, g, b, a, exclusions);
 		}
@@ -163,42 +184,50 @@ public class Canvas
 	public static class Sprite implements ICanvasObject
 	{
 		private final ResourceLocation textureLocation;
-		private final int width, height;
-		private final Vec2 position;
+		
+		private final Vec2[] vertices;
 		
 		public Sprite(ResourceLocation texture, Vec2 position, int width, int height)
 		{
 			this.textureLocation = texture;
-			this.position = position;
-			this.width = width;
-			this.height = height;
+			vertices = new Vec2[]{
+					new Vec2(position.x - width / 2, position.y - height / 2),
+					new Vec2(position.x + width / 2, position.y - height / 2),
+					new Vec2(position.x + width / 2, position.y + height / 2),
+					new Vec2(position.x - width / 2, position.y + height / 2)};
 		}
 		
-		public void drawGui(PoseStack matrixStack, List<Quad> exclusions)
+		public void drawGui(PoseStack matrixStack, List<Quad> exclusions, int width, int height)
 		{
+			boolean outOfBounds = true;
+			for(Vec2 vertex : vertices)
+				if(vertex.x >= 0 && vertex.x <= width && vertex.y >= 0 && vertex.y <= height)
+				{
+					outOfBounds = false;
+					break;
+				}
+			if(outOfBounds)
+				return;
+			
 		    RenderSystem.setShader(GameRenderer::getPositionTexShader);
 		    RenderSystem.setShaderTexture(0, textureLocation);
 		    RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 			RenderUtils.draw(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX, (buffer) -> 
 			{
-				Vec2 topLeft = new Vec2(position.x - width / 2, position.y - height / 2);
-				Vec2 topRight = new Vec2(position.x + width / 2, position.y - height / 2);
-				Vec2 botRight = new Vec2(position.x + width / 2, position.y + height / 2);
-				Vec2 botLeft = new Vec2(position.x - width / 2, position.y + height / 2);
 				
-				buffer.vertex(topLeft.x, topLeft.y, 0).uv(0F, 0F).endVertex();
-				buffer.vertex(botLeft.x, botLeft.y, 0).uv(0F, 1F).endVertex();
-				buffer.vertex(botRight.x, botRight.y, 0).uv(1F, 1F).endVertex();
-				buffer.vertex(topRight.x, topRight.y, 0).uv(1F, 0F).endVertex();
+				buffer.vertex(vertices[0].x, vertices[0].y, 0).uv(0F, 0F).endVertex();
+				buffer.vertex(vertices[3].x, vertices[3].y, 0).uv(0F, 1F).endVertex();
+				buffer.vertex(vertices[2].x, vertices[2].y, 0).uv(1F, 1F).endVertex();
+				buffer.vertex(vertices[1].x, vertices[1].y, 0).uv(1F, 0F).endVertex();
 			});
 		}
 		
 		public void drawWorld(PoseStack matrixStack, MultiBufferSource bufferSource, List<Quad> exclusions)
 		{
-			Vec2 topLeft = new Vec2(position.x - width / 2, position.y - height / 2);
-			Vec2 topRight = new Vec2(position.x + width / 2, position.y - height / 2);
-			Vec2 botRight = new Vec2(position.x + width / 2, position.y + height / 2);
-			Vec2 botLeft = new Vec2(position.x - width / 2, position.y + height / 2);
+			Vec2 topLeft = vertices[0];
+			Vec2 topRight = vertices[1];
+			Vec2 botRight = vertices[2];
+			Vec2 botLeft = vertices[3];
 			VertexConsumer buffer = bufferSource.getBuffer(RenderType.text(textureLocation));
 			Matrix4f matrix = matrixStack.last().pose();
 			

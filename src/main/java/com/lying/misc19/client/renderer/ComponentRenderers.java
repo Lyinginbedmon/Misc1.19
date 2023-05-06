@@ -6,6 +6,7 @@ import java.util.Map;
 import com.lying.misc19.client.Canvas;
 import com.lying.misc19.client.renderer.magic.CircleRenderer;
 import com.lying.misc19.client.renderer.magic.ComponentRenderer;
+import com.lying.misc19.client.renderer.magic.HertzRenderer;
 import com.lying.misc19.client.renderer.magic.RootRenderer;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.magic.ISpellComponent;
@@ -20,12 +21,15 @@ public class ComponentRenderers
 	
 	static
 	{
-		register(SpellComponents.ROOT_CASTER, new RootRenderer());
-		register(SpellComponents.ROOT_DUMMY, new RootRenderer());
-		register(SpellComponents.ROOT_POSITION, new RootRenderer());
-		register(SpellComponents.ROOT_TARGET, new RootRenderer());
-		register(SpellComponents.CIRCLE_BASIC, new CircleRenderer());
-		register(SpellComponents.CIRCLE_STEP, new CircleRenderer());
+		register(new RootRenderer(), SpellComponents.ROOT_CASTER, SpellComponents.ROOT_DUMMY, SpellComponents.ROOT_POSITION, SpellComponents.ROOT_TARGET);
+		register(new HertzRenderer(), SpellComponents.HERTZ_MINUTE, SpellComponents.HERTZ_SECOND);
+		register(new CircleRenderer(), SpellComponents.CIRCLE_BASIC, SpellComponents.CIRCLE_STEP);
+	}
+	
+	public static void register(ComponentRenderer renderer, ResourceLocation... names)
+	{
+		for(ResourceLocation name : names)
+			register(name, renderer);
 	}
 	
 	public static void register(ResourceLocation name, ComponentRenderer renderer)
@@ -35,9 +39,10 @@ public class ComponentRenderers
 	
 	public static ComponentRenderer get(ResourceLocation name) { return REGISTRY.getOrDefault(name, new ComponentRenderer()); }
 	
-	public static void renderGUI(ISpellComponent component, PoseStack matrixStack)
+	public static void renderGUI(ISpellComponent component, PoseStack matrixStack, int width, int height)
 	{
-		populateCanvas(component, matrixStack).drawIntoGUI(matrixStack);
+		// FIXME Don't render any component that is outside the bounds of the GUI
+		populateCanvas(component, matrixStack).drawIntoGUI(matrixStack, width, height);
 	}
 	
 	public static void renderWorld(ISpellComponent component, PoseStack matrixStack, MultiBufferSource bufferSource)
@@ -45,7 +50,7 @@ public class ComponentRenderers
 		populateCanvas(component, matrixStack).drawIntoWorld(matrixStack, bufferSource);
 	}
 	
-	private static Canvas populateCanvas(ISpellComponent component, PoseStack matrixStack)
+	public static Canvas populateCanvas(ISpellComponent component, PoseStack matrixStack)
 	{
 		Canvas canvas = new Canvas();
 		

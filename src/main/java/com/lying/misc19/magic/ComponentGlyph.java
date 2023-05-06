@@ -5,7 +5,7 @@ import com.lying.misc19.magic.variable.VariableSet;
 
 public abstract class ComponentGlyph extends ComponentBase
 {
-	public Type type() { return Type.GLYPH; }
+	public Type type() { return Type.OPERATION; }
 	
 	public static class Dummy extends ComponentGlyph
 	{

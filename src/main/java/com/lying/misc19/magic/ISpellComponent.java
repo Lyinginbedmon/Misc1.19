@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.apache.commons.compress.utils.Lists;
 
-import com.lying.misc19.magic.component.OperationGlyph;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.reference.Reference;
 import com.lying.misc19.utility.M19Utils;
@@ -78,7 +77,7 @@ public interface ISpellComponent
 	
 	public default boolean isValidInput(ISpellComponent component) { return false; }
 	
-	public static boolean canBeInput(ISpellComponent component) { return component.type() == Type.VARIABLE || component instanceof OperationGlyph; }
+	public static boolean canBeInput(ISpellComponent component) { return component.type().isVariable(); }
 	
 	public default ISpellComponent addInputs(ISpellComponent... components)
 	{
@@ -197,10 +196,26 @@ public interface ISpellComponent
 	
 	public static enum Type
 	{
-		ROOT,
-		HERTZ,
-		VARIABLE,
-		CIRCLE,
-		GLYPH;
+		ROOT(true, false),
+		HERTZ(false, false),
+		CIRCLE(true, false),
+		VARIABLE(false, true),
+		OPERATION(false, true),
+		FUNCTION(false, false);
+		
+		private final boolean isContainer;
+		private final boolean isVariable;
+		
+		private Type(boolean containerIn, boolean variableIn)
+		{
+			this.isContainer = containerIn;
+			this.isVariable = variableIn;
+		}
+		
+		/** Container types are the major building blocks of arrangements, such as root and circle glyphs */
+		public boolean isContainer() { return this.isContainer; }
+		
+		/** Variable types provide values to be used as inputs for other glyphs */
+		public boolean isVariable() { return this.isVariable; }
 	}
 }

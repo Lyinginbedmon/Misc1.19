@@ -21,7 +21,23 @@ public abstract class ComponentCircle extends ComponentBase
 	
 	public boolean isValidInput(ISpellComponent component) { return ISpellComponent.canBeInput(component) && this.inputGlyphs.isEmpty(); }
 	
-	public boolean isValidOutput(ISpellComponent component) { return component.type() == Type.GLYPH && this.outputGlyphs.size() < CAPACITY; }
+	public boolean isValidOutput(ISpellComponent component)
+	{
+		if(this.outputGlyphs.size() < CAPACITY)
+			switch(component.type())
+			{
+				case CIRCLE:
+				case OPERATION:
+				case FUNCTION:
+					return true;
+				case ROOT:
+				case HERTZ:
+				case VARIABLE:
+				default:
+					break;
+			}
+		return false;
+	}
 	
 	public void organise()
 	{

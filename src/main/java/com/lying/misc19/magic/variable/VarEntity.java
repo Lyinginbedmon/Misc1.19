@@ -65,6 +65,8 @@ public class VarEntity extends VariableBase
 		return makeFakeEntity();
 	}
 	
+	public Vec3 asVec() { return this.value.position(); }
+	
 	public boolean asBoolean() { return asEntity().isAlive(); }
 	
 	public boolean greater(IVariable var2) { return false; }

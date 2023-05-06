@@ -6,8 +6,6 @@ import com.lying.misc19.magic.variable.VariableSet;
 
 public abstract class ComparisonGlyph extends OperationGlyph
 {
-	public Type type() { return Type.GLYPH; }
-	
 	/** Outputs 1 if all input values are of equal value */
 	public static class Equals extends ComparisonGlyph
 	{

@@ -1,6 +1,8 @@
 package com.lying.misc19.blocks;
 
 import com.lying.misc19.client.gui.menu.MenuSandbox;
+import com.lying.misc19.item.ISpellContainer;
+import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.reference.Reference;
 
 import net.minecraft.core.BlockPos;
@@ -12,6 +14,7 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -59,7 +62,11 @@ public class Sandbox extends Block implements MenuProvider
 	
 	public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player)
 	{
-		return new MenuSandbox(containerId, inventory);
+		ISpellComponent spell = null;
+		ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
+		if(stack.getItem() instanceof ISpellContainer)
+			spell = ((ISpellContainer)stack.getItem()).getSpell(stack.getTag());
+		return new MenuSandbox(containerId, inventory, spell);
 	}
 	
 	public Component getDisplayName()
