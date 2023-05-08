@@ -109,9 +109,9 @@ public class VariableSet
 	
 	public static enum Slot implements StringRepresentable
 	{
-		/** Age represents the number of times a given spell has executed thus far.<br>Always present */
+		/** Age represents the number of times a given spell has executed thus far.<br>Always present, always cached */
 		AGE(true, true),
-		/** World is the level the spell is executing in.<br>Always present */
+		/** World is the level the spell is executing in.<br>Always present, always cached */
 		WORLD(true, false),
 		/** Caster contains the LivingEntity that originally cast the spell.<br>Always present */
 		CASTER(true, true),

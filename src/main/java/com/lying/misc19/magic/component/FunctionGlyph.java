@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.Misc19;
+import com.lying.misc19.init.M19Blocks;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VarLevel;
@@ -15,11 +16,12 @@ import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /** A glyph that performs an actual function based on its inputs and does not have any outputs */
@@ -116,8 +118,16 @@ public abstract class FunctionGlyph extends ComponentBase
 			Level world = ((VarLevel)variablesIn.get(Slot.WORLD)).get();
 			Vec3 pos = POS.get(params).asVec();
 			
-			// TODO Check if the target position can be replaced with the block
-			world.setBlockAndUpdate(new BlockPos(pos.x, pos.y, pos.z), Blocks.STONE.defaultBlockState());
+			BlockPos blockPos = new BlockPos(pos.x, pos.y, pos.z);
+			if(blockPos.getY() < -64)
+				return;
+			
+			BlockState state = M19Blocks.PHANTOM_CUBE.get().defaultBlockState();
+			if(world.isEmptyBlock(blockPos) || world.getBlockState(blockPos).getMaterial().isReplaceable())
+			{
+				world.playSound((Player)null, blockPos, state.getSoundType().getPlaceSound(), SoundSource.BLOCKS,  0.5F + world.random.nextFloat(), world.random.nextFloat() * 0.7F + 0.6F);
+				world.setBlockAndUpdate(blockPos, state);
+			}
 		}
 	}
 }

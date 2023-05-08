@@ -2,12 +2,15 @@ package com.lying.misc19.client;
 
 import com.lying.misc19.client.gui.screen.ScreenSandbox;
 import com.lying.misc19.client.renderer.entity.PendulumLayer;
+import com.lying.misc19.init.M19Blocks;
 import com.lying.misc19.init.M19Items;
 import com.lying.misc19.init.M19Menus;
 import com.lying.misc19.reference.Reference;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
@@ -20,12 +23,13 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 public class ClientSetupEvents
 {
-    @SubscribeEvent
+    @SuppressWarnings("removal")
+	@SubscribeEvent
 	public static void clientInit(final FMLClientSetupEvent event)
 	{
 		event.enqueueWork(() ->
 		{
-//    		ItemBlockRenderTypes.setRenderLayer(VGBlocks.HOURGLASS_ALTAR.get(), RenderType.cutout());
+			ItemBlockRenderTypes.setRenderLayer(M19Blocks.PHANTOM_CUBE.get(), RenderType.translucent());
 			
 //        	MinecraftForge.EVENT_BUS.register(ClientBus.class);
 			

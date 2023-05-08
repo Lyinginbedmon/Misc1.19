@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 
 import com.lying.misc19.client.ClientSetupEvents;
 import com.lying.misc19.data.M19DataGenerators;
+import com.lying.misc19.init.M19BlockEntities;
 import com.lying.misc19.init.M19Blocks;
 import com.lying.misc19.init.M19Entities;
 import com.lying.misc19.init.M19Items;
@@ -41,6 +42,7 @@ public class Misc19
         EVENT_BUS.addListener(M19DataGenerators::onGatherData);
         
         M19Entities.ENTITIES.register(EVENT_BUS);
+        M19BlockEntities.BLOCK_ENTITIES.register(EVENT_BUS);
         M19Blocks.BLOCKS.register(EVENT_BUS);
         M19Items.ITEMS.register(EVENT_BUS);
         M19Menus.MENUS.register(EVENT_BUS);

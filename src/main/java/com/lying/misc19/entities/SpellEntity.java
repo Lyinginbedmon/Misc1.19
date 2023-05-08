@@ -103,6 +103,11 @@ public class SpellEntity extends Entity
 		if(getLevel().isClientSide())
 			return;
 		
+		// Prevent any spell below the world from surviving
+		if(this.getY() <= -64)
+			kill();
+		
+		// Gradual fading out of expired spells
 		if(getVisibility() < 1F)
 		{
 			int visibility = getEntityData().get(VISIBILITY).intValue() - 1;
