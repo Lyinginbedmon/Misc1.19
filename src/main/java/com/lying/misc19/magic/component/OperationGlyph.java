@@ -61,13 +61,14 @@ public abstract class OperationGlyph extends ComponentBase
 	{
 		public boolean isValidInput(ISpellComponent componentIn) { return super.isValidInput(componentIn) && inputs().isEmpty(); }
 		
-		public IVariable getResult(VariableSet variablesIn) { return getVariable(0, variablesIn); }
+		public IVariable getResult(VariableSet variablesIn) { return getVariable(0, variablesIn.glyphExecuted(castingCost())); }
 	}
 	
 	public static class Add extends OperationGlyph
 	{
 		public IVariable getResult(VariableSet variablesIn)
 		{
+			variablesIn.glyphExecuted(castingCost());
 			IVariable value = VariableSet.DEFAULT;
 			for(int i=0; i<inputs().size(); i++)
 			{
@@ -85,6 +86,7 @@ public abstract class OperationGlyph extends ComponentBase
 	{
 		public IVariable getResult(VariableSet variablesIn)
 		{
+			variablesIn.glyphExecuted(castingCost());
 			IVariable value = VariableSet.DEFAULT;
 			for(int i=0; i<inputs().size(); i++)
 			{
@@ -103,6 +105,7 @@ public abstract class OperationGlyph extends ComponentBase
 	{
 		public IVariable getResult(VariableSet variablesIn)
 		{
+			variablesIn.glyphExecuted(castingCost());
 			IVariable value = VariableSet.DEFAULT;
 			for(int i=0; i<inputs().size(); i++)
 			{
@@ -121,6 +124,7 @@ public abstract class OperationGlyph extends ComponentBase
 	{
 		public IVariable getResult(VariableSet variablesIn)
 		{
+			variablesIn.glyphExecuted(castingCost());
 			IVariable value = VariableSet.DEFAULT;
 			for(int i=0; i<inputs().size(); i++)
 			{
@@ -139,6 +143,7 @@ public abstract class OperationGlyph extends ComponentBase
 	{
 		public IVariable getResult(VariableSet variablesIn)
 		{
+			variablesIn.glyphExecuted(castingCost());
 			if(inputs().size() < 2)
 				return VariableSet.DEFAULT;
 			

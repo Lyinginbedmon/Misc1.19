@@ -26,6 +26,7 @@ public class M19Items
     
     // Block items
     public static final RegistryObject<Item> SANDBOX_ITEM = ITEMS.register("sandbox", () -> new BlockItem(M19Blocks.SANDBOX.get(), new Item.Properties().tab(TAB)));
+    public static final RegistryObject<Item> PHANTOM_CUBE_ITEM = ITEMS.register("phantom_cube", () -> new BlockItem(M19Blocks.PHANTOM_CUBE.get(), new Item.Properties().tab(TAB)));
     
 	public static Item register(String nameIn, Item itemIn)
 	{

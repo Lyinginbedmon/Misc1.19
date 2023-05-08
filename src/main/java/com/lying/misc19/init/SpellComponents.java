@@ -109,12 +109,12 @@ public class SpellComponents
 	 */
 	
 	// Entity operations
+	public static final ResourceLocation GLYPH_ENT_POS = make("entity_position_glyph");
+	public static final ResourceLocation GLYPH_ENT_LOOK = make("entity_look_glyph");
+	public static final ResourceLocation GLYPH_ENT_VEL = make("entity_velocity_glyph");
+	public static final ResourceLocation GLYPH_ENT_HEALTH = make("entity_health_glyph");
+	public static final ResourceLocation GLYPH_ENT_TARGET = make("entity_target_glyph");
 	/**
-	 * Get position
-	 * Get look vector
-	 * Get current health
-	 * Get current motion
-	 * Get current target
 	 * Get creature type?
 	 * Get entities within an area
 	 */
@@ -131,6 +131,7 @@ public class SpellComponents
 	public static final ResourceLocation FUNCTION_DEBUG = make("debug_function");
 	public static final ResourceLocation FUNCTION_TELEPORT = make("teleport_function");
 	public static final ResourceLocation FUNCTION_CREATE = make("creation_function");
+	public static final ResourceLocation FUNCTION_DISPEL = make("dispel_function");
 	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
@@ -180,6 +181,12 @@ public class SpellComponents
 		register(GLYPH_NORMALISE, () -> () -> new VectorGlyph.Normalise());
 		register(GLYPH_LENGTH, () -> () -> new VectorGlyph.Length());
 		
+		register(GLYPH_ENT_POS, () -> () -> new EntityGlyph.Position());
+		register(GLYPH_ENT_LOOK, () -> () -> new EntityGlyph.Look());
+		register(GLYPH_ENT_VEL, () -> () -> new EntityGlyph.Motion());
+		register(GLYPH_ENT_HEALTH, () -> () -> new EntityGlyph.Health());
+		register(GLYPH_ENT_TARGET, () -> () -> new EntityGlyph.Target());
+		
 		register(GLYPH_STACK_GET, () -> () -> new StackGlyph.StackGet());
 		register(GLYPH_STACK_ADD, () -> () -> new StackGlyph.StackAdd());
 		register(GLYPH_STACK_SUB, () -> () -> new StackGlyph.StackSub());
@@ -187,6 +194,7 @@ public class SpellComponents
 		register(FUNCTION_DEBUG, () -> () -> new FunctionGlyph.Debug());
 		register(FUNCTION_TELEPORT, () -> () -> new FunctionGlyph.Teleport());
 		register(FUNCTION_CREATE, () -> () -> new FunctionGlyph.Create());
+		register(FUNCTION_DISPEL, () -> () -> new FunctionGlyph.Dispel());
 	}
 	
 	private static RegistryObject<ISpellComponentBuilder> register(ResourceLocation nameIn, Supplier<ISpellComponentBuilder> miracleIn)

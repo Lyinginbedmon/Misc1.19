@@ -4,8 +4,10 @@ import javax.annotation.Nonnull;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.google.common.base.Predicates;
 import com.lying.misc19.magic.ComponentCircle;
 import com.lying.misc19.magic.ISpellComponent;
+import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VarEntity;
 import com.lying.misc19.magic.variable.VarVec;
 import com.lying.misc19.magic.variable.VariableSet;
@@ -13,9 +15,11 @@ import com.lying.misc19.magic.variable.VariableSet.Slot;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
@@ -150,8 +154,36 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 		public void positionAndOrientSpell(Entity spellEntity, LivingEntity caster)
 		{
 			VariableSet variable = populateTarget(caster, new VariableSet());
-			spellEntity.setPos(variable.get(Slot.POSITION).asVec());
+			Vec3 posVec = variable.get(Slot.POSITION).asVec();
+			spellEntity.setPos(posVec);
+			spellEntity.setXRot(caster.getXRot());
+			spellEntity.setYRot(caster.getYRot());
 			
+			IVariable var = variable.get(Slot.TARGET);
+			if(var.type() == VariableType.ENTITY)
+			{
+				Entity ent = var.asEntity();
+				spellEntity.setXRot(-90F);
+				spellEntity.setYRot(ent.getYRot());
+			}
+			else if(var.type() == VariableType.VECTOR)
+			{
+				BlockPos blockPos = new BlockPos(posVec.x, posVec.y, posVec.z);
+				spellEntity.setPos(blockPos.getX() + 0.5D, blockPos.getY() + 0.5D, blockPos.getZ() + 0.5D);
+				
+				Vec3 look = variable.get(Slot.LOOK).asVec();
+				Direction face = Direction.fromNormal((int)look.x(), (int)look.y(), (int)look.z());
+				if(face.getAxis().isHorizontal())
+				{
+					spellEntity.setXRot(0F);
+					spellEntity.setYRot((float)(face.get2DDataValue() * 90));
+				}
+				else
+				{
+					spellEntity.setXRot((float)(-90F * face.getAxisDirection().getStep()));
+					spellEntity.setYRot(caster.getYRot() - 180F);
+				}
+			}
 		}
 	}
 	
@@ -160,30 +192,70 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 		Vec3 eyePos = caster.getEyePosition();
 		Vec3 lookVec = caster.getLookAngle();
 		Vec3 lookEnd = eyePos.add(lookVec.scale(64D));
-		HitResult trace = caster.getLevel().clip(new ClipContext(eyePos, lookEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, caster));
-		switch(trace.getType())
+		
+		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(caster.getLevel(), caster, eyePos, lookEnd, caster.getBoundingBox().inflate(64D), Predicates.alwaysTrue());
+		if(entityHit != null && entityHit.getType() == HitResult.Type.ENTITY)
 		{
-			case BLOCK:
-				BlockHitResult block = (BlockHitResult)trace;
-				BlockPos targetBlock = block.getBlockPos();
-				Vec3i look = block.getDirection().getNormal();
-				BlockPos pos = targetBlock.offset(block.getDirection().getNormal());
-				variablesIn.set(Slot.TARGET, new VarVec(targetBlock.getX() + 0.5D, targetBlock.getY(), targetBlock.getZ() + 0.5D));
-				variablesIn.set(Slot.POSITION, new VarVec(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D));
-				variablesIn.set(Slot.LOOK, new VarVec(look.getX(), look.getY(), look.getZ()));
-				break;
-			case ENTITY:
-				EntityHitResult entity = (EntityHitResult)trace;
-				Entity targetEntity = entity.getEntity();
-				variablesIn.set(Slot.TARGET, new VarEntity(targetEntity));
-				variablesIn.set(Slot.POSITION, new VarVec(targetEntity.position().add(0, targetEntity.getBbHeight() / 2, 0)));
-				variablesIn.set(Slot.LOOK, new VarVec(targetEntity.getLookAngle()));
-				break;
-			case MISS:
-			default:
-				variablesIn.set(Slot.POSITION, new VarVec(caster.getEyePosition()));
-				break;
+			Entity targetEntity = entityHit.getEntity();
+			variablesIn.set(Slot.TARGET, new VarEntity(targetEntity));
+			variablesIn.set(Slot.POSITION, new VarVec(targetEntity.position().add(0, targetEntity.getBbHeight() / 2, 0)));
+			variablesIn.set(Slot.LOOK, new VarVec(targetEntity.getLookAngle()));
+			return variablesIn;
+		}
+		else
+		{
+			HitResult trace = caster.getLevel().clip(new ClipContext(eyePos, lookEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, caster));
+			switch(trace.getType())
+			{
+				case BLOCK:
+					BlockHitResult block = (BlockHitResult)trace;
+					BlockPos targetBlock = block.getBlockPos();
+					Vec3i look = block.getDirection().getNormal();
+					BlockPos pos = targetBlock.offset(block.getDirection().getNormal());
+					variablesIn.set(Slot.TARGET, new VarVec(targetBlock.getX() + 0.5D, targetBlock.getY(), targetBlock.getZ() + 0.5D));
+					variablesIn.set(Slot.POSITION, new VarVec(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D));
+					variablesIn.set(Slot.LOOK, new VarVec(look.getX(), look.getY(), look.getZ()));
+					break;
+				case ENTITY:
+					EntityHitResult entity = (EntityHitResult)trace;
+					Entity targetEntity = entity.getEntity();
+					variablesIn.set(Slot.TARGET, new VarEntity(targetEntity));
+					variablesIn.set(Slot.POSITION, new VarVec(targetEntity.position().add(0, targetEntity.getBbHeight() / 2, 0)));
+					variablesIn.set(Slot.LOOK, new VarVec(targetEntity.getLookAngle()));
+					break;
+				case MISS:
+				default:
+					variablesIn.set(Slot.POSITION, new VarVec(caster.getEyePosition()));
+					break;
+			}
 		}
 		return variablesIn;
+	}
+	
+	public static IVariable getEntityTarget(Entity caster)
+	{
+		Vec3 eyePos = caster.getEyePosition();
+		Vec3 lookVec = caster.getLookAngle();
+		Vec3 lookEnd = eyePos.add(lookVec.scale(64D));
+		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(caster.getLevel(), caster, eyePos, lookEnd, caster.getBoundingBox().inflate(64D), Predicates.alwaysTrue());
+		if(entityHit != null && entityHit.getType() == HitResult.Type.ENTITY)
+			return new VarEntity(entityHit.getEntity());
+		else
+		{
+			HitResult trace = caster.getLevel().clip(new ClipContext(eyePos, lookEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, caster));
+			switch(trace.getType())
+			{
+				case BLOCK:
+					BlockHitResult block = (BlockHitResult)trace;
+					BlockPos pos = block.getBlockPos().offset(block.getDirection().getNormal());
+					return new VarVec(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
+				case ENTITY:
+					EntityHitResult entity = (EntityHitResult)trace;
+					return new VarEntity(entity.getEntity());
+				case MISS:
+				default:
+					return VariableSet.DEFAULT;
+			}
+		}
 	}
 }

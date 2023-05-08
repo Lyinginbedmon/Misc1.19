@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.Misc19;
+import com.lying.misc19.entities.SpellEntity;
 import com.lying.misc19.init.M19Blocks;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
@@ -22,11 +23,14 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /** A glyph that performs an actual function based on its inputs and does not have any outputs */
 public abstract class FunctionGlyph extends ComponentBase
 {
+	protected static final Param POS = Param.of("pos", VariableType.VECTOR);
+	protected static final Param ENTITY = Param.of("entity", VariableType.ENTITY);
 	private final int cost;
 	
 	protected FunctionGlyph(int costIn, Param... inputs)
@@ -86,8 +90,6 @@ public abstract class FunctionGlyph extends ComponentBase
 	
 	public static class Teleport extends FunctionGlyph
 	{
-		private static final Param ENTITY = Param.of("entity", VariableType.ENTITY);
-		private static final Param POS = Param.of("pos", VariableType.VECTOR);
 		
 		public Teleport() { super(15, ENTITY, POS); }
 		
@@ -106,8 +108,6 @@ public abstract class FunctionGlyph extends ComponentBase
 	
 	public static class Create extends FunctionGlyph
 	{
-		private static final Param POS = Param.of("pos", VariableType.VECTOR);
-		
 		public Create()
 		{
 			super(15, POS);
@@ -128,6 +128,27 @@ public abstract class FunctionGlyph extends ComponentBase
 				world.playSound((Player)null, blockPos, state.getSoundType().getPlaceSound(), SoundSource.BLOCKS,  0.5F + world.random.nextFloat(), world.random.nextFloat() * 0.7F + 0.6F);
 				world.setBlockAndUpdate(blockPos, state);
 			}
+		}
+	}
+	
+	public static class Dispel extends FunctionGlyph
+	{
+		protected static final Param RAD = Param.of("radius", VariableType.DOUBLE);
+		
+		public Dispel()
+		{
+			super(32, POS, RAD);
+		}
+		
+		protected void run(VariableSet variablesIn, Map<String, IVariable> params)
+		{
+			Level world = ((VarLevel)variablesIn.get(Slot.WORLD)).get();
+			Vec3 pos = POS.get(params).asVec();
+			double radius = RAD.get(params).asDouble();
+			
+			AABB bounds = new AABB(-radius, -radius, -radius, radius, radius, radius).move(pos);
+			for(SpellEntity spell : world.getEntitiesOfClass(SpellEntity.class, bounds))
+				spell.kill();
 		}
 	}
 }
