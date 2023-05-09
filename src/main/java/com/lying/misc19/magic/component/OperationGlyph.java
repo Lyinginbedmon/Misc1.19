@@ -18,7 +18,7 @@ public abstract class OperationGlyph extends ComponentBase
 	
 	public boolean isValidInput(ISpellComponent componentIn)
 	{
-		return isNestedOperation() ? (inputs().size() < 3 && componentIn.type() == Type.VARIABLE) : ISpellComponent.canBeInput(componentIn);
+		return isNestedOperation() ? (inputs().size() < 3 && componentIn.type() == Type.VARIABLE) : ISpellComponent.canBeInput(componentIn) && inputs().size() < 4;
 	}
 	
 	public boolean isValidOutput(ISpellComponent componentIn)
@@ -28,7 +28,7 @@ public abstract class OperationGlyph extends ComponentBase
 	
 	public boolean isNestedOperation()
 	{
-		return parent() != null ? !parent().type().isContainer() : false;
+		return parent() != null ? (!parent().type().isContainer() || parent().isInput(this)) : false;
 	}
 	
 	public void organise()
@@ -40,7 +40,7 @@ public abstract class OperationGlyph extends ComponentBase
 		}
 		
 		float spin = 180F / inputGlyphs.size();
-		Vec2 offset = M19Utils.rotate(left().scale(20), spin / 2);
+		Vec2 offset = M19Utils.rotate(right().scale(20), spin / 2);
 		for(ISpellComponent input : inputGlyphs)
 		{
 			input.setParent(this);

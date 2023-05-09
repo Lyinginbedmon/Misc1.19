@@ -104,6 +104,7 @@ public class VariableSet
 		VECTOR,
 		ENTITY,
 		STACK,
+		ELEMENT,
 		WORLD;
 	}
 	

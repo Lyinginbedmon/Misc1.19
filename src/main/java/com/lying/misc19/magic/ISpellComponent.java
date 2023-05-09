@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.apache.commons.compress.utils.Lists;
 
+import com.lying.misc19.capabilities.LivingData;
+import com.lying.misc19.entities.SpellEntity;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.reference.Reference;
 import com.lying.misc19.utility.M19Utils;
@@ -13,6 +15,9 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 
 public interface ISpellComponent
@@ -90,6 +95,10 @@ public interface ISpellComponent
 		return this;
 	}
 	
+	public default boolean isInput(ISpellComponent part) { return inputs().contains(part); }
+	
+	public default boolean isOutput(ISpellComponent part) { return outputs().contains(part); }
+	
 	public default void addInput(ISpellComponent component) { }
 	
 	public default List<ISpellComponent> inputs(){ return Lists.newArrayList(); }
@@ -158,9 +167,18 @@ public interface ISpellComponent
 	
 	public default void deserialiseNBT(CompoundTag nbt) { }
 	
+	public static List<SpellEntity> getSpellsWithin(Level world, AABB bounds)
+	{
+		List<SpellEntity> spells = Lists.newArrayList();
+		spells.addAll(world.getEntitiesOfClass(SpellEntity.class, bounds, (ent) -> ent.isAlive()));
+		world.getEntitiesOfClass(LivingEntity.class, bounds, (ent) -> ent.isAlive()).forEach((ent) -> spells.addAll(LivingData.getCapability(ent).getActiveSpellEntities()));;
+		return spells;
+	}
+	
 	public static enum Category
 	{
 		CONSTANT(4),
+		ELEMENT(7),
 		VARIABLE(5),
 		OPERATION(3),
 		FUNCTION(6),

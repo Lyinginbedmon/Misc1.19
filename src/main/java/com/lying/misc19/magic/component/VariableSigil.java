@@ -16,7 +16,9 @@ import net.minecraft.world.phys.Vec3;
 
 public abstract class VariableSigil extends ComponentGlyph
 {
-	public Category category() { return Category.VARIABLE; }
+	protected Category category = Category.VARIABLE;
+	
+	public Category category() { return category; }
 	
 	public Type type() { return Type.VARIABLE; }
 	
@@ -31,9 +33,16 @@ public abstract class VariableSigil extends ComponentGlyph
 	{
 		private final IVariable value;
 		
-		public Constant(IVariable varIn) { this.value = varIn; }
+		public Constant(IVariable varIn)
+		{
+			this(varIn, Category.CONSTANT);
+		}
 		
-		public Category category() { return Category.CONSTANT; }
+		public Constant(IVariable varIn, Category catIn)
+		{
+			this.value = varIn;
+			this.category = catIn;
+		}
 		
 		public IVariable get(VariableSet variablesIn) { return this.value; }
 		

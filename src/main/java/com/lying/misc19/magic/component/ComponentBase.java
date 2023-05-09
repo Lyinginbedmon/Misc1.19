@@ -105,7 +105,7 @@ public abstract class ComponentBase implements ISpellComponent
 		return getVariable(this.inputGlyphs.get(index), variablesIn);
 	}
 	
-	protected IVariable getVariable(ISpellComponent input, VariableSet variablesIn)
+	protected static IVariable getVariable(ISpellComponent input, VariableSet variablesIn)
 	{
 		if(input.type() == Type.VARIABLE)
 			return ((VariableSigil)input).get(variablesIn);
@@ -142,13 +142,13 @@ public abstract class ComponentBase implements ISpellComponent
 	}
 	
 	/** Creates a map containing all variables needed by this glyph, based on its inputs */
-	protected Map<String, IVariable> collectParams(VariableSet variablesIn)
+	protected static Map<String, IVariable> collectParams(VariableSet variablesIn, List<ISpellComponent> inputGlyphs, Param... parameters)
 	{
 		Map<String, IVariable> params = new HashMap<>();
 		List<ISpellComponent> inputs = Lists.newArrayList();
-		inputs.addAll(inputs());
+		inputs.addAll(inputGlyphs);
 		
-		for(Param param : inputNeeds)
+		for(Param param : parameters)
 		{
 			ISpellComponent paramInput = null;
 			for(ISpellComponent input : inputs)

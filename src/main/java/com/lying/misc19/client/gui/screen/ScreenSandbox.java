@@ -111,6 +111,7 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 						if(menu.arrangement() == null && comp.type() == Type.ROOT)
 						{
 							menu.setArrangement(comp);
+							this.glyphList.setCategory(Category.CIRCLE);
 							this.position = Vec2.ZERO;
 						}
 						else
@@ -243,6 +244,11 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	public void setNewPart(ISpellComponent component)
 	{
 		this.attachPart = SpellComponents.readFromNBT(ISpellComponent.saveToNBT(component));
+		
+		if(component.type() == Type.ROOT && menu.arrangement() == null && tryAddGlyph(null, component, false))
+			attachPart = null;
+		else if(component.type() == Type.HERTZ && menu.arrangement() != null && tryAddGlyph(menu.arrangement(), component, true))
+			attachPart = null;
 	}
 	
 	@Nullable
@@ -425,7 +431,7 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 		
 		ISpellComponent parent = part.parent();
 		if(parent == null && part.type() == Type.ROOT)
-			menu.setArrangement(null);
+			clearArrangement();
 		else
 		{
 			parent.remove(part);
@@ -435,4 +441,10 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	}
 	
 	private void clearSelected() { this.selectedPart = null; }
+	
+	private void clearArrangement()
+	{
+		menu.setArrangement(null);
+		this.glyphList.setCategory(Category.ROOT);
+	}
 }

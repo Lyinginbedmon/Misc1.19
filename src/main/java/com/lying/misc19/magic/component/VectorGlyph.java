@@ -28,7 +28,7 @@ public abstract class VectorGlyph extends OperationGlyph
 		if(!inputsMet(variablesIn))
 			return VariableSet.DEFAULT;
 		
-		Map<String, IVariable> params = collectParams(variablesIn);
+		Map<String, IVariable> params = collectParams(variablesIn, inputs(), VEC_1, VEC_2);
 		Vec3 var1 = VEC_1.get(params).asVec();
 		Vec3 var2 = VEC_2.get(params).asVec();
 		return applyTo(var1, var2);
@@ -53,7 +53,7 @@ public abstract class VectorGlyph extends OperationGlyph
 		public IVariable getResult(VariableSet variablesIn)
 		{
 			if(inputsMet(variablesIn))
-				return new VarVec(VEC_1.get(collectParams(variablesIn)).asVec().normalize());
+				return new VarVec(VEC_1.get(collectParams(variablesIn, inputs(), VEC_1)).asVec().normalize());
 			return VariableSet.DEFAULT;
 		}
 	}
@@ -67,7 +67,7 @@ public abstract class VectorGlyph extends OperationGlyph
 		public IVariable getResult(VariableSet variablesIn)
 		{
 			if(inputsMet(variablesIn))
-				return new VarDouble(VEC_1.get(collectParams(variablesIn)).asVec().length());
+				return new VarDouble(VEC_1.get(collectParams(variablesIn, inputs(), VEC_1)).asVec().length());
 			return VariableSet.DEFAULT;
 		}
 	}

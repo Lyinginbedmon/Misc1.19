@@ -29,6 +29,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.PushReaction;
 
 public class SpellEntity extends Entity
 {
@@ -61,6 +62,7 @@ public class SpellEntity extends Entity
 	}
 	
 	public void setVariables(VariableSet variablesIn) { this.variableSet = variablesIn; }
+	public VariableSet getVariables() { return this.variableSet; }
 	
 	protected void defineSynchedData()
 	{
@@ -157,12 +159,17 @@ public class SpellEntity extends Entity
 		}
 	}
 	
-	protected Optional<UUID> getOwnerId(){ return getEntityData().get(OWNER_UUID); }
+	public Optional<UUID> getOwnerId(){ return getEntityData().get(OWNER_UUID); }
 	
 	protected void setOwner(@Nonnull LivingEntity ownerIn)
 	{
 		ownerCached = ownerIn;
-		getEntityData().set(OWNER_UUID, Optional.of(ownerIn.getUUID()));
+		setOwnerUUID(ownerIn.getUUID());
+	}
+	
+	public void setOwnerUUID(@Nonnull UUID uuidIn)
+	{
+		getEntityData().set(OWNER_UUID, Optional.of(uuidIn));
 	}
 	
 	public ISpellComponent getSpell()
@@ -174,4 +181,6 @@ public class SpellEntity extends Entity
 	{
 		getEntityData().set(SPELL_DATA, ISpellComponent.saveToNBT(spellIn));
 	}
+	
+	public PushReaction getPistonPushReaction() { return PushReaction.IGNORE; }
 }

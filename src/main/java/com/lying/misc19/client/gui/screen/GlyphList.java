@@ -75,7 +75,7 @@ public class GlyphList extends ContainerObjectSelectionList<GlyphList.Entry>
 		switch(cat)
 		{
 			case ROOT:	return arrangement == null;
-			case HERTZ:	return arrangement.inputs().isEmpty();
+			case HERTZ:	return arrangement != null && arrangement.inputs().isEmpty();
 			default:	return arrangement != null;
 		}
 	}

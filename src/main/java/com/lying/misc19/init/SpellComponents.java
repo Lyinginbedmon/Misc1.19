@@ -80,10 +80,10 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_MUL = make("mul_glyph");
 	public static final ResourceLocation GLYPH_DIV = make("div_glyph");
 	public static final ResourceLocation GLYPH_MOD = make("mod_glyph");
+	public static final ResourceLocation GLYPH_RAND = make("random_glyph");
 	/**
 	 * Signum
 	 * Absolute value
-	 * Random
 	 * Negate
 	 */
 	
@@ -129,9 +129,10 @@ public class SpellComponents
 	
 	// Functions
 	public static final ResourceLocation FUNCTION_DEBUG = make("debug_function");
-	public static final ResourceLocation FUNCTION_TELEPORT = make("teleport_function");
+	public static final ResourceLocation FUNCTION_MOVE = make("motion_function");
 	public static final ResourceLocation FUNCTION_CREATE = make("creation_function");
 	public static final ResourceLocation FUNCTION_DISPEL = make("dispel_function");
+	public static final ResourceLocation FUNCTION_STATUS = make("potion_function");
 	
 	public static ResourceLocation make(String path) { return new ResourceLocation(Reference.ModInfo.MOD_ID, path); }
 	
@@ -157,6 +158,7 @@ public class SpellComponents
 		register(SIGIL_PI, () -> () -> VariableSigil.Constant.doubleConst(Math.PI));
 		registerLocalVariables();
 		registerVectorConstants();
+		registerElementConstants();
 		
 		register(GLYPH_DUMMY, () -> () -> new ComponentGlyph.Dummy());
 		
@@ -166,6 +168,7 @@ public class SpellComponents
 		register(GLYPH_MUL, () -> () -> new OperationGlyph.Multiply());
 		register(GLYPH_DIV, () -> () -> new OperationGlyph.Divide());
 		register(GLYPH_MOD, () -> () -> new OperationGlyph.Modulus());
+		register(GLYPH_RAND, () -> () -> new RandomGlyph());
 		
 		register(GLYPH_EQU, () -> () -> new ComparisonGlyph.Equals());
 		register(GLYPH_GRE, () -> () -> new ComparisonGlyph.Greater());
@@ -192,9 +195,10 @@ public class SpellComponents
 		register(GLYPH_STACK_SUB, () -> () -> new StackGlyph.StackSub());
 		
 		register(FUNCTION_DEBUG, () -> () -> new FunctionGlyph.Debug());
-		register(FUNCTION_TELEPORT, () -> () -> new FunctionGlyph.Teleport());
+		register(FUNCTION_MOVE, () -> () -> new FunctionGlyph.AddMotion());
 		register(FUNCTION_CREATE, () -> () -> new FunctionGlyph.Create());
 		register(FUNCTION_DISPEL, () -> () -> new FunctionGlyph.Dispel());
+		register(FUNCTION_STATUS, () -> () -> new FunctionGlyph.StatusEffect());
 	}
 	
 	private static RegistryObject<ISpellComponentBuilder> register(ResourceLocation nameIn, Supplier<ISpellComponentBuilder> miracleIn)
@@ -220,6 +224,12 @@ public class SpellComponents
 	{
 		for(VariableSet.Slot slot : VariableSet.Slot.values())
 			register(slot.glyph(), () -> () -> Slot.makeGlyph(slot));
+	}
+	
+	private static void registerElementConstants()
+	{
+		for(Element element : Element.values())
+			register(make(element.getSerializedName()+"_element"), () -> () -> new VariableSigil.Constant(new VarElement(element), Category.ELEMENT));
 	}
 	
 	private static void registerVectorConstants()

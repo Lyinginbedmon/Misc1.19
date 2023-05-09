@@ -2,7 +2,6 @@ package com.lying.misc19.item;
 
 import javax.annotation.Nullable;
 
-import com.lying.misc19.entities.SpellEntity;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.ISpellComponent.Type;
@@ -37,13 +36,8 @@ public class ScrollItem extends Item implements ISpellContainer
 			if(spell != null && spell.type() == Type.ROOT)
 			{
 				RootGlyph root = (RootGlyph)spell;
-				SpellEntity spellEntity = SpellEntity.create(spell, player, world);
-				spellEntity.setVariables(root.populateCoreVariables(world, player, new VariableSet()));
-				root.positionAndOrientSpell(spellEntity, player);
-				
-				world.addFreshEntity(spellEntity);
+				root.createSpellEntity(spell, world, player);
 				player.awardStat(Stats.ITEM_USED.get(this));
-				
 				return InteractionResultHolder.sidedSuccess(stack, world.isClientSide());
 			}
 			

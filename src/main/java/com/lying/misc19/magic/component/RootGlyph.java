@@ -5,6 +5,9 @@ import javax.annotation.Nonnull;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Predicates;
+import com.lying.misc19.capabilities.LivingData;
+import com.lying.misc19.entities.SpellEntity;
+import com.lying.misc19.init.M19Entities;
 import com.lying.misc19.magic.ComponentCircle;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.variable.IVariable;
@@ -44,6 +47,8 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	
 	public abstract void positionAndOrientSpell(Entity spellEntity, LivingEntity caster);
 	
+	public void updatePositionAndOrient(Entity spellEntity, LivingEntity caster) { positionAndOrientSpell(spellEntity, caster); }
+	
 	public int tickRate()
 	{
 		if(inputs().isEmpty())
@@ -53,6 +58,22 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 	}
 	
 	protected Pair<Float, Float> separations() { return Pair.of(30F, 80F); }
+	
+	public void createSpellEntity(ISpellComponent spell, Level world, LivingEntity caster)
+	{
+		SpellEntity spellEntity = createSpell(spell, world, caster);
+		((RootGlyph)spell).positionAndOrientSpell(spellEntity, caster);
+		
+		world.addFreshEntity(spellEntity);
+	}
+	
+	protected static SpellEntity createSpell(ISpellComponent spell, Level world, LivingEntity caster)
+	{
+		SpellEntity spellEntity = SpellEntity.create(spell, caster, world);
+		if(spell != null && spell.type() == Type.ROOT)
+			spellEntity.setVariables(((RootGlyph)spell).populateCoreVariables(world, caster, new VariableSet()));
+		return spellEntity;
+	}
 	
 	public void performExecution(@Nonnull Level world, @Nonnull LivingEntity caster, @Nonnull VariableSet variablesIn)
 	{
@@ -104,9 +125,17 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 			return populateCoreVariables(world, caster, variablesIn);
 		}
 		
+		public void createSpellEntity(ISpellComponent spell, Level world, LivingEntity caster)
+		{
+			SpellEntity spellEntity = createSpell(spell, world, caster);
+			((RootGlyph)spell).positionAndOrientSpell(spellEntity, caster);
+			LivingData data = LivingData.getCapability(caster);
+			data.addSpell(spellEntity);
+		}
+		
 		public void positionAndOrientSpell(Entity spellEntity, LivingEntity caster)
 		{
-			spellEntity.setPos(caster.position().add(0, caster.getBbHeight() / 2, 0));
+			spellEntity.setPos(caster.position());
 			spellEntity.setYRot(caster.getYRot());
 			spellEntity.setXRot(caster.getXRot());
 		}
@@ -237,7 +266,7 @@ public abstract class RootGlyph extends ComponentCircle.Basic
 		Vec3 eyePos = caster.getEyePosition();
 		Vec3 lookVec = caster.getLookAngle();
 		Vec3 lookEnd = eyePos.add(lookVec.scale(64D));
-		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(caster.getLevel(), caster, eyePos, lookEnd, caster.getBoundingBox().inflate(64D), Predicates.alwaysTrue());
+		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(caster.getLevel(), caster, eyePos, lookEnd, caster.getBoundingBox().inflate(64D), (entity) -> entity.isAlive() && entity.getType() != M19Entities.SPELL.get());
 		if(entityHit != null && entityHit.getType() == HitResult.Type.ENTITY)
 			return new VarEntity(entityHit.getEntity());
 		else

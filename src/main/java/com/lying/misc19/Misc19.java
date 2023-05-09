@@ -11,6 +11,7 @@ import com.lying.misc19.init.M19Items;
 import com.lying.misc19.init.M19Menus;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.init.SpellVariables;
+import com.lying.misc19.network.PacketHandler;
 import com.lying.misc19.reference.Reference;
 import com.mojang.logging.LogUtils;
 
@@ -39,6 +40,7 @@ public class Misc19
 			EVENT_BUS.register(ClientSetupEvents.class);
 		});
     	
+        EVENT_BUS.addListener(this::commonSetup);
         EVENT_BUS.addListener(M19DataGenerators::onGatherData);
         
         M19Entities.ENTITIES.register(EVENT_BUS);
@@ -57,7 +59,7 @@ public class Misc19
     @SubscribeEvent
     public void commonSetup(final FMLCommonSetupEvent event)
     {
-    	
+    	PacketHandler.init();
     }
     
     @SubscribeEvent
