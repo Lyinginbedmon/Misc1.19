@@ -9,7 +9,6 @@ import java.util.function.BiConsumer;
 import org.apache.commons.compress.utils.Lists;
 
 import com.lying.misc19.Misc19;
-import com.lying.misc19.entities.SpellEntity;
 import com.lying.misc19.init.M19Blocks;
 import com.lying.misc19.magic.Element;
 import com.lying.misc19.magic.ISpellComponent;
@@ -17,10 +16,13 @@ import com.lying.misc19.magic.variable.IVariable;
 import com.lying.misc19.magic.variable.VarElement;
 import com.lying.misc19.magic.variable.VarEntity;
 import com.lying.misc19.magic.variable.VarLevel;
+import com.lying.misc19.magic.variable.VarStack;
 import com.lying.misc19.magic.variable.VariableSet;
 import com.lying.misc19.magic.variable.VariableSet.Slot;
 import com.lying.misc19.magic.variable.VariableSet.VariableType;
 import com.lying.misc19.reference.Reference;
+import com.lying.misc19.utility.SpellData;
+import com.lying.misc19.utility.SpellManager;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -92,6 +94,13 @@ public abstract class FunctionGlyph extends ComponentBase
 					if(!elements.contains(ele))
 						elements.add(ele);
 				}
+				else if(var.type() == VariableType.STACK && ((VarStack)var).stackType() == VariableType.ELEMENT)
+					for(IVariable variable : var.asStack().entries())
+					{
+						Element ele = ((VarElement)variable).get();
+						if(!elements.contains(ele))
+							elements.add(ele);
+					}
 				else
 					inputs.add(input);
 			}
@@ -352,8 +361,9 @@ public abstract class FunctionGlyph extends ComponentBase
 			double radius = RAD.get(params).asDouble();
 			
 			AABB bounds = new AABB(-radius, -radius, -radius, radius, radius, radius).move(pos);
-			for(SpellEntity spell : ISpellComponent.getSpellsWithin(world, bounds))
-				spell.kill();
+			for(SpellData spell : SpellManager.getSpellsWithin(world, bounds))
+				if(spell.getVariable(Slot.UUID1) != variablesIn.get(Slot.UUID1) && spell.getVariable(Slot.UUID2) != variablesIn.get(Slot.UUID2))
+					spell.kill();
 		}
 	}
 }

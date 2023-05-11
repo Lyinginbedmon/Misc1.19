@@ -36,7 +36,7 @@ public class ScrollItem extends Item implements ISpellContainer
 			if(spell != null && spell.type() == Type.ROOT)
 			{
 				RootGlyph root = (RootGlyph)spell;
-				root.createSpellEntity(spell, world, player);
+				root.addSpellToWorld(spell, world, player);
 				player.awardStat(Stats.ITEM_USED.get(this));
 				return InteractionResultHolder.sidedSuccess(stack, world.isClientSide());
 			}

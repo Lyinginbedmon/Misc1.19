@@ -112,6 +112,10 @@ public class VariableSet
 	{
 		/** Age represents the number of times a given spell has executed thus far.<br>Always present, always cached */
 		AGE(true, true),
+		/** Least significant bits of the UUID of the spell data executing the spell.<br>Always present, always cached */
+		UUID1(true, false),
+		/** Least significant bits of the UUID of the spell data executing the spell.<br>Always present, always cached */
+		UUID2(true, false),
 		/** World is the level the spell is executing in.<br>Always present, always cached */
 		WORLD(true, false),
 		/** Caster contains the LivingEntity that originally cast the spell.<br>Always present */

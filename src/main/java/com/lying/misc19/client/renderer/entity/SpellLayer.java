@@ -2,10 +2,11 @@ package com.lying.misc19.client.renderer.entity;
 
 import java.util.List;
 
-import com.lying.misc19.capabilities.LivingData;
-import com.lying.misc19.capabilities.LivingData.SpellData;
+import com.lying.misc19.Misc19;
 import com.lying.misc19.client.renderer.ComponentRenderers;
 import com.lying.misc19.magic.ISpellComponent;
+import com.lying.misc19.utility.SpellData;
+import com.lying.misc19.utility.SpellManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 
@@ -27,32 +28,35 @@ public class SpellLayer<T extends LivingEntity, M extends EntityModel<T>> extend
 	
 	public void render(PoseStack matrixStack, MultiBufferSource bufferSource, int p_117351_, T livingEntity, float p_117353_, float p_117354_, float p_117355_, float p_117356_, float p_117357_, float p_117358_)
 	{
-		LivingData data = LivingData.getCapability(livingEntity);
-		if(data == null || !data.hasSpells())
+		SpellManager manager = SpellManager.instance(livingEntity.getLevel());
+		List<SpellData> spells = manager.getSpellsOn(livingEntity);
+		if(spells.isEmpty())
+		{
+			Misc19.LOG.info("No spells found on "+livingEntity.getName().getString());
 			return;
+		}
+		else
+			Misc19.LOG.info(spells.size()+" spells found on "+livingEntity.getName().getString());
 		
-		List<SpellData> spells = data.getActiveSpells();
 		matrixStack.pushPose();
 			matrixStack.translate(0D, 1.501F, 0D);
 			matrixStack.translate(0D, -livingEntity.getBbHeight() * 0.5D, 0D);
 			matrixStack.pushPose();
 				matrixStack.mulPose(Vector3f.XP.rotationDegrees(-90F));
-				matrixStack.pushPose();
 				for(int i=0; i<spells.size(); i++)
 				{
-					if(i > 0)
-					{
-						int index = i - 1;
-						int pair = 1 + index / 2;
-						Vec3 position = OFFSET.multiply(pair, pair * (index%2 == 0 ? 1 : -1), pair);
-						matrixStack.translate(position.x, position.y, position.z);
-					}
 					matrixStack.pushPose();
-						ISpellComponent arrangement = spells.get(i).arrangement();
-						ComponentRenderers.renderWorld(arrangement, matrixStack, bufferSource);
+						int pair = (int)Math.ceil(i * 0.5D);
+						int sign = i%2 == 0 ? 1 : -1;
+						Vec3 position = OFFSET.scale(pair * sign);
+						matrixStack.translate(position.x, position.y, position.z);
+						matrixStack.pushPose();
+							matrixStack.scale(2.2F, 2.2F, 2.2F);
+							ISpellComponent arrangement = spells.get(i).arrangement();
+							ComponentRenderers.renderWorld(arrangement, matrixStack, bufferSource);
+						matrixStack.popPose();
 					matrixStack.popPose();
 				}
-				matrixStack.popPose();
 			matrixStack.popPose();
 		matrixStack.popPose();
 	}

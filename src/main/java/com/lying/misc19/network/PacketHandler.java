@@ -30,7 +30,7 @@ public class PacketHandler
 	public static void init()
 	{
 		int id = 0;
-		HANDLER.registerMessage(id++, PacketSyncLivingData.class, PacketSyncLivingData::encode, PacketSyncLivingData::decode, PacketSyncLivingData::handle);
+		HANDLER.registerMessage(id++, PacketSyncSpellManager.class, PacketSyncSpellManager::encode, PacketSyncSpellManager::decode, PacketSyncSpellManager::handle);
 	}
 	
 	/**

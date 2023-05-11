@@ -32,6 +32,8 @@ public class VarStack extends VariableBase
 	
 	public VariableType type() { return VariableType.STACK; }
 	
+	public VariableType stackType() { return variables.isEmpty() ? VariableType.DOUBLE : variables.get(0).type(); }
+	
 	public VarStack asStack() { return this; }
 	
 	public boolean asBoolean() { return variables.isEmpty() ? false : variables.get(0).asBoolean(); }
@@ -95,4 +97,6 @@ public class VarStack extends VariableBase
 		for(int i=0; i<vars.size(); i++)
 			this.variables.add(SpellVariables.readFromNbt(vars.getCompound(i)));
 	}
+	
+	public List<IVariable> entries() { return this.variables; }
 }

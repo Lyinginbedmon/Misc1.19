@@ -1,6 +1,5 @@
 package com.lying.misc19.client;
 
-import com.lying.misc19.capabilities.LivingData;
 import com.lying.misc19.client.gui.screen.ScreenSandbox;
 import com.lying.misc19.client.renderer.entity.PendulumLayer;
 import com.lying.misc19.client.renderer.entity.SpellLayer;
@@ -8,6 +7,7 @@ import com.lying.misc19.init.M19Blocks;
 import com.lying.misc19.init.M19Items;
 import com.lying.misc19.init.M19Menus;
 import com.lying.misc19.reference.Reference;
+import com.lying.misc19.utility.SpellManager;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -19,7 +19,6 @@ import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -27,8 +26,8 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 public class ClientSetupEvents
 {
-	private static final Minecraft mc = Minecraft.getInstance();
-	private static LivingData localData = new LivingData(null);
+	private static final Minecraft MC = Minecraft.getInstance();
+	private static SpellManager LOCAL_DATA = new SpellManager(null);
 	
     @SuppressWarnings("removal")
 	@SubscribeEvent
@@ -70,14 +69,10 @@ public class ClientSetupEvents
     	});
     }
 	
-	public static LivingData getLivingData(LivingEntity playerIn)
+	public static SpellManager getLocalData()
 	{
-		localData.setLiving(playerIn);
-		return localData;
-	}
-	
-	public static LivingData getLocalData()
-	{
-		return getLivingData(mc.player);
+		if(LOCAL_DATA == null)
+			LOCAL_DATA = new SpellManager(MC.player.getLevel());
+		return LOCAL_DATA;
 	}
 }
