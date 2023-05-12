@@ -2,7 +2,6 @@ package com.lying.misc19.client.renderer.entity;
 
 import java.util.List;
 
-import com.lying.misc19.Misc19;
 import com.lying.misc19.client.renderer.ComponentRenderers;
 import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.utility.SpellData;
@@ -31,12 +30,7 @@ public class SpellLayer<T extends LivingEntity, M extends EntityModel<T>> extend
 		SpellManager manager = SpellManager.instance(livingEntity.getLevel());
 		List<SpellData> spells = manager.getSpellsOn(livingEntity);
 		if(spells.isEmpty())
-		{
-			Misc19.LOG.info("No spells found on "+livingEntity.getName().getString());
 			return;
-		}
-		else
-			Misc19.LOG.info(spells.size()+" spells found on "+livingEntity.getName().getString());
 		
 		matrixStack.pushPose();
 			matrixStack.translate(0D, 1.501F, 0D);

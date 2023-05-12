@@ -105,9 +105,7 @@ public abstract class FunctionGlyph extends ComponentBase
 					inputs.add(input);
 			}
 			
-			if(inputs.isEmpty())
-				return variablesIn;
-			else if(elements.isEmpty())
+			if(elements.isEmpty())
 				this.defaultBehaviour.accept(variablesIn, inputs);
 			else
 				AUGMENTATIONS.getOrDefault(elements, defaultBehaviour).accept(variablesIn, inputs);

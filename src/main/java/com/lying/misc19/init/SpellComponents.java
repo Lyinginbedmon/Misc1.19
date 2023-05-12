@@ -39,7 +39,7 @@ public class SpellComponents
 	public static final DeferredRegister<ISpellComponentBuilder> COMPONENTS					= DeferredRegister.create(REGISTRY_KEY, Reference.ModInfo.MOD_ID);
 	public static final Supplier<IForgeRegistry<ISpellComponentBuilder>> COMPONENTS_REGISTRY	= COMPONENTS.makeRegistry(() -> (new RegistryBuilder<ISpellComponentBuilder>()).hasTags());
 	
-	/**
+	/*
 	 * Every arrangement starts at a ROOT glyph<br>
 	 * The ROOT populates the variables with specific constant values, according to its type.<br>
 	 * The ROOT is then surrounded by a CIRCLE, which contains other GLYPHS and CIRCLES to perform functions.<br>
@@ -104,9 +104,12 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_LENGTH = make("length_glyph");
 	/**
 	 * Vector rotation
-	 * Ray trace operation (return first non-empty block or entity)
-	 * Is-block-empty check
 	 */
+	
+	// World operations
+	public static final ResourceLocation GLYPH_TRACE = make("ray_trace_glyph");
+	public static final ResourceLocation GLYPH_IS_EMPTY = make("block_empty_glyph");
+	public static final ResourceLocation GLYPH_ENTITIES = make("get_entities_glyph");
 	
 	// Entity operations
 	public static final ResourceLocation GLYPH_ENT_POS = make("entity_position_glyph");
@@ -116,7 +119,6 @@ public class SpellComponents
 	public static final ResourceLocation GLYPH_ENT_TARGET = make("entity_target_glyph");
 	/**
 	 * Get creature type?
-	 * Get entities within an area
 	 */
 	
 	// Stack operations
@@ -183,6 +185,10 @@ public class SpellComponents
 		register(GLYPH_CROSS, () -> () -> new VectorGlyph.Cross());
 		register(GLYPH_NORMALISE, () -> () -> new VectorGlyph.Normalise());
 		register(GLYPH_LENGTH, () -> () -> new VectorGlyph.Length());
+		
+		register(GLYPH_ENTITIES, () -> () -> new WorldGlyph.EntitiesWithin());
+		register(GLYPH_TRACE, () -> () -> new WorldGlyph.RayTrace());
+		register(GLYPH_IS_EMPTY, () -> () -> new WorldGlyph.IsBlockEmpty());
 		
 		register(GLYPH_ENT_POS, () -> () -> new EntityGlyph.Position());
 		register(GLYPH_ENT_LOOK, () -> () -> new EntityGlyph.Look());
