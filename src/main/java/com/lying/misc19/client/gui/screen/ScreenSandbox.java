@@ -10,6 +10,7 @@ import org.lwjgl.glfw.GLFW;
 import com.lying.misc19.client.Canvas;
 import com.lying.misc19.client.gui.menu.MenuSandbox;
 import com.lying.misc19.client.renderer.ComponentRenderers;
+import com.lying.misc19.client.renderer.RenderUtils;
 import com.lying.misc19.init.M19Items;
 import com.lying.misc19.init.SpellComponents;
 import com.lying.misc19.item.ScrollItem;
@@ -17,11 +18,10 @@ import com.lying.misc19.magic.ISpellComponent;
 import com.lying.misc19.magic.ISpellComponent.Category;
 import com.lying.misc19.magic.ISpellComponent.Type;
 import com.lying.misc19.reference.Reference;
+import com.lying.misc19.utility.M19Utils;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.minecraft.ChatFormatting;
@@ -40,7 +40,7 @@ import net.minecraft.world.phys.Vec2;
 
 public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 {
-	public static final ResourceLocation SAND_BACKGROUND = new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/gui/sandbox_background.png");
+	public static final ResourceLocation HIGHLIGHT_TEXTURE = new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/gui/sandbox_highlight.png");
 	private final MenuSandbox menu;
 	private final Inventory playerInv;
 	private Vec2 position = Vec2.ZERO;
@@ -48,7 +48,11 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	private Vec2 moveStart = null;
 	private boolean isMoving = false;
 	
+	private int ticksOpen = 0;
 	private Canvas canvas = null;
+	
+	private Vec2 lastClicked = Vec2.ZERO;
+	private int clickTicks = 0;
 	
 	/** The last part we were hovering over, if any */
 	private ISpellComponent hoveredPart = null;
@@ -125,6 +129,8 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	
 	public void tick()
 	{
+		this.ticksOpen++;
+		
 		this.printButton.active = this.copyButton.active = menu.arrangement() != null;
 		this.pasteButton.active = !this.minecraft.keyboardHandler.getClipboard().isEmpty();
 		
@@ -134,8 +140,10 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	
 	public void render(PoseStack matrixStack, int mouseX, int mouseY, float partialTicks)
 	{
-//		this.renderSandBackground(0);
 		this.renderBackground(matrixStack);
+		
+		if(clickTicks > 0)
+			clickTicks--;
 		
 		if(menu.arrangement() != null)
 		{
@@ -161,6 +169,9 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 			
 			hoveredPart = getComponentAt(mouseX, mouseY);
 		}
+		
+		if(this.selectedPart != null)
+			drawHighlightAround(selectedPart, matrixStack, partialTicks);
 		
 		this.glyphList.setLeftPos(0);
 		this.glyphList.render(matrixStack, mouseX, mouseY, partialTicks);
@@ -188,10 +199,6 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 			}
 		}
 		
-		// TODO Render selection as a sprite instead of just showing the tooltip
-		if(this.selectedPart != null)
-			this.renderTooltip(matrixStack, selectedPart.translatedName(), (int)selectedPart.position().x, (int)selectedPart.position().y);
-		
 		super.render(matrixStack, mouseX, mouseY, partialTicks);
 	}
 	
@@ -210,24 +217,6 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 		}
 		else
 			return canBeInput;
-	}
-	
-	public void renderSandBackground(int offset)
-	{
-		Tesselator tesselator = Tesselator.getInstance();
-		BufferBuilder bufferbuilder = tesselator.getBuilder();
-		RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-		RenderSystem.setShaderTexture(0, SAND_BACKGROUND);
-		RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-		float f = 32.0F;
-		int brightness = 235;
-		bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-			bufferbuilder.vertex(0.0D, (double)this.height, 0.0D).uv(0.0F, (float)this.height / f + (float)offset).color(brightness, brightness, brightness, 255).endVertex();
-			bufferbuilder.vertex((double)this.width, (double)this.height, 0.0D).uv((float)this.width / f, (float)this.height / f + (float)offset).color(brightness, brightness, brightness, 255).endVertex();
-			bufferbuilder.vertex((double)this.width, 0.0D, 0.0D).uv((float)this.width / f, (float)offset).color(brightness, brightness, brightness, 255).endVertex();
-			bufferbuilder.vertex(0.0D, 0.0D, 0.0D).uv(0.0F, (float)offset).color(brightness, brightness, brightness, 255).endVertex();
-		tesselator.end();
-		net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ScreenEvent.BackgroundRendered(this, new PoseStack()));
 	}
 	
 	private void updateCanvas(ISpellComponent arrangement)
@@ -321,6 +310,16 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	{
 		if(this.glyphList.isMouseOver(x, y))
 			return this.glyphList.mouseClicked(x, y, mouseKey);
+		else
+		{
+			// Double click to centre clicked point
+			Vec2 clickPos = new Vec2((float)x, (float)y);
+			if(this.clickTicks > 0 && this.lastClicked.distanceToSqr(clickPos) < 10)
+				this.position = this.position.add(clickPos.add(new Vec2(width / 2, height / 2).negated()).negated());
+			
+			this.lastClicked = clickPos;
+			this.clickTicks = 10;
+		}
 		
 		if(attachPart != null)
 		{
@@ -354,9 +353,7 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 				this.isMoving = true;
 				moveStart = new Vec2((int)x, (int)y);
 			}
-			else
-				this.selectedPart = hoveredPart;
-			
+			this.selectedPart = hoveredPart;
 			return true;
 		}
 		return false;
@@ -382,6 +379,9 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	
 	public boolean keyPressed(int keyID, int scanCode, int modifiers)
 	{
+		if(keyID == GLFW.GLFW_KEY_ESCAPE)
+			return super.keyPressed(keyID, scanCode, modifiers);
+		
 		if(selectedPart != null)
 		{
 			if(keyID == GLFW.GLFW_KEY_DELETE || keyID == GLFW.GLFW_KEY_BACKSPACE)
@@ -446,5 +446,33 @@ public class ScreenSandbox extends Screen implements MenuAccess<MenuSandbox>
 	{
 		menu.setArrangement(null);
 		this.glyphList.setCategory(Category.ROOT);
+	}
+	
+	private void drawHighlightAround(ISpellComponent part, PoseStack matrixStack, float partialTicks)
+	{
+		double totalTicks = this.ticksOpen + partialTicks;
+		Vec2 highlightPos = part.position();
+		float size = ComponentRenderers.get(part.getRegistryName()).spriteScale() + 20F + (float)(Math.sin(totalTicks * 0.1D) * 2.5F);
+		
+		double rads = Math.toRadians(totalTicks);
+		double cos = Math.cos(rads);
+		double sin = Math.sin(rads);
+		
+		Vec2[] vertices = new Vec2[]{
+			M19Utils.rotate(new Vec2(-size / 2, -size / 2), cos, sin),
+			M19Utils.rotate(new Vec2(+size / 2, -size / 2), cos, sin),
+			M19Utils.rotate(new Vec2(+size / 2, +size / 2), cos, sin),
+			M19Utils.rotate(new Vec2(-size / 2, +size / 2), cos, sin)};
+	    RenderSystem.setShader(GameRenderer::getPositionTexShader);
+	    RenderSystem.setShaderTexture(0, HIGHLIGHT_TEXTURE);
+	    RenderSystem.setShaderColor(0F, 0.5F, 1F, 1F);
+		RenderUtils.draw(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX, (buffer) -> 
+		{
+			buffer.vertex(highlightPos.x + vertices[0].x, highlightPos.y + vertices[0].y, 0).uv(0F, 0F).endVertex();
+			buffer.vertex(highlightPos.x + vertices[3].x, highlightPos.y + vertices[3].y, 0).uv(0F, 1F).endVertex();
+			buffer.vertex(highlightPos.x + vertices[2].x, highlightPos.y + vertices[2].y, 0).uv(1F, 1F).endVertex();
+			buffer.vertex(highlightPos.x + vertices[1].x, highlightPos.y + vertices[1].y, 0).uv(1F, 0F).endVertex();
+		});
+	    RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 	}
 }

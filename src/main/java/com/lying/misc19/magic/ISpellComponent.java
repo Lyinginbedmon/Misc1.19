@@ -26,7 +26,7 @@ public interface ISpellComponent
 	public default MutableComponent translatedName() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()); }
 	public default MutableComponent description() { return Component.translatable("magic."+Reference.ModInfo.MOD_ID+"."+getRegistryName().getPath()+".description"); }
 	
-	public default ResourceLocation spriteLocation() { return new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/magic/"+getRegistryName().getPath()+".png"); }
+	public default ResourceLocation spriteLocation() { return new ResourceLocation(Reference.ModInfo.MOD_ID, "textures/magic/"+category().getSerializedName()+"/"+getRegistryName().getPath()+".png"); }
 	
 	public void setParent(ISpellComponent parentIn);
 	

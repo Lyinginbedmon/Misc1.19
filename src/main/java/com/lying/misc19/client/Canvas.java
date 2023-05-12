@@ -214,7 +214,6 @@ public class Canvas
 		    RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 			RenderUtils.draw(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX, (buffer) -> 
 			{
-				
 				buffer.vertex(vertices[0].x, vertices[0].y, 0).uv(0F, 0F).endVertex();
 				buffer.vertex(vertices[3].x, vertices[3].y, 0).uv(0F, 1F).endVertex();
 				buffer.vertex(vertices[2].x, vertices[2].y, 0).uv(1F, 1F).endVertex();
